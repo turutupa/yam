@@ -1,0 +1,57 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicklasxyz/tauri-v2-schema/main/tauri.conf.json",
+  "productName": "Mustik",
+  "version": "0.1.0",
+  "identifier": "com.mustik.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Mustik",
+        "url": "index.html?window=main",
+        "width": 420,
+        "height": 520,
+        "resizable": false,
+        "decorations": true,
+        "alwaysOnTop": true,
+        "center": true,
+        "visible": false,
+        "theme": "Dark",
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      },
+      {
+        "label": "floating",
+        "title": "Mustik Widget",
+        "url": "index.html?window=floating",
+        "width": 300,
+        "height": 140,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visibleOnAllWorkspaces": true,
+        "x": 100,
+        "y": 40
+      }
+    ],
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true,
+      "tooltip": "Mustik"
+    },
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {}
+}

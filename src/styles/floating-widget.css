@@ -1,0 +1,252 @@
+.floating-widget {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #14142a, #0c0c1c);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 18px 12px;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.floating-widget[data-playing="true"] {
+  border-color: var(--accent-glow);
+}
+.floating-widget.compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 18px;
+}
+
+.floating-widget.compact .fw-bpm {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.floating-widget[data-playing="true"] {
+  border-color: var(--accent-glow);
+}
+
+/* =================== COMFORTABLE MODE =================== */
+.fw-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fw-bpm-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.fw-bpm-group {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  user-select: none;
+}
+
+.fw-bpm {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fw-bpm-clickable {
+  cursor: text;
+}
+
+.fw-bpm-edit {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  color: var(--text-primary);
+  width: 3.5ch;
+  text-align: center;
+  outline: none;
+  padding: 0;
+  caret-color: var(--accent);
+}
+
+.fw-bpm-unit {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.6;
+}
+
+.fw-bpm-adj {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fw-bpm-adj:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent-glow);
+  color: white;
+}
+
+.fw-play {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
+  color: var(--accent-text, white);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.fw-play:hover {
+  box-shadow: 0 4px 16px var(--accent-glow-strong, var(--accent-glow));
+  transform: scale(1.05);
+}
+
+.fw-play:active {
+  transform: scale(0.95);
+}
+
+/* Settings gear - sits next to play button in top row */
+.fw-settings {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.fw-settings:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+/* =================== BOTTOM ROW: subdivision + beats =================== */
+.fw-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.fw-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fw-sub-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 8px;
+  min-height: 24px;
+  min-width: 72px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.fw-sub-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.fw-sub-icon {
+  font-size: 0.85rem;
+}
+
+.fw-sub-name {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+/* =================== BEAT DOTS =================== */
+.fw-beat-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.fw-beat-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.fw-beat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  transition: all 0.06s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.fw-beat-dot.active {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow), 0 0 4px var(--accent);
+  transform: scale(1.25);
+  border-color: transparent;
+}
+
+.fw-beat-dot.downbeat {
+  background: var(--beat-accent, var(--accent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--beat-accent, var(--accent)) 40%, transparent), 0 0 4px var(--beat-accent, var(--accent));
+  transform: scale(1.4);
+}
+
+.fw-sub-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.fw-sub-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.06s ease-out;
+}
+
+.fw-sub-dot.active {
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent-glow);
+}

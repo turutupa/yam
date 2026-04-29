@@ -13,6 +13,22 @@ const DEFAULT_STATE: AppState = {
   volume: 0.8,
   soundType: "click",
   timeSignature: 4,
+  speedRamp: {
+    startBpm: 80,
+    targetBpm: 140,
+    increment: 5,
+    decrement: 3,
+    barsPerStep: 4,
+    beatsPerBar: 4,
+    mode: "linear",
+    cyclic: false,
+    active: false,
+    currentStep: 0,
+    currentBpm: 80,
+    direction: "up",
+    barsInStep: 0,
+    completed: false,
+  },
 };
 
 export function useMetronome() {
@@ -43,6 +59,8 @@ export function useMetronome() {
     document.documentElement.style.setProperty("--accent", hex);
     document.documentElement.style.setProperty("--accent-glow", `rgba(${r}, ${g}, ${b}, 0.3)`);
     document.documentElement.style.setProperty("--accent-glow-strong", `rgba(${r}, ${g}, ${b}, 0.5)`);
+    document.documentElement.style.setProperty("--accent-subtle", `rgba(${r}, ${g}, ${b}, 0.15)`);
+    document.documentElement.style.setProperty("--accent-subtle-hover", `rgba(${r}, ${g}, ${b}, 0.25)`);
     document.documentElement.style.setProperty("--accent-text", textColor);
   }, [state.accentColor]);
 

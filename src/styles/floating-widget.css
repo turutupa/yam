@@ -250,3 +250,14 @@
   background: var(--accent);
   box-shadow: 0 0 4px var(--accent-glow);
 }
+
+.fw-ramp-badge {
+  font-size: 0.7rem;
+  line-height: 1;
+  animation: ramp-pulse 1s ease infinite;
+}
+
+@keyframes ramp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

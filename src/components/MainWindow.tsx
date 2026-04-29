@@ -1,10 +1,11 @@
 import { useMetronome } from "../hooks/useMetronome";
 import { useDrag } from "../hooks/useDrag";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { setBpm, setSubdivision, togglePlayback, setWidgetMode, setAlwaysOnTop, setAccentColor, setVolume, setSoundType, setTimeSignature, showFloating } from "../ipc";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { LogicalSize } from "@tauri-apps/api/dpi";
+import { setBpm, setSubdivision, togglePlayback, setWidgetMode, setAlwaysOnTop, setAccentColor, setVolume, setSoundType, setTimeSignature, showFloating, onFullscreenChanged, setActiveTab, getActiveTab } from "../ipc";
 import type { Subdivision, WidgetMode } from "../types";
+import { TrainView } from "./TrainView";
+import { TrackView } from "./TrackView";
+import { FullscreenView } from "./FullscreenView";
 import "../styles/main-window.css";
 
 const SOUND_TYPES = [
@@ -85,7 +86,7 @@ const SUBDIVISION_NAMES: Record<Subdivision, string> = {
   6: "Sextuplet",
 };
 
-type HotkeyAction = "play" | "bpm-down" | "bpm-up" | "bpm-down-1" | "bpm-up-1" | "toggle-mode" | "toggle-view";
+type HotkeyAction = "play" | "bpm-down" | "bpm-up" | "bpm-down-1" | "bpm-up-1" | "toggle-mode" | "toggle-view" | "fullscreen";
 
 interface HotkeyEntry {
   action: string;
@@ -106,7 +107,27 @@ const HOTKEYS: HotkeyEntry[] = [
 export function MainWindow() {
   useDrag();
   const { state, currentBeat } = useMetronome();
-  const [view, setView] = useState<"metronome" | "settings">("metronome");
+  const [view, setViewRaw] = useState<"beat" | "train" | "track" | "settings">("beat");
+  const prevTab = useRef<"beat" | "train" | "track">("beat");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Persist tab changes and wrap setView
+  const setView = useCallback((v: "beat" | "train" | "track" | "settings") => {
+    setViewRaw(v);
+    if (v !== "settings") {
+      setActiveTab(v);
+    }
+  }, []);
+
+  // Restore last active tab on mount
+  useEffect(() => {
+    getActiveTab().then((tab) => {
+      if (tab === "beat" || tab === "train" || tab === "track") {
+        setViewRaw(tab);
+        prevTab.current = tab;
+      }
+    });
+  }, []);
   const [subOpen, setSubOpen] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
   const [keyBindings, setKeyBindings] = useState<Record<string, string>>(() =>
@@ -164,6 +185,14 @@ export function MainWindow() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [soundOpen]);
+
+  // Listen for fullscreen changes from Rust (global shortcut)
+  useEffect(() => {
+    const unlisten = onFullscreenChanged(() => {
+      if (view !== "track") setIsFullscreen((prev) => !prev);
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [view]);
 
   const [pendingKeys, setPendingKeys] = useState<string>("");
 
@@ -229,42 +258,70 @@ export function MainWindow() {
     return () => document.removeEventListener("keydown", handleBinding);
   }, [bindingFor, handleBinding]);
 
-  // Resize window based on current view
+  // Spacebar → play/pause on Metronome tab
   useEffect(() => {
-    const win = getCurrentWindow();
-    if (view === "settings") {
-      win.setSize(new LogicalSize(420, 700));
-    } else {
-      // Measure actual content height after render
-      requestAnimationFrame(() => {
-        const el = document.querySelector(".main-window");
-        if (el) {
-          // Reset height to auto temporarily to measure natural content height
-          const htmlEl = document.documentElement;
-          const prevHeight = htmlEl.style.height;
-          htmlEl.style.height = "auto";
-          (el as HTMLElement).style.height = "auto";
-          const h = Math.ceil(el.scrollHeight);
-          htmlEl.style.height = prevHeight;
-          (el as HTMLElement).style.height = "";
-          win.setSize(new LogicalSize(420, Math.max(400, Math.min(800, h))));
-        }
-      });
-    }
+    if (view !== "beat") return;
+    const handleSpace = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      e.preventDefault();
+      togglePlayback();
+    };
+    document.addEventListener("keydown", handleSpace);
+    return () => document.removeEventListener("keydown", handleSpace);
   }, [view]);
 
+  // Resize window based on current view
   const sliderPercent = ((state.bpm - 20) / (300 - 20)) * 100;
   const volumePercent = state.volume * 100;
 
+  // Fullscreen zen mode
+  if (isFullscreen) {
+    return <FullscreenView state={state} currentBeat={currentBeat} activeTab={view === "train" ? "train" : "beat"} onExit={() => setIsFullscreen(false)} />;
+  }
+
   return (
     <div className="main-window" data-playing={state.isPlaying}>
-      <header className="main-header">
+      <header className="main-header" onDoubleClick={() => { if (view !== "settings" && view !== "track") setIsFullscreen(true); }}>
         <h1>mustik</h1>
         <div className="header-actions">
+          <div className="header-volume-wrap">
+            <button className="header-btn header-volume-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                {state.volume > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>}
+                {state.volume > 0.5 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>}
+              </svg>
+            </button>
+            <div className="header-volume-popover">
+              <input
+                type="range"
+                className="volume-slider"
+                min={0}
+                max={100}
+                value={volumePercent}
+                onChange={(e) => setVolume(parseInt(e.target.value) / 100)}
+                style={{ "--volume-pct": `${volumePercent}%` } as React.CSSProperties}
+              />
+            </div>
+          </div>
+          {view !== "settings" && view !== "track" && (
+            <button className="header-btn" onClick={() => setIsFullscreen(true)} data-tooltip="Zen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c4-4 8-7.5 8-12a8 8 0 1 0-16 0c0 4.5 4 8 8 12z"/><path d="M12 2v20"/><path d="M4.5 10c2.5 1 5 1 7.5 0s5-1 7.5 0"/></svg>
+            </button>
+          )}
           <button
             className={`header-btn ${view === "settings" ? "active" : ""}`}
-            onClick={() => setView(view === "settings" ? "metronome" : "settings")}
-            data-tooltip={view === "settings" ? "Back to metronome" : "Settings"}
+            onClick={() => {
+              if (view === "settings") {
+                setView(prevTab.current);
+              } else {
+                prevTab.current = view as "beat" | "train" | "track";
+                setView("settings");
+              }
+            }}
+            data-tooltip={view === "settings" ? "Back" : "Settings"}
           >
             {view === "settings" ? (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg>
@@ -273,31 +330,23 @@ export function MainWindow() {
             )}
           </button>
           <button className="header-btn" onClick={() => showFloating()} data-tooltip="Open widget">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="13" x2="13" y2="1"/><polyline points="6 1 13 1 13 8"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><rect x="10" y="10" width="10" height="10" rx="1"/></svg>
           </button>
         </div>
       </header>
 
+      {view !== "settings" && (
+        <nav className="tab-bar">
+          <button className={`tab-btn ${view === "beat" ? "active" : ""}`} onClick={() => setView("beat")}>Metronome</button>
+          <button className={`tab-btn ${view === "train" ? "active" : ""}`} onClick={() => setView("train")}>Train</button>
+          <button className={`tab-btn ${view === "track" ? "active" : ""}`} onClick={() => setView("track")}>Tap It!</button>
+        </nav>
+      )}
+
       <div className="main-content">
-        {view === "metronome" ? (
+        {view === "beat" ? (
           <>
             <section className="bpm-section">
-              <div className="volume-row">
-                <svg className="volume-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                  {state.volume > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>}
-                  {state.volume > 0.5 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>}
-                </svg>
-                <input
-                  type="range"
-                  className="volume-slider"
-                  min={0}
-                  max={100}
-                  value={volumePercent}
-                  onChange={(e) => setVolume(parseInt(e.target.value) / 100)}
-                  style={{ "--volume-pct": `${volumePercent}%` } as React.CSSProperties}
-                />
-              </div>
               <div className="bpm-display">
                 <button className="bpm-btn" onClick={() => handleBpmChange(state.bpm - 5)}>−</button>
                 {editingBpm ? (
@@ -399,27 +448,23 @@ export function MainWindow() {
             </section>
 
             <section className="beat-section">
-              <div className="main-beat-row">
+              <div className="main-beat-dots">
                 {Array.from({ length: beatsPerMeasure }, (_, beatIdx) => {
                   const isBeatActive = activeBeat === beatIdx && isDownbeat;
                   const isBeatDownbeat = isBeatActive && beatIdx === 0;
                   const isAccentBeat = state.timeSignature === 1 || (beatIdx === 0 && state.timeSignature >= 2);
                   return (
-                    <div key={beatIdx} className="main-beat-group">
-                      <div className={`main-beat-bar ${isBeatActive ? "active" : ""} ${isBeatDownbeat ? "downbeat" : ""} ${isAccentBeat ? "accent" : ""}`}>
-                        <div className="main-beat-fill" />
-                      </div>
+                    <div key={beatIdx} className="main-dot-group">
+                      <div className={`main-dot ${isBeatActive ? "active" : ""} ${isBeatDownbeat ? "downbeat" : ""} ${isAccentBeat && isBeatActive ? "accent" : ""}`} />
                       {state.subdivision > 1 && (
-                        <div className="main-sub-bars">
+                        <div className="main-sub-dots">
                           {Array.from({ length: state.subdivision - 1 }, (_, subIdx) => (
                             <div
                               key={subIdx}
-                              className={`main-sub-bar ${
+                              className={`main-sub-dot ${
                                 activeBeat === beatIdx && activeSub === subIdx + 1 ? "active" : ""
                               }`}
-                            >
-                              <div className="main-sub-fill" />
-                            </div>
+                            />
                           ))}
                         </div>
                       )}
@@ -427,9 +472,7 @@ export function MainWindow() {
                   );
                 })}
               </div>
-            </section>
 
-            <section className="time-sig-section">
               <div className="time-sig-row">
                 {TIME_SIGNATURES.map((ts) => (
                   <button
@@ -443,6 +486,10 @@ export function MainWindow() {
               </div>
             </section>
           </>
+        ) : view === "train" ? (
+          <TrainView state={state} currentBeat={currentBeat} />
+        ) : view === "track" ? (
+          <TrackView state={state} currentBeat={currentBeat} />
         ) : (
           <>
             <section className="settings-section">

@@ -116,6 +116,7 @@ export function FloatingWidget() {
   };
 
   const timeSigLabel = TIME_SIG_OPTIONS.find(o => o.value === state.timeSignature)?.label || "4/4";
+  const rampActive = state.speedRamp.active;
 
   return (
     <div className="floating-widget comfortable" data-playing={state.isPlaying}>
@@ -142,6 +143,11 @@ export function FloatingWidget() {
 
       <div className="fw-bottom-row">
         <div className="fw-btn-group">
+          {rampActive && (
+            <span className="fw-ramp-badge" title={`Ramp: ${state.speedRamp.currentBpm} → ${state.speedRamp.targetBpm}`}>
+              ⚡
+            </span>
+          )}
           <button className="fw-sub-btn" onClick={cycleSubdivision} title={SUBDIVISION_NAMES[state.subdivision]}>
             <span className="fw-sub-icon">{SUBDIVISION_LABELS[state.subdivision]}</span>
             <span className="fw-sub-name">{SUBDIVISION_NAMES[state.subdivision]}</span>

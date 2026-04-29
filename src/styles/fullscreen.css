@@ -1,0 +1,263 @@
+/* =================== Fullscreen Zen View =================== */
+
+.fullscreen-view {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: radial-gradient(ellipse at center, #0d0d1a 0%, #000000 100%);
+  outline: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+/* Main content wrapper — always vertically centered */
+.fs-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+}
+
+/* Subtle glow ring when playing */
+.fullscreen-view[data-playing="true"]::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 50%);
+  opacity: 0.15;
+  animation: fs-breathe 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes fs-breathe {
+  0%, 100% { transform: scale(0.8); opacity: 0.1; }
+  50% { transform: scale(1); opacity: 0.2; }
+}
+
+/* Center BPM */
+.fs-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.fs-bpm {
+  font-size: 10rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s;
+}
+
+.fullscreen-view[data-playing="true"] .fs-bpm {
+  color: var(--accent);
+}
+
+.fs-bpm-label {
+  font-size: 1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+}
+
+/* Ramp info above BPM */
+.fs-ramp-info {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.fs-ramp-step {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.fs-ramp-target {
+  opacity: 0.6;
+}
+
+/* Beat dots */
+.fs-beats {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.fs-beat-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-beat {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.08s ease;
+}
+
+.fs-beat.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow-strong), 0 0 40px var(--accent-glow);
+  transform: scale(1.3);
+}
+
+.fs-beat.accent {
+  background: var(--beat-accent);
+  border-color: var(--beat-accent);
+  box-shadow: 0 0 24px var(--accent-glow-strong), 0 0 60px var(--accent-glow);
+  transform: scale(1.5);
+}
+
+.fs-sub-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.fs-sub-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.06s ease;
+}
+
+.fs-sub-dot.active {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Ramp progress */
+.fs-ramp-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.fs-ramp-grid {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.fs-ramp-grid-col {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 5px;
+}
+
+.fs-ramp-grid-cell {
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  background: var(--accent);
+  transition: opacity 0.15s ease;
+}
+
+.fs-ramp-grid-cell.done {
+  opacity: 1 !important;
+}
+
+.fs-ramp-grid-cell.current {
+  opacity: 1 !important;
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Controls bar */
+.fs-controls {
+  position: absolute;
+  bottom: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.fullscreen-view:hover .fs-controls {
+  opacity: 0.9;
+}
+
+.fs-ctrl-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fs-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fs-ctrl-sub {
+  font-size: 1rem;
+}
+
+.fs-play-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  transition: all 0.15s ease;
+}
+
+.fs-play-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 30px var(--accent-glow-strong);
+}
+
+.fs-play-btn.playing {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent);
+  box-shadow: none;
+  border: 2px solid var(--accent);
+}
+
+/* Exit hint */
+.fs-exit-hint {
+  position: absolute;
+  bottom: 16px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.fullscreen-view:hover .fs-exit-hint {
+  opacity: 0.5;
+}

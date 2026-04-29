@@ -5,6 +5,8 @@
   --accent: #e94560;
   --accent-glow: rgba(233, 69, 96, 0.3);
   --accent-glow-strong: rgba(233, 69, 96, 0.5);
+  --accent-subtle: rgba(233, 69, 96, 0.15);
+  --accent-subtle-hover: rgba(233, 69, 96, 0.25);
   --accent-text: #ffffff;
   --text-primary: #eee;
   --text-secondary: #aaa;

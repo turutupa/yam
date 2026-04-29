@@ -1,0 +1,477 @@
+/* =================== Track View =================== */
+
+.track-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+/* Intro / Idle */
+.track-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 16px 0 8px;
+}
+
+.track-intro-icon {
+  font-size: 2rem;
+}
+
+.track-intro h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.track-intro p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-width: 280px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.track-intro kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.75rem;
+  font-family: inherit;
+}
+
+.track-config-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+  margin: 18px 0;
+  font-style: italic;
+}
+
+.track-ratings-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.track-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.track-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Playing state */
+.track-playing {
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  gap: 24px;
+}
+
+.track-live-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.track-live-beats {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Progress ring */
+.track-progress-ring {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  margin: 16px 0;
+}
+
+.track-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.track-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 5;
+}
+
+.track-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 264;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.track-ring-warmup {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 264;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.track-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.track-ring-label {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.15em;
+  opacity: 0.6;
+}
+
+.track-ring-label.warmup {
+  font-size: 1.1rem;
+  opacity: 0.4;
+  animation: warmup-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes warmup-pulse {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+.track-last-offset {
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live dots */
+.track-live-dots {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 20px;
+}
+
+.track-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: track-dot-pop 0.2s ease;
+}
+
+.track-live-dot.miss {
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+}
+
+.track-live-dot.warmup {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.track-live-beats.warmup {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+@keyframes track-dot-pop {
+  0% {
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.track-live-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.track-live-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.65rem;
+  font-family: inherit;
+}
+
+/* Results */
+
+.track-results-view {
+  justify-content: flex-start;
+}
+
+.track-results {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
+}
+
+.track-results-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+
+.track-result-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.track-result-rating {
+  font-size: 2.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.track-result-phrase {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.track-result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.track-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: help;
+  overflow: visible;
+  outline: none;
+}
+
+.track-stat-popover {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 12px;
+  background: var(--surface-2, #2a2a3e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.track-stat:hover .track-stat-popover,
+.track-stat:focus .track-stat-popover {
+  visibility: visible;
+  opacity: 1;
+  max-height: 200px;
+  padding: 10px 12px;
+}
+
+.track-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.track-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Breakdown */
+.track-breakdown {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.track-breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.track-breakdown-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.track-breakdown-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  width: 90px;
+}
+
+.track-breakdown-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 24px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.track-breakdown-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.track-breakdown-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Accuracy over time graph */
+.track-accuracy-graph {
+  width: 100%;
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.track-graph-y-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  padding: 2px 0;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: right;
+}
+
+.track-graph-svg {
+  flex: 1;
+  height: 160px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Scatter plot */
+.track-scatter {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  margin-bottom: 16px;
+  margin-left: 32px; /* align with accuracy graph (28px labels + 4px gap) */
+  width: calc(100% - 32px);
+}
+
+.track-scatter-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.track-scatter-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+}
+
+.track-scatter-label-left,
+.track-scatter-label-right {
+  position: absolute;
+  bottom: 2px;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.track-scatter-label-left {
+  left: 4px;
+}
+.track-scatter-label-right {
+  right: 4px;
+}

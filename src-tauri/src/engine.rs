@@ -26,6 +26,57 @@ fn get_sounds(sound_type: &str) -> (&'static [u8], &'static [u8]) {
     }
 }
 
+/// Advance the speed ramp by one step. Returns (new_bpm, new_direction, is_done).
+fn advance_ramp(
+    current_bpm: u16,
+    direction: &str,
+    start_bpm: u16,
+    target_bpm: u16,
+    increment: u16,
+    decrement: u16,
+    mode: &str,
+    cyclic: bool,
+) -> (u16, String, bool) {
+    match mode {
+        "zigzag" => {
+            if direction == "up" {
+                let new_bpm = current_bpm.saturating_add(increment).min(300);
+                if new_bpm >= target_bpm {
+                    // Reached target, reverse direction
+                    (target_bpm, "down".to_string(), false)
+                } else {
+                    (new_bpm, "up".to_string(), false)
+                }
+            } else {
+                // Going down
+                let new_bpm = current_bpm.saturating_sub(decrement).max(20);
+                if new_bpm <= start_bpm {
+                    if cyclic {
+                        (start_bpm, "up".to_string(), false)
+                    } else {
+                        (start_bpm, "down".to_string(), true)
+                    }
+                } else {
+                    (new_bpm, "down".to_string(), false)
+                }
+            }
+        }
+        _ => {
+            // linear
+            let new_bpm = current_bpm.saturating_add(increment).min(300);
+            if new_bpm >= target_bpm {
+                if cyclic {
+                    (start_bpm, "up".to_string(), false)
+                } else {
+                    (target_bpm, "up".to_string(), true)
+                }
+            } else {
+                (new_bpm, "up".to_string(), false)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct BeatEvent {
     pub beat: u32,
@@ -73,6 +124,8 @@ impl MetronomeEngine {
             let mut beat_count: u32 = 0;
             let mut sub_count: u32 = 0;
             let mut next_tick = Instant::now();
+            let mut measure_beat: u32 = 0; // track beats within current measure for ramp
+            let mut pending_ramp_advance = false; // defer bar advance to start of next bar
 
             while alive.load(Ordering::SeqCst) {
                 // If not playing, idle-wait (low CPU) until play or shutdown
@@ -82,13 +135,18 @@ impl MetronomeEngine {
                     next_tick = Instant::now();
                     beat_count = 0;
                     sub_count = 0;
+                    measure_beat = 0;
                     continue;
                 }
 
-                let (bpm, subdivision, volume, sound_type, time_sig) = {
+                let (bpm, subdivision, volume, sound_type, time_sig, ramp_active, ramp_beats_per_bar) = {
                     let s = state.lock().unwrap();
-                    (s.bpm, s.subdivision, s.volume, s.sound_type.clone(), s.time_signature)
+                    (s.bpm, s.subdivision, s.volume, s.sound_type.clone(), s.time_signature,
+                     s.speed_ramp.active, s.speed_ramp.beats_per_bar)
                 };
+
+                // When ramp is active: force quarter notes only (no subdivisions)
+                let subdivision = if ramp_active { 1 } else { subdivision };
 
                 sink.set_volume(volume);
 
@@ -119,21 +177,91 @@ impl MetronomeEngine {
                     }
                 }
 
-                // Play click
+                // Play click — three levels:
+                //   1. Accent beat (first beat of measure): high sound, full volume
+                //   2. Regular beat (downbeat of subdivision group): low sound, normal volume
+                //   3. Subdivision tick: low sound, quiet
                 let is_downbeat = sub_count == 0;
-                let use_accent = match time_sig {
-                    0 => false,
-                    1 => is_downbeat,
-                    _ => {
-                        let beats_per_measure = time_sig as u32;
-                        is_downbeat && (beat_count % beats_per_measure) == 0
+
+                // Process pending ramp advance at the START of the new bar's first beat
+                if is_downbeat && pending_ramp_advance {
+                    pending_ramp_advance = false;
+                    let should_advance = {
+                        let s = state.lock().unwrap();
+                        s.speed_ramp.active && !s.speed_ramp.completed
+                    };
+                    if should_advance {
+                        let mut s = state.lock().unwrap();
+                        s.speed_ramp.bars_in_step += 1;
+                        if s.speed_ramp.bars_in_step >= s.speed_ramp.bars_per_step {
+                            s.speed_ramp.bars_in_step = 0;
+                            // Try to advance to next step
+                            let (new_bpm, new_dir, done) = advance_ramp(
+                                s.speed_ramp.current_bpm,
+                                &s.speed_ramp.direction,
+                                s.speed_ramp.start_bpm,
+                                s.speed_ramp.target_bpm,
+                                s.speed_ramp.increment,
+                                s.speed_ramp.decrement,
+                                &s.speed_ramp.mode,
+                                s.speed_ramp.cyclic,
+                            );
+                            if done && new_bpm == s.speed_ramp.current_bpm {
+                                // Already at target, can't advance further — truly done
+                                s.speed_ramp.completed = true;
+                                s.speed_ramp.active = false;
+                                s.is_playing = false;
+                                let state_clone = s.clone();
+                                let ramp_clone = s.speed_ramp.clone();
+                                drop(s);
+                                playing.store(false, Ordering::SeqCst);
+                                let _ = app_handle.emit("ramp-step", &ramp_clone);
+                                let _ = app_handle.emit("state-changed", &state_clone);
+                            } else {
+                                // Advance to next step (even if done — play the target step first)
+                                s.speed_ramp.current_step += 1;
+                                s.speed_ramp.current_bpm = new_bpm;
+                                s.speed_ramp.direction = new_dir;
+                                s.bpm = new_bpm;
+                                let ramp_clone = s.speed_ramp.clone();
+                                let state_clone = s.clone();
+                                drop(s);
+                                let _ = app_handle.emit("ramp-step", &ramp_clone);
+                                let _ = app_handle.emit("state-changed", &state_clone);
+                            }
+                        } else {
+                            let state_clone = s.clone();
+                            drop(s);
+                            let _ = app_handle.emit("state-changed", &state_clone);
+                        }
+                    }
+                }
+
+                let use_accent = if ramp_active {
+                    // During ramp: accent beat 1 of each beatsPerBar group
+                    let bpb = if ramp_beats_per_bar >= 2 { ramp_beats_per_bar as u32 } else { 4 };
+                    is_downbeat && (beat_count % bpb) == 0
+                } else {
+                    match time_sig {
+                        0 => false,
+                        1 => is_downbeat,
+                        _ => {
+                            let beats_per_measure = time_sig as u32;
+                            is_downbeat && (beat_count % beats_per_measure) == 0
+                        }
                     }
                 };
                 let (high_sound, low_sound) = get_sounds(&sound_type);
-                let sound_data = if use_accent { high_sound } else { low_sound };
+                let (sound_data, amp) = if use_accent {
+                    (high_sound, 1.0_f32)    // Accent: high sound, full volume
+                } else if is_downbeat {
+                    (low_sound, 0.75_f32)    // Regular beat: low sound, normal
+                } else {
+                    (low_sound, 0.35_f32)    // Subdivision tick: low sound, quiet
+                };
                 let cursor = Cursor::new(sound_data);
                 if let Ok(source) = rodio::Decoder::new(cursor) {
-                    sink.append(source.amplify(if use_accent { 1.0 } else { 0.7 }));
+                    sink.append(source.amplify(amp));
                 }
 
                 let event = BeatEvent {
@@ -147,6 +275,25 @@ impl MetronomeEngine {
                 if sub_count >= subdivision as u32 {
                     sub_count = 0;
                     beat_count += 1;
+
+                    // A full beat (including all subdivisions) just completed.
+                    // Count measures to know when a bar finishes.
+                    measure_beat += 1;
+                    let beats_per_measure = {
+                        let s = state.lock().unwrap();
+                        if s.speed_ramp.active {
+                            let bpb = s.speed_ramp.beats_per_bar;
+                            if bpb >= 2 { bpb as u32 } else { 4 }
+                        } else {
+                            let ts = s.time_signature;
+                            if ts >= 2 { ts as u32 } else { 4 }
+                        }
+                    };
+                    if measure_beat >= beats_per_measure {
+                        measure_beat = 0;
+                        // Bar completed — defer the visual advance to the start of the next bar
+                        pending_ramp_advance = true;
+                    }
                 }
 
                 next_tick += tick_duration;

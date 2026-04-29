@@ -19,6 +19,16 @@ fn persist_state(state: &SharedState, app_handle: &AppHandle) {
         store.set("volume", serde_json::json!(s.volume));
         store.set("soundType", serde_json::json!(s.sound_type));
         store.set("timeSignature", serde_json::json!(s.time_signature));
+        store.set("speedRamp", serde_json::json!({
+            "startBpm": s.speed_ramp.start_bpm,
+            "targetBpm": s.speed_ramp.target_bpm,
+            "increment": s.speed_ramp.increment,
+            "decrement": s.speed_ramp.decrement,
+            "barsPerStep": s.speed_ramp.bars_per_step,
+            "beatsPerBar": s.speed_ramp.beats_per_bar,
+            "mode": s.speed_ramp.mode,
+            "cyclic": s.speed_ramp.cyclic,
+        }));
     }
 }
 
@@ -126,21 +136,25 @@ pub fn set_always_on_top(enabled: bool, state: State<SharedState>, app_handle: A
     if let Some(main_win) = app_handle.get_webview_window("main") {
         let _ = main_win.set_always_on_top(enabled);
     }
-    if let Some(float_win) = app_handle.get_webview_window("floating") {
-        let _ = float_win.set_always_on_top(enabled);
-    }
+    // Widget always stays on top regardless of this setting
     let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
     persist_state(&state, &app_handle);
 }
 
 #[tauri::command]
-pub fn show_main(app_handle: AppHandle) {
+pub fn show_main(app_handle: AppHandle, state: State<SharedState>) {
     if let Some(float_win) = app_handle.get_webview_window("floating") {
         let _ = float_win.hide();
     }
     if let Some(main_win) = app_handle.get_webview_window("main") {
+        let aot = state.lock().unwrap().always_on_top;
+        let _ = main_win.set_always_on_top(aot);
         let _ = main_win.show();
         let _ = main_win.set_focus();
+    }
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        store.set("lastWindow", serde_json::json!("main"));
     }
 }
 
@@ -151,6 +165,10 @@ pub fn show_floating(app_handle: AppHandle) {
     }
     if let Some(float_win) = app_handle.get_webview_window("floating") {
         let _ = float_win.show();
+    }
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        store.set("lastWindow", serde_json::json!("floating"));
     }
 }
 
@@ -184,6 +202,14 @@ pub fn save_window_position(label: String, x: i32, y: i32, app_handle: AppHandle
 }
 
 #[tauri::command]
+pub fn save_window_size(label: String, width: u32, height: u32, app_handle: AppHandle) {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").unwrap();
+    let key = format!("window_size_{}", label);
+    store.set(key, serde_json::json!({ "width": width, "height": height }));
+}
+
+#[tauri::command]
 pub fn set_sound_type(sound_type: String, state: State<SharedState>, app_handle: AppHandle) {
     let valid = match sound_type.as_str() {
         "click" | "wood" | "beep" | "drum" => sound_type,
@@ -209,4 +235,171 @@ pub fn set_time_signature(time_signature: u8, state: State<SharedState>, app_han
     }
     let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
     persist_state(&state, &app_handle);
+}
+
+#[tauri::command]
+pub fn configure_speed_ramp(
+    start_bpm: u16,
+    target_bpm: u16,
+    increment: u16,
+    decrement: u16,
+    bars_per_step: u8,
+    beats_per_bar: u8,
+    mode: String,
+    cyclic: bool,
+    state: State<SharedState>,
+    app_handle: AppHandle,
+) {
+    {
+        let mut s = state.lock().unwrap();
+        s.speed_ramp.start_bpm = start_bpm.clamp(20, 300);
+        s.speed_ramp.target_bpm = target_bpm.clamp(20, 300);
+        s.speed_ramp.increment = increment.clamp(1, 50);
+        s.speed_ramp.decrement = decrement.clamp(1, 50);
+        s.speed_ramp.bars_per_step = bars_per_step.clamp(1, 32);
+        s.speed_ramp.beats_per_bar = beats_per_bar.clamp(1, 12);
+        s.speed_ramp.mode = match mode.as_str() {
+            "linear" | "zigzag" => mode,
+            _ => "linear".to_string(),
+        };
+        s.speed_ramp.cyclic = cyclic;
+    }
+    let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
+    persist_state(&state, &app_handle);
+}
+
+#[tauri::command]
+pub fn start_speed_ramp(
+    state: State<SharedState>,
+    engine_state: State<EngineState>,
+    app_handle: AppHandle,
+) {
+    {
+        let mut s = state.lock().unwrap();
+        s.speed_ramp.active = true;
+        s.speed_ramp.current_step = 0;
+        s.speed_ramp.current_bpm = s.speed_ramp.start_bpm;
+        s.speed_ramp.direction = "up".to_string();
+        s.speed_ramp.bars_in_step = 0;
+        s.speed_ramp.completed = false;
+        // Set the main BPM to the ramp start
+        s.bpm = s.speed_ramp.start_bpm;
+        s.is_playing = true;
+    }
+    {
+        let mut engine = engine_state.0.lock().unwrap();
+        engine.start(state.inner().clone(), app_handle.clone());
+    }
+    let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
+}
+
+#[tauri::command]
+pub fn start_speed_ramp_from(
+    step: u16,
+    bpm: u16,
+    bar: u8,
+    state: State<SharedState>,
+    engine_state: State<EngineState>,
+    app_handle: AppHandle,
+) {
+    {
+        let mut s = state.lock().unwrap();
+        s.speed_ramp.active = true;
+        s.speed_ramp.current_step = step;
+        s.speed_ramp.current_bpm = bpm.clamp(20, 300);
+        s.speed_ramp.direction = if bpm >= s.speed_ramp.target_bpm { "down".to_string() } else { "up".to_string() };
+        s.speed_ramp.bars_in_step = bar;
+        s.speed_ramp.completed = false;
+        s.bpm = bpm.clamp(20, 300);
+        s.is_playing = true;
+    }
+    {
+        let mut engine = engine_state.0.lock().unwrap();
+        engine.start(state.inner().clone(), app_handle.clone());
+    }
+    let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
+}
+
+#[tauri::command]
+pub fn stop_speed_ramp(
+    state: State<SharedState>,
+    engine_state: State<EngineState>,
+    app_handle: AppHandle,
+) {
+    {
+        let mut s = state.lock().unwrap();
+        s.speed_ramp.active = false;
+        s.is_playing = false;
+    }
+    {
+        let mut engine = engine_state.0.lock().unwrap();
+        engine.stop();
+    }
+    let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
+}
+
+#[tauri::command]
+pub fn toggle_fullscreen(app_handle: AppHandle) {
+    if let Some(main_win) = app_handle.get_webview_window("main") {
+        let is_fs = main_win.is_fullscreen().unwrap_or(false);
+        let _ = main_win.set_fullscreen(!is_fs);
+        let _ = app_handle.emit("fullscreen-changed", !is_fs);
+    }
+}
+
+#[tauri::command]
+pub fn set_fullscreen(fullscreen: bool, app_handle: AppHandle) {
+    if let Some(main_win) = app_handle.get_webview_window("main") {
+        let _ = main_win.set_fullscreen(fullscreen);
+        let _ = app_handle.emit("fullscreen-changed", fullscreen);
+    }
+}
+
+#[tauri::command]
+pub fn set_active_tab(tab: String, app_handle: AppHandle) {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        store.set("activeTab", serde_json::json!(tab));
+    }
+}
+
+#[tauri::command]
+pub fn get_active_tab(app_handle: AppHandle) -> String {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        if let Some(v) = store.get("activeTab").and_then(|v| v.as_str().map(String::from)) {
+            return v;
+        }
+    }
+    "beat".to_string()
+}
+
+#[tauri::command]
+pub fn get_last_window(app_handle: AppHandle) -> String {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        if let Some(v) = store.get("lastWindow").and_then(|v| v.as_str().map(String::from)) {
+            return v;
+        }
+    }
+    "floating".to_string()
+}
+
+#[tauri::command]
+pub fn set_calibration_offset(offset: f64, app_handle: AppHandle) {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        store.set("calibrationOffset", serde_json::json!(offset));
+    }
+}
+
+#[tauri::command]
+pub fn get_calibration_offset(app_handle: AppHandle) -> Option<f64> {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        if let Some(v) = store.get("calibrationOffset").and_then(|v| v.as_f64()) {
+            return Some(v);
+        }
+    }
+    None
 }

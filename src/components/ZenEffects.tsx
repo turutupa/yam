@@ -35,9 +35,6 @@ function hexToRgb(hex: string) {
   const h = hex.replace("#", "");
   return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
 }
-function getCy(canvas: HTMLCanvasElement, activeTab: "beat" | "train") {
-  return activeTab === "train" ? canvas.height * 0.35 : canvas.height * 0.45;
-}
 
 // ─── GRAVITY DROP ───────────────────────────────────────────────────────────
 // Drops fall from top of screen, timed to HIT each beat dot exactly on accent
@@ -225,7 +222,7 @@ function GravityEffect({ currentBeat, isPlaying }: { currentBeat: BeatEvent | nu
 
 // ─── CLOCK SWEEP ────────────────────────────────────────────────────────────
 // A radius line sweeps around center, one revolution per measure
-function SweepEffect({ currentBeat, isPlaying, activeTab, beatsPerMeasure }: { currentBeat: BeatEvent | null; isPlaying: boolean; activeTab: "beat" | "train"; beatsPerMeasure: number }) {
+function SweepEffect({ currentBeat, isPlaying, activeTab: _activeTab, beatsPerMeasure }: { currentBeat: BeatEvent | null; isPlaying: boolean; activeTab: "beat" | "train"; beatsPerMeasure: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
   const prevBeatRef = useRef(-1);

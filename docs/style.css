@@ -15,7 +15,6 @@
 html,
 body {
   height: 100%;
-  overflow: hidden;
   font-family:
     "Inter",
     -apple-system,
@@ -32,21 +31,21 @@ body {
 /* ─── Page ─── */
 .page {
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
+  padding: 40px 0;
 }
 
 .layout {
-  display: grid;
-  grid-template-columns: 1fr 2.2fr;
-  gap: clamp(32px, 4vw, 64px);
-  align-items: center;
-  max-width: 1800px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 600px;
   width: 100%;
-  padding: 0 clamp(24px, 3vw, 48px);
+  padding: 0 24px;
 }
 
 /* ─── Left Content ─── */
@@ -224,6 +223,7 @@ body {
 .preview-wrapper {
   position: relative;
   width: 100%;
+  padding-bottom: 50px;
 }
 
 .preview-frame {
@@ -247,18 +247,13 @@ body {
 
 .widget-overlay {
   position: absolute;
-  bottom: -34px;
-  left: -76px;
-  width: 42%;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow:
-    0 12px 50px rgba(0, 0, 0, 0.7),
-    0 4px 16px rgba(0, 0, 0, 0.5);
+  bottom: 10px;
+  left: -16px;
+  width: 280px;
+  filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.7)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
-  background: none;
 }
 
 .widget-overlay.visible {
@@ -269,7 +264,6 @@ body {
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 10px;
 }
 
 /* ─── Tab selector ─── */
@@ -408,26 +402,67 @@ body {
 }
 
 /* ─── Responsive ─── */
-@media (max-width: 860px) {
+
+/* Mobile: stacked, content on top, showcase below */
+/* (This is the default — mobile-first) */
+
+/* Desktop: side-by-side, image overflows right edge */
+@media (min-width: 861px) {
+  .page {
+    height: 100vh;
+    min-height: unset;
+    padding: 0;
+    overflow: hidden;
+  }
+
   .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    gap: 32px;
-    max-width: 500px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 48px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 clamp(32px, 4vw, 64px);
+  }
+
+  .content {
+    flex: 0 0 440px;
   }
 
   .showcase {
-    order: -1;
+    flex: 1 0 0;
+    min-width: 0;
+  }
+
+  .preview-container {
+    aspect-ratio: unset;
+    overflow: visible;
+  }
+
+  .preview-wrapper {
+    padding-left: 80px;
+    padding-bottom: 40px;
+  }
+
+  .widget-overlay {
+    bottom: 30px;
+    left: -76px;
   }
 
   .preview-frame {
-    max-width: 440px;
+    border-radius: 14px 0 0 14px;
+    overflow: visible;
+    box-shadow: none;
   }
 
-  .page {
-    overflow-y: auto;
-    height: auto;
-    min-height: 100vh;
-    padding: 40px 0;
+  .preview-frame > img {
+    width: auto;
+    height: 65vh;
+    max-width: none;
+    border-radius: 12px;
+    box-shadow:
+      0 20px 60px color-mix(in srgb, var(--text) 15%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--text) 5%, transparent);
   }
 }

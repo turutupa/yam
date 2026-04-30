@@ -55,12 +55,14 @@
       <!-- Right: Theme showcase -->
       <div class="showcase">
         <!-- Big preview -->
-        <div class="preview-wrapper">
-          <div class="preview-frame">
-            <img id="preview-img" src="img/drill/obsidian-drill.png" alt="App screenshot">
-          </div>
-          <div class="widget-overlay" id="widget-overlay">
-            <img id="widget-img" src="img/widget/obsidian-widget.png" alt="Widget">
+        <div class="preview-container">
+          <div class="preview-wrapper">
+            <div class="preview-frame">
+              <img id="preview-img" src="img/drill/obsidian-drill.png" alt="App screenshot">
+            </div>
+            <div class="widget-overlay" id="widget-overlay">
+              <img id="widget-img" src="img/widget/obsidian-widget.png" alt="Widget">
+            </div>
           </div>
         </div>
 
@@ -162,8 +164,8 @@
 
       // Button text: dark on light accents, dark on all (accent is the bg)
       const btn = document.getElementById('download-btn');
-      const needsDarkText = isLight || ['mono', 'neon', 'aurora'].includes(theme);
-      btn.style.color = needsDarkText ? '#0a0a0f' : '#0a0a0f';
+      const needsDarkText = ['obsidian', 'mono', 'neon', 'aurora', 'velvet'].includes(theme);
+      btn.style.color = needsDarkText ? '#0a0a0f' : '#ffffff';
     }
 
     // Map of available images: tab -> theme -> filename

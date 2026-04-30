@@ -1,12 +1,12 @@
 ---
-applyTo: "mustik/**"
+applyTo: "**"
 ---
 
-# Mustik — Floating Global Metronome
+# Yam — Yet Another Metronome
 
 ## What This Project Is
 
-Mustik is a cross-platform desktop metronome (macOS/Windows/Linux) built with **Rust + Tauri v2 + React + TypeScript**. It is a musician-grade system utility — think Raycast or a DAW transport bar, but for rhythm practice. It runs in the background with a persistent floating widget on screen.
+Yam is a cross-platform desktop metronome (macOS/Windows/Linux) built with **Rust + Tauri v2 + React + TypeScript**. It is a musician-grade system utility — think Raycast or a DAW transport bar, but for rhythm practice. It runs in the background with a persistent floating widget on screen.
 
 ## Tech Stack
 
@@ -59,7 +59,7 @@ mustik/
 │   ├── icons/
 │   │   └── icon.png          # 32x32 tray icon
 │   └── src/
-│       ├── main.rs           # Binary entry: calls mustik_lib::run()
+│       ├── main.rs           # Binary entry: calls yam_lib::run()
 │       ├── lib.rs            # App setup: plugins, tray, global shortcuts, command handler
 │       ├── state.rs          # AppState struct + Arc<Mutex<AppState>> (SharedState)
 │       ├── engine.rs         # MetronomeEngine: audio thread, lookahead timing, beat events
@@ -99,7 +99,7 @@ The metronome engine runs on a **dedicated Rust thread** (NOT the UI thread). Ke
 | `Tab` | Toggle compact/comfortable mode |
 
 ### System Tray
-Menu with "Show Mustik" and "Quit" items.
+Menu with "Show Yam" and "Quit" items.
 
 ## State Shape
 
@@ -139,7 +139,7 @@ JSON serialization uses camelCase (`isPlaying`, `alwaysOnTop`) for the frontend.
 ## Build & Run
 
 ```bash
-cd mustik
+cd yam
 npm install
 npm run tauri dev    # Dev mode with HMR
 npm run tauri build  # Production binary

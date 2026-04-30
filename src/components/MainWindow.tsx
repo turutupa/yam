@@ -280,7 +280,7 @@ export function MainWindow() {
     <div className="main-window" data-playing={state.isPlaying}>
       <ThemeEffects themeId={state.theme} />
       <header className="main-header" onDoubleClick={() => { if (view !== "settings" && view !== "track") setIsFullscreen(true); }}>
-        <h1>mustik</h1>
+        <h1>yam <span className="header-subtitle">Yet Another Metronome</span></h1>
         <div className="header-actions">
           <div className="header-volume-wrap">
             <button className="header-btn header-volume-btn">

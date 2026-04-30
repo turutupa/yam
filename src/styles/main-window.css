@@ -31,6 +31,15 @@
   color: var(--accent);
 }
 
+.header-subtitle {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: none;
+  vertical-align: middle;
+}
+
 .header-actions {
   display: flex;
   gap: 6px;

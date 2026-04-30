@@ -1,12 +1,12 @@
 [package]
-name = "mustik"
+name = "yam"
 version = "0.1.0"
-description = "Musician-grade floating metronome"
+description = "Yet Another Metronome — musician-grade floating metronome"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "mustik_lib"
+name = "yam_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

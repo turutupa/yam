@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for Mustik",
+  "description": "Default capabilities for Yam",
   "windows": ["main", "floating"],
   "permissions": [
     "core:default",

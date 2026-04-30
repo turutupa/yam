@@ -1,5 +1,5 @@
 /**
- * Mustik Theme System
+ * Yam Theme System
  *
  * Each theme defines a complete visual identity: backgrounds, text, accents,
  * glows, borders, and optional font overrides. Themes apply to both the main

@@ -1,3 +1,3 @@
 fn main() {
-    mustik_lib::run();
+    yam_lib::run();
 }

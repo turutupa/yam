@@ -1,12 +1,16 @@
-# Mustik 🎵
+# Yam 🎵
 
-A **musician-grade floating metronome** desktop app built with Rust + Tauri + React.
+**Yet Another Metronome** — A musician-grade floating metronome desktop app built with Rust + Tauri + React.
+
+> 🌐 [Website](https://turutupa.github.io/yam) · 📦 [Download](https://github.com/turutupa/yam/releases/latest)
 
 ## Features
 
-- **High-precision audio engine** — Rust-based scheduler with lookahead timing (not setInterval)
+- **High-precision audio engine** — Rust-based scheduler with hybrid sleep + spin-wait timing
 - **Floating always-on-top widget** — Stays visible while you practice
-- **Compact & Comfortable modes** — Minimal or full-info display
+- **Zen fullscreen mode** — Immersive visual effects (Focus, Pulse, Gravity, Sweep, Cosmos)
+- **Beautiful themes** — Multiple dark and light themes with customizable accents
+- **Speed training** — Automatic BPM ramping for building technique
 - **Global hotkeys** — Control without focusing the app
 - **Subdivision support** — Quarter, eighth, triplet, sixteenth notes
 

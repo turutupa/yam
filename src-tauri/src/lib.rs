@@ -93,13 +93,13 @@ pub fn run() {
             app.manage(EngineState(Mutex::new(MetronomeEngine::new())));
 
             // Set up system tray
-            let show_i = MenuItem::with_id(app, "show", "Show Mustik", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Show Yam", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
-                .tooltip("Mustik")
+                .tooltip("Yam")
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         // Hide floating, show main
@@ -235,7 +235,7 @@ pub fn run() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running Mustik");
+        .expect("error while running Yam");
 }
 
 fn setup_global_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {

@@ -66,8 +66,9 @@ body {
 .brand .subtitle {
   font-size: 1rem;
   color: var(--text-dim);
-  margin-top: 6px;
-  font-weight: 400;
+  margin-top: -10px;
+  margin-left: 3em;
+  font-weight: 600 !important;
 }
 
 .features {

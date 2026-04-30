@@ -12,14 +12,21 @@
   --accent-hover: #fbbf24;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
-  transition: background 0.4s ease, color 0.4s ease;
+  transition:
+    background 0.4s ease,
+    color 0.4s ease;
 }
 
 /* ─── Page ─── */
@@ -175,6 +182,28 @@ html, body {
   color: color-mix(in srgb, var(--text) 20%, transparent);
 }
 
+.feature-request {
+  font-size: 1rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+.feature-request a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  margin-left: 6px;
+  transition: all 0.2s ease;
+}
+
+.feature-request a:hover {
+  background: var(--accent);
+  color: #000;
+}
+
 /* ─── Right: Showcase ─── */
 .showcase {
   display: flex;
@@ -183,21 +212,25 @@ html, body {
   gap: 16px;
 }
 
+.preview-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .preview-frame {
   width: 100%;
-  border-radius: 12px;
-  overflow: visible;
-  box-shadow: 0 20px 60px color-mix(in srgb, var(--text) 15%, transparent), 0 0 0 1px color-mix(in srgb, var(--text) 5%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px color-mix(in srgb, var(--text) 15%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--text) 5%, transparent);
   background: none;
-  aspect-ratio: 2700 / 2470;
   transition: box-shadow 0.4s ease;
-  position: relative;
 }
 
 .preview-frame > img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   display: block;
   transition: opacity 0.2s ease;
   border-radius: 12px;
@@ -205,12 +238,14 @@ html, body {
 
 .widget-overlay {
   position: absolute;
-  bottom: -40px;
-  left: -28px;
+  bottom: -34px;
+  left: -76px;
   width: 42%;
-  border-radius: 10px;
-  overflow: visible;
-  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 12px 50px rgba(0, 0, 0, 0.7),
+    0 4px 16px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -254,6 +289,7 @@ html, body {
   font-family: inherit;
   flex: 1;
   text-align: center;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
@@ -306,7 +342,9 @@ html, body {
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
   z-index: 10;
   overflow: visible;
 }

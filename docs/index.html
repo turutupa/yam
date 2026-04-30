@@ -48,15 +48,19 @@
           <span class="separator">·</span>
           <span class="note">Free & open-source</span>
         </div>
+
+        <p class="feature-request">Missing a feature? <a href="https://github.com/turutupa/yam/issues/new" target="_blank" rel="noopener">Request it here →</a></p>
       </div>
 
       <!-- Right: Theme showcase -->
       <div class="showcase">
         <!-- Big preview -->
-        <div class="preview-frame">
-          <img id="preview-img" src="img/obsidian-drill.png" alt="App screenshot">
+        <div class="preview-wrapper">
+          <div class="preview-frame">
+            <img id="preview-img" src="img/drill/obsidian-drill.png" alt="App screenshot">
+          </div>
           <div class="widget-overlay" id="widget-overlay">
-            <img id="widget-img" src="img/widget-obsidian.png" alt="Widget">
+            <img id="widget-img" src="img/widget/obsidian-widget.png" alt="Widget">
           </div>
         </div>
 
@@ -65,6 +69,7 @@
           <button class="tab-btn" data-tab="metronome">Metronome</button>
           <button class="tab-btn active" data-tab="drill">Drill</button>
           <button class="tab-btn" data-tab="tapit">Tap It</button>
+          <button class="tab-btn" data-tab="zen">Zen</button>
         </div>
 
         <!-- Theme swatches -->
@@ -109,8 +114,8 @@
     const tabBtns = document.querySelectorAll('.tab-btn');
     const swatches = document.querySelectorAll('.swatch');
 
-    let currentTab = 'drill';
-    let currentTheme = 'obsidian';
+    let currentTab = localStorage.getItem('yam-tab') || 'drill';
+    let currentTheme = localStorage.getItem('yam-theme') || 'obsidian';
 
     // Theme accent colors (from --c2 of each swatch)
     const themeAccents = {
@@ -164,49 +169,53 @@
     // Map of available images: tab -> theme -> filename
     const images = {
       metronome: {
-        obsidian: 'img/obsidian-metronome.png',
-        mono: 'img/mono-metronome.png',
-        velvet: 'img/velvet-metronome.png',
-        neon: 'img/neon-metronome.png',
-        aurora: 'img/aurora-metronome.png',
-        ivory: 'img/ivory-metronome.png',
-        arctic: 'img/arctic-metronome.png',
-        sand: 'img/sand-metronome.png',
-        lavender: 'img/lavender-metronome.png',
-        prism: 'img/prism-metronome.png',
+        obsidian: 'img/metronome/obsidian-metronome.png',
+        mono: 'img/metronome/mono-metronome.png',
+        velvet: 'img/metronome/velvet-metronome.png',
+        neon: 'img/metronome/neon-metronome.png',
+        aurora: 'img/metronome/aurora-metronome.png',
+        ivory: 'img/metronome/ivory-metronome.png',
+        arctic: 'img/metronome/arctic-metronome.png',
+        sand: 'img/metronome/sand-metronome.png',
+        lavender: 'img/metronome/lavender-metronome.png',
+        prism: 'img/metronome/prism-metronome.png',
       },
       drill: {
-        obsidian: 'img/obsidian-drill.png',
-        mono: 'img/mono-drill.png',
-        velvet: 'img/velvet-drill.png',
-        neon: 'img/neon-drill.png',
-        aurora: 'img/aurora-drill.png',
-        ivory: 'img/ivory-drill.png',
-        arctic: 'img/arctic-drill.png',
-        sand: 'img/sand-drill.png',
-        lavender: 'img/lavender-drill.png',
-        prism: 'img/prism-drill.png',
+        obsidian: 'img/drill/obsidian-drill.png',
+        mono: 'img/drill/mono-drill.png',
+        velvet: 'img/drill/velvet-drill.png',
+        neon: 'img/drill/neon-drill.png',
+        aurora: 'img/drill/aurora-drill.png',
+        ivory: 'img/drill/ivory-drill.png',
+        arctic: 'img/drill/arctic-drill.png',
+        sand: 'img/drill/sand-drill.png',
+        lavender: 'img/drill/lavender-drill.png',
+        prism: 'img/drill/prism-drill.png',
       },
       tapit: {
-        obsidian: 'img/obsidian-tap.png',
-        mono: 'img/mono-tap.png',
-        aurora: 'img/aurora-tap.png',
-        prism: 'img/prism-tap.png',
+        obsidian: 'img/tapit/obsidian-tap.png',
+        mono: 'img/tapit/mono-tap.png',
+        aurora: 'img/tapit/aurora-tap.png',
+        prism: 'img/tapit/prism-tap.png',
+      },
+      zen: {
+        obsidian: 'img/zen/obsidian-cosmos-zen.png',
+        neon: 'img/zen/neon-pulse-zen.png',
       },
     };
 
     // Widget images available
     const widgetImages = {
-      obsidian: 'img/widget-obsidian.png',
-      mono: 'img/widget-mono.png',
-      velvet: 'img/widget-velvet.png',
-      neon: 'img/widget-neon.png',
-      aurora: 'img/widget-aurora.png',
-      ivory: 'img/widget-ivory.png',
-      arctic: 'img/widget-artic.png',
-      sand: 'img/widget-sand.png',
-      lavender: 'img/widget-lavender.png',
-      prism: 'img/widget-prism.png',
+      obsidian: 'img/widget/obsidian-widget.png',
+      mono: 'img/widget/mono-widget.png',
+      velvet: 'img/widget/velvet-widget.png',
+      neon: 'img/widget/neon-widget.png',
+      aurora: 'img/widget/aurora-widget.png',
+      ivory: 'img/widget/ivory-widget.png',
+      arctic: 'img/widget/artic-widget.png',
+      sand: 'img/widget/sand-widget.png',
+      lavender: 'img/widget/lavender-widget.png',
+      prism: 'img/widget/prism-widget.png',
     };
 
     const widgetOverlay = document.getElementById('widget-overlay');
@@ -265,6 +274,7 @@
         tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentTab = btn.dataset.tab;
+        localStorage.setItem('yam-tab', currentTab);
         updatePreview();
       });
     });
@@ -274,6 +284,7 @@
         swatches.forEach(s => s.classList.remove('active'));
         sw.classList.add('active');
         currentTheme = sw.dataset.theme;
+        localStorage.setItem('yam-theme', currentTheme);
         setAccent(currentTheme);
         updatePreview();
       });
@@ -281,6 +292,12 @@
 
     // Initial swatch visibility
     updateSwatches();
+
+    // Restore saved state
+    swatches.forEach(s => s.classList.toggle('active', s.dataset.theme === currentTheme));
+    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === currentTab));
+    setAccent(currentTheme);
+    updatePreview();
     updateWidget();
 
     // ─── Particles effect for Aurora & Prism ───

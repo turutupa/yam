@@ -1,71 +1,85 @@
-# Yam 🎵
+# yam
 
-**Yet Another Metronome** — A musician-grade floating metronome desktop app built with Rust + Tauri + React.
+**Yet Another Metronome** — but not just another metronome.
 
-> 🌐 [Website](https://turutupa.github.io/yam) · 📦 [Download](https://github.com/turutupa/yam/releases/latest)
+Musicians deserve better than a beeping circle. Yam is a precision rhythm tool built for people who actually practice — fast, beautiful, and always within reach.
 
-## Features
+[Website](https://turutupa.github.io/yam) &nbsp;·&nbsp; [Download](https://github.com/turutupa/yam/releases/latest) &nbsp;·&nbsp; [Request a Feature](https://github.com/turutupa/yam/issues/new)
 
-- **High-precision audio engine** — Rust-based scheduler with hybrid sleep + spin-wait timing
-- **Floating always-on-top widget** — Stays visible while you practice
-- **Zen fullscreen mode** — Immersive visual effects (Focus, Pulse, Gravity, Sweep, Cosmos)
-- **Beautiful themes** — Multiple dark and light themes with customizable accents
-- **Speed training** — Automatic BPM ramping for building technique
-- **Global hotkeys** — Control without focusing the app
-- **Subdivision support** — Quarter, eighth, triplet, sixteenth notes
+<br>
 
-## Tech Stack
+<p align="center">
+  <img src="docs/img/metronome/obsidian-metronome.png" alt="yam metronome" width="520">
+</p>
 
-- **Rust** — Core metronome engine with precision timing
-- **Tauri v2** — Desktop app framework with multi-window support
-- **React + TypeScript** — UI layer
-- **rodio** — Audio playback
+<br>
+
+## Why yam?
+
+Every metronome app feels like an afterthought. A clock face. A blinking dot. We're building something you actually *want* on screen while you play.
+
+- **Sub-millisecond precision** — Rust audio engine with hybrid sleep + spin-wait. No drift. No jitter.
+- **Always-on-top widget** — A floating mini-player that stays visible over your DAW, tabs, or sheet music.
+- **Zen mode** — Fullscreen immersive visuals that pulse with the beat. Focus. Breathe. Play.
+- **Speed drill** — Auto-ramping BPM to push your technique without breaking flow.
+- **Tap tempo** — Tap your way to the right BPM.
+- **10+ themes** — Dark, light, vibrant, minimal. Make it yours.
+- **Global hotkeys** — Play, stop, nudge BPM — all without switching windows.
+
+<br>
+
+<p align="center">
+  <img src="docs/img/widget/neon-widget.png" alt="floating widget" width="320">
+  &nbsp;&nbsp;
+  <img src="docs/img/widget/obsidian-widget.png" alt="floating widget" width="320">
+</p>
+
+<br>
+
+## Install
+
+Download the latest release for your platform:
+
+| Platform | Link |
+|----------|------|
+| macOS | [Download .dmg](https://github.com/turutupa/yam/releases/latest) |
+| Windows | [Download .msi](https://github.com/turutupa/yam/releases/latest) |
+| Linux | [Download .AppImage](https://github.com/turutupa/yam/releases/latest) |
+
+Or build from source:
+
+```bash
+npm install
+npm run tauri build
+```
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Play / Stop |
+| `↑` / `↓` | BPM ±1 |
+| `Shift+↑` / `Shift+↓` | BPM ±5 |
+| `1` – `4` | Set subdivision |
+| `Tab` | Toggle widget mode |
+
+## Built With
+
+Rust · Tauri v2 · React · TypeScript · rodio
 
 ## Development
-
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (latest stable)
-- [Node.js](https://nodejs.org/) (v18+)
-- Platform-specific Tauri dependencies ([see docs](https://v2.tauri.app/start/prerequisites/))
-
-### Setup
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-### Build
+Requires [Rust](https://rustup.rs/) (stable) and [Node.js](https://nodejs.org/) 18+.
 
-```bash
-npm run tauri build
-```
+## Contributing
 
-## Controls
-
-| Hotkey | Action |
-|--------|--------|
-| `Space` | Play / Stop |
-| `↑` / `↓` | BPM ±1 |
-| `Shift+↑` / `Shift+↓` | BPM ±5 |
-| `1`–`4` | Set subdivision |
-| `Tab` | Toggle widget mode |
-
-## Architecture
-
-```
-┌─────────────────┐     IPC      ┌──────────────────┐
-│   Main Window   │◄────────────►│   Rust Engine    │
-│   (Settings)    │              │  (Audio + State) │
-└─────────────────┘              └──────────────────┘
-                                         ▲
-┌─────────────────┐     IPC      ────────┘
-│ Floating Widget │◄─────────────
-│  (Always on top)│
-└─────────────────┘
-```
+Found a bug? Want a feature? [Open an issue](https://github.com/turutupa/yam/issues/new). PRs welcome.
 
 ## License
 
-MIT
+[MIT](LICENSE) — free to use, modify, and distribute.

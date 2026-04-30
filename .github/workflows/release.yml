@@ -47,7 +47,10 @@ jobs:
           node-version: 20
 
       - name: Install frontend dependencies
-        run: npm install
+        shell: bash
+        run: |
+          rm -f package-lock.json
+          npm install
 
       - name: Extract version from commit message
         id: version
@@ -64,7 +67,7 @@ jobs:
 
       - name: Build Tauri app (release)
         if: steps.version.outputs.tag
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

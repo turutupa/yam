@@ -1,7 +1,8 @@
 import { useMetronome } from "../hooks/useMetronome";
 import { useDrag } from "../hooks/useDrag";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { togglePlayback, setBpm, setSubdivision, setTimeSignature, showMain } from "../ipc";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import type { Subdivision } from "../types";
 import "../styles/floating-widget.css";
 
@@ -40,22 +41,35 @@ export function FloatingWidget() {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
+
+  // Resize window to fit widget content
+  const resizeWindow = useCallback(() => {
+    const el = widgetRef.current;
+    if (!el) return;
+    const width = Math.ceil(el.offsetWidth);
+    const height = Math.ceil(el.offsetHeight);
+    getCurrentWindow().setSize(new LogicalSize(width, height));
+  }, []);
+
+  useEffect(() => {
+    const el = widgetRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => resizeWindow());
+    observer.observe(el);
+    resizeWindow();
+    return () => observer.disconnect();
+  }, [resizeWindow]);
 
   const beatsPerMeasure = state.timeSignature >= 2 ? state.timeSignature : 2;
   const activeBeat = currentBeat ? currentBeat.beat % beatsPerMeasure : -1;
   const activeSub = currentBeat ? currentBeat.subdivision : -1;
   const isDownbeat = currentBeat?.isDownbeat ?? false;
-  // Widget shows up to 5 dots; if more, cap at 5 and map via modulo
-  const widgetBeats = Math.min(beatsPerMeasure, 5);
-  const widgetActiveBeat = activeBeat >= 0
-    ? (beatsPerMeasure <= 5 ? activeBeat : activeBeat % widgetBeats)
-    : -1;
+  const widgetBeats = beatsPerMeasure;
+  const widgetActiveBeat = activeBeat;
   const isAccentBeat = (beatIdx: number) => {
     if (state.timeSignature === 1) return true; // Always
-    if (state.timeSignature >= 2 && beatIdx === 0) {
-      // When capped, accent fires when the real beat is 0
-      return beatsPerMeasure <= 5 ? activeBeat === 0 : activeBeat === 0;
-    }
+    if (state.timeSignature >= 2 && beatIdx === 0) return activeBeat === 0;
     return false;
   };
 
@@ -92,7 +106,7 @@ export function FloatingWidget() {
 
   if (state.mode === "compact") {
     return (
-      <div className="floating-widget compact" data-playing={state.isPlaying}>
+      <div ref={widgetRef} className="floating-widget compact" data-playing={state.isPlaying}>
         {bpmDisplay}
         <button className="fw-play" onClick={() => togglePlayback()}>
           {state.isPlaying ? "■" : "▶"}
@@ -119,7 +133,7 @@ export function FloatingWidget() {
   const rampActive = state.speedRamp.active;
 
   return (
-    <div className="floating-widget comfortable" data-playing={state.isPlaying}>
+    <div ref={widgetRef} className="floating-widget comfortable" data-playing={state.isPlaying}>
       <div className="fw-top-row">
         <div className="fw-bpm-control">
           <button className="fw-bpm-adj" onClick={() => setBpm(state.bpm - 5)}>

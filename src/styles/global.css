@@ -98,6 +98,8 @@ kbd {
 [data-theme-group="light"] .track-beat-dot { background: rgba(0,0,0,0.12); border-color: rgba(0,0,0,0.2); }
 [data-theme-group="light"] .floating-widget { border-color: rgba(0,0,0,0.1); }
 [data-theme-group="light"] .floating-widget[data-playing="true"] { border-color: var(--accent); }
+[data-theme-group="light"] .fw-settings { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); color: var(--text-secondary); }
+[data-theme-group="light"] .fw-settings:hover { background: rgba(0,0,0,0.12); color: var(--text-primary); }
 [data-theme-group="light"] .fw-play-btn { background: rgba(0,0,0,0.06); color: var(--text-primary); }
 [data-theme-group="light"] .fw-bpm-btn { background: rgba(0,0,0,0.04); color: var(--text-primary); }
 [data-theme-group="light"] .main-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }

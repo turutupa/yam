@@ -148,7 +148,8 @@ impl MetronomeEngine {
 
                 let (bpm, subdivision, volume, sound_type, time_sig, ramp_active, ramp_beats_per_bar) = {
                     let s = state.lock().unwrap();
-                    (s.bpm, s.subdivision, s.volume, s.sound_type.clone(), s.time_signature,
+                    let effective_bpm = if s.speed_ramp.active { s.speed_ramp.current_bpm } else { s.bpm };
+                    (effective_bpm, s.subdivision, s.volume, s.sound_type.clone(), s.time_signature,
                      s.speed_ramp.active, s.speed_ramp.beats_per_bar)
                 };
 
@@ -229,7 +230,6 @@ impl MetronomeEngine {
                                 s.speed_ramp.current_step += 1;
                                 s.speed_ramp.current_bpm = new_bpm;
                                 s.speed_ramp.direction = new_dir;
-                                s.bpm = new_bpm;
                                 let ramp_clone = s.speed_ramp.clone();
                                 let state_clone = s.clone();
                                 drop(s);

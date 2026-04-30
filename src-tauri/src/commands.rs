@@ -293,8 +293,7 @@ pub fn start_speed_ramp(
         s.speed_ramp.direction = "up".to_string();
         s.speed_ramp.bars_in_step = 0;
         s.speed_ramp.completed = false;
-        // Set the main BPM to the ramp start
-        s.bpm = s.speed_ramp.start_bpm;
+        // Don't touch s.bpm — ramp uses its own current_bpm
         s.is_playing = true;
     }
     {
@@ -321,7 +320,7 @@ pub fn start_speed_ramp_from(
         s.speed_ramp.direction = if bpm >= s.speed_ramp.target_bpm { "down".to_string() } else { "up".to_string() };
         s.speed_ramp.bars_in_step = bar;
         s.speed_ramp.completed = false;
-        s.bpm = bpm.clamp(20, 300);
+        // Don't touch s.bpm — ramp uses its own current_bpm
         s.is_playing = true;
     }
     {

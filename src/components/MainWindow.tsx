@@ -1,7 +1,7 @@
 import { useMetronome } from "../hooks/useMetronome";
 import { useDrag } from "../hooks/useDrag";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { setBpm, setSubdivision, togglePlayback, setWidgetMode, setAlwaysOnTop, setVolume, setSoundType, setTimeSignature, showFloating, onFullscreenChanged, setActiveTab, getActiveTab, setTheme } from "../ipc";
+import { setBpm, setSubdivision, togglePlayback, setWidgetMode, setAlwaysOnTop, setVolume, setSoundType, setTimeSignature, showFloating, onFullscreenChanged, setActiveTab, getActiveTab, setTheme, stopSpeedRamp } from "../ipc";
 import type { Subdivision, WidgetMode } from "../types";
 import { THEMES } from "../themes";
 import { TrainView } from "./TrainView";
@@ -97,11 +97,17 @@ export function MainWindow() {
 
   // Persist tab changes and wrap setView
   const setView = useCallback((v: "beat" | "train" | "track" | "settings") => {
-    setViewRaw(v);
+    setViewRaw((prev) => {
+      // Stop the drill if leaving the train tab
+      if (prev === "train" && v !== "train" && state.speedRamp?.active) {
+        stopSpeedRamp();
+      }
+      return v;
+    });
     if (v !== "settings") {
       setActiveTab(v);
     }
-  }, []);
+  }, [state.speedRamp?.active]);
 
   // Restore last active tab on mount
   useEffect(() => {

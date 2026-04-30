@@ -2,8 +2,7 @@ name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -26,6 +25,8 @@ jobs:
             target: ''
 
     runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -48,35 +49,33 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri app
+      - name: Extract version from commit message
+        id: version
+        if: startsWith(github.event.head_commit.message, 'release')
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          VERSION=$(echo "$MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if [ -z "$VERSION" ]; then
+            echo "No version found in commit message"
+            exit 1
+          fi
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build Tauri app (release)
+        if: steps.version.outputs.tag
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Yam ${{ github.ref_name }}'
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseName: 'Yam ${{ steps.version.outputs.tag }}'
           releaseBody: 'Download Yam for your platform below.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
-  deploy-pages:
-    runs-on: ubuntu-latest
-    needs: []
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Build Tauri app (verify only)
+        if: "!steps.version.outputs.tag"
+        run: npx tauri build ${{ matrix.args }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

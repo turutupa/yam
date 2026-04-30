@@ -5,129 +5,394 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Yam — Yet Another Metronome</title>
   <meta name="description" content="A musician-grade floating desktop metronome. Free, open-source, cross-platform.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="hero">
-    <nav>
-      <div class="nav-brand">
-        <span class="brand-name">yam</span>
-        <span class="brand-tagline">Yet Another Metronome</span>
-      </div>
-      <div class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#screenshots">Screenshots</a>
-        <a href="#download">Download</a>
-        <a href="https://github.com/turutupa/yam" target="_blank" rel="noopener">GitHub</a>
-      </div>
-    </nav>
+  <canvas id="particles-canvas"></canvas>
+  <div class="page">
+    <div class="layout">
+      <!-- Left: Content -->
+      <div class="content">
+        <div class="brand">
+          <h1>yam</h1>
+          <p class="subtitle">Yet Another Metronome</p>
+        </div>
 
-    <div class="hero-content">
-      <h1>
-        <span class="hero-title">yam</span>
-        <span class="hero-subtitle">Yet Another Metronome</span>
-      </h1>
-      <p class="hero-description">
-        A musician-grade floating metronome that stays on screen while you practice.
-        Sub-millisecond precision. Beautiful themes. Zero distractions.
-      </p>
-      <div class="hero-cta">
-        <a href="#download" class="btn btn-primary">Download Free</a>
-        <a href="https://github.com/turutupa/yam" class="btn btn-secondary" target="_blank" rel="noopener">View Source</a>
+        <div class="features">
+          <p class="feature"><strong>Minimal & beautiful.</strong> Crafted with intention — no clutter, just rhythm.</p>
+          <p class="feature"><strong>Always floating.</strong> Stays on top of your DAW, sheet music, or browser while you practice.</p>
+          <p class="feature"><strong>Zen mode.</strong> Fullscreen immersive visuals that respond to the beat.</p>
+        </div>
+
+        <div class="download-section">
+          <a href="https://github.com/turutupa/yam/releases/latest" class="btn-download" id="download-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download for <span id="os-name">macOS</span></span>
+          </a>
+          <div class="platforms">
+            <button class="platform-pill active" data-os="macos">macOS</button>
+            <button class="platform-pill" data-os="windows">Windows</button>
+            <button class="platform-pill" data-os="linux">Linux</button>
+          </div>
+        </div>
+
+        <div class="links">
+          <a href="https://github.com/turutupa/yam" class="link-btn" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+          <span class="separator">·</span>
+          <span class="note">Free & open-source</span>
+        </div>
       </div>
-      <p class="hero-platforms">Available for macOS, Windows, and Linux</p>
+
+      <!-- Right: Theme showcase -->
+      <div class="showcase">
+        <!-- Big preview -->
+        <div class="preview-frame">
+          <img id="preview-img" src="img/obsidian-drill.png" alt="App screenshot">
+          <div class="widget-overlay" id="widget-overlay">
+            <img id="widget-img" src="img/widget-obsidian.png" alt="Widget">
+          </div>
+        </div>
+
+        <!-- Tab selector -->
+        <div class="tab-selector">
+          <button class="tab-btn" data-tab="metronome">Metronome</button>
+          <button class="tab-btn active" data-tab="drill">Drill</button>
+          <button class="tab-btn" data-tab="tapit">Tap It</button>
+        </div>
+
+        <!-- Theme swatches -->
+        <div class="theme-swatches">
+          <div class="swatch-row">
+            <button class="swatch active" data-theme="obsidian" data-tooltip="Obsidian" style="--c1:#0a0a0a;--c2:#f59e0b"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="mono" data-tooltip="Mono" style="--c1:#121212;--c2:#d4d4d4"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="velvet" data-tooltip="Velvet" style="--c1:#110b1e;--c2:#8b5cf6"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="neon" data-tooltip="Neon" style="--c1:#0c0c18;--c2:#06b6d4"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="aurora" data-tooltip="Aurora" style="--c1:#0a0020;--c2:#00d4ff"><span class="swatch-half"></span></button>
+          </div>
+          <div class="swatch-row">
+            <button class="swatch" data-theme="ivory" data-tooltip="Ivory" style="--c1:#faf8f2;--c2:#b8860b"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="arctic" data-tooltip="Arctic" style="--c1:#f0f4f8;--c2:#0369a1"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="sand" data-tooltip="Sand" style="--c1:#f5f0e8;--c2:#92400e"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="lavender" data-tooltip="Lavender" style="--c1:#f5f0ff;--c2:#7c3aed"><span class="swatch-half"></span></button>
+            <button class="swatch" data-theme="prism" data-tooltip="Prism" style="--c1:#ffe0f0;--c2:#ff3d8a"><span class="swatch-half"></span></button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <section id="features" class="features">
-    <h2>Built for Musicians</h2>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">🎯</div>
-        <h3>Sub-Millisecond Precision</h3>
-        <p>Hybrid sleep + spin-wait timing engine running on a dedicated thread. No jitter, no drift.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🪟</div>
-        <h3>Always-On-Top Widget</h3>
-        <p>Compact floating widget stays visible while you practice with your DAW, tabs, or sheet music.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🎨</div>
-        <h3>Beautiful Themes</h3>
-        <p>Multiple dark and light themes with accent colors that match your style.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">⌨️</div>
-        <h3>Global Shortcuts</h3>
-        <p>Control playback, BPM, and subdivisions without switching windows.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🧘</div>
-        <h3>Zen Fullscreen Mode</h3>
-        <p>Immersive fullscreen with visual effects — Focus, Pulse, Gravity, Sweep, and Cosmos.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🏋️</div>
-        <h3>Speed Training</h3>
-        <p>Automatic BPM ramping to build speed gradually. Set start, target, and increment.</p>
-      </div>
-    </div>
-  </section>
+  <script>
+    // OS detection
+    const osName = document.getElementById('os-name');
+    const pills = document.querySelectorAll('.platform-pill');
+    const ua = navigator.userAgent.toLowerCase();
+    let detectedOS = 'macos';
+    if (ua.includes('win')) detectedOS = 'windows';
+    else if (ua.includes('linux')) detectedOS = 'linux';
 
-  <section id="screenshots" class="screenshots">
-    <h2>See It In Action</h2>
-    <p class="screenshots-note">Screenshots coming soon — the app is actively being polished!</p>
-    <div class="screenshots-grid">
-      <div class="screenshot-placeholder">
-        <span>Main Window</span>
-      </div>
-      <div class="screenshot-placeholder">
-        <span>Zen Mode</span>
-      </div>
-      <div class="screenshot-placeholder">
-        <span>Floating Widget</span>
-      </div>
-      <div class="screenshot-placeholder">
-        <span>Themes</span>
-      </div>
-    </div>
-  </section>
+    function setOS(os) {
+      pills.forEach(p => p.classList.toggle('active', p.dataset.os === os));
+      osName.textContent = os === 'macos' ? 'macOS' : os === 'windows' ? 'Windows' : 'Linux';
+    }
+    setOS(detectedOS);
+    pills.forEach(p => p.addEventListener('click', () => setOS(p.dataset.os)));
 
-  <section id="download" class="download">
-    <h2>Download Yam</h2>
-    <p class="download-subtitle">Free and open-source. Always will be.</p>
-    <div class="download-grid">
-      <a href="https://github.com/turutupa/yam/releases/latest" class="download-card">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
-        <div>
-          <strong>macOS</strong>
-          <span>Apple Silicon & Intel</span>
-        </div>
-      </a>
-      <a href="https://github.com/turutupa/yam/releases/latest" class="download-card">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.75L9 5.43V11.91L3 12ZM20 3V11.75L10 11.97V5.07L20 3ZM3 13L9 13.09V19.9L3 18.75V13ZM10 13.2L20 13V22L10 20.09V13.2Z"/></svg>
-        <div>
-          <strong>Windows</strong>
-          <span>64-bit installer</span>
-        </div>
-      </a>
-      <a href="https://github.com/turutupa/yam/releases/latest" class="download-card">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.868.07 1.369-.34 1.602-.717a3.96 3.96 0 00.222-.69c.04-.2.045-.395.045-.4 0-.2-.023-.395-.073-.586-.098-.39-.27-.686-.496-.97-.39-.494-.455-.69-.544-1.052-.09-.39-.09-.45-.06-.93.03-.47.034-.795-.042-1.213-.046-.196-.117-.343-.199-.465.146-.09.292-.182.43-.275a9.167 9.167 0 001.29-1.159c1.154-1.304 1.465-2.87 1.453-4.178-.01-1.324-.377-2.386-.609-2.83a.51.51 0 00-.06-.1 1.33 1.33 0 00-.129-.163 2.25 2.25 0 00-.088-.26 23.66 23.66 0 00-1.12-2.59c-.493-.986-1.097-1.985-1.81-2.482a3.04 3.04 0 00-1.613-.564c-.74-.028-1.275.19-1.62.378a5.71 5.71 0 00-.858.614C14.17.208 13.39.001 12.504 0z"/></svg>
-        <div>
-          <strong>Linux</strong>
-          <span>.deb / .AppImage</span>
-        </div>
-      </a>
-    </div>
-  </section>
+    // Theme showcase
+    const previewImg = document.getElementById('preview-img');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const swatches = document.querySelectorAll('.swatch');
 
-  <footer>
-    <p>Made with ❤️ for musicians everywhere</p>
-    <p><a href="https://github.com/turutupa/yam">GitHub</a> · MIT License</p>
-  </footer>
+    let currentTab = 'drill';
+    let currentTheme = 'obsidian';
+
+    // Theme accent colors (from --c2 of each swatch)
+    const themeAccents = {
+      obsidian: '#f59e0b',
+      mono: '#d4d4d4',
+      velvet: '#8b5cf6',
+      neon: '#06b6d4',
+      aurora: '#00d4ff',
+      ivory: '#b8860b',
+      arctic: '#0369a1',
+      sand: '#92400e',
+      lavender: '#7c3aed',
+      prism: '#ff3d8a',
+    };
+
+    // Theme background colors (from --c1 of each swatch)
+    const themeBgs = {
+      obsidian: '#0a0a0a',
+      mono: '#121212',
+      velvet: '#110b1e',
+      neon: '#0c0c18',
+      aurora: '#0a0020',
+      ivory: '#faf8f2',
+      arctic: '#f0f4f8',
+      sand: '#f5f0e8',
+      lavender: '#f5f0ff',
+      prism: '#ffe0f0',
+    };
+
+    // Light themes need dark text
+    const lightThemes = new Set(['ivory', 'arctic', 'sand', 'lavender', 'prism']);
+
+    function setAccent(theme) {
+      const root = document.documentElement;
+      const accent = themeAccents[theme] || '#f59e0b';
+      const bg = themeBgs[theme] || '#0a0a0f';
+      const isLight = lightThemes.has(theme);
+
+      root.style.setProperty('--accent', accent);
+      root.style.setProperty('--accent-hover', accent);
+      root.style.setProperty('--bg', bg);
+      root.style.setProperty('--text', isLight ? '#1a1a2e' : '#f0f0f5');
+      root.style.setProperty('--text-dim', isLight ? '#555570' : '#8888a0');
+
+      // Button text: dark on light accents, dark on all (accent is the bg)
+      const btn = document.getElementById('download-btn');
+      const needsDarkText = isLight || ['mono', 'neon', 'aurora'].includes(theme);
+      btn.style.color = needsDarkText ? '#0a0a0f' : '#0a0a0f';
+    }
+
+    // Map of available images: tab -> theme -> filename
+    const images = {
+      metronome: {
+        obsidian: 'img/obsidian-metronome.png',
+        mono: 'img/mono-metronome.png',
+        velvet: 'img/velvet-metronome.png',
+        neon: 'img/neon-metronome.png',
+        aurora: 'img/aurora-metronome.png',
+        ivory: 'img/ivory-metronome.png',
+        arctic: 'img/arctic-metronome.png',
+        sand: 'img/sand-metronome.png',
+        lavender: 'img/lavender-metronome.png',
+        prism: 'img/prism-metronome.png',
+      },
+      drill: {
+        obsidian: 'img/obsidian-drill.png',
+        mono: 'img/mono-drill.png',
+        velvet: 'img/velvet-drill.png',
+        neon: 'img/neon-drill.png',
+        aurora: 'img/aurora-drill.png',
+        ivory: 'img/ivory-drill.png',
+        arctic: 'img/arctic-drill.png',
+        sand: 'img/sand-drill.png',
+        lavender: 'img/lavender-drill.png',
+        prism: 'img/prism-drill.png',
+      },
+      tapit: {
+        obsidian: 'img/obsidian-tap.png',
+        mono: 'img/mono-tap.png',
+        aurora: 'img/aurora-tap.png',
+        prism: 'img/prism-tap.png',
+      },
+    };
+
+    // Widget images available
+    const widgetImages = {
+      obsidian: 'img/widget-obsidian.png',
+      mono: 'img/widget-mono.png',
+      velvet: 'img/widget-velvet.png',
+      neon: 'img/widget-neon.png',
+      aurora: 'img/widget-aurora.png',
+      ivory: 'img/widget-ivory.png',
+      arctic: 'img/widget-artic.png',
+      sand: 'img/widget-sand.png',
+      lavender: 'img/widget-lavender.png',
+      prism: 'img/widget-prism.png',
+    };
+
+    const widgetOverlay = document.getElementById('widget-overlay');
+    const widgetImg = document.getElementById('widget-img');
+
+    function updateWidget() {
+      const src = widgetImages[currentTheme];
+      if (src) {
+        widgetImg.src = src;
+        widgetOverlay.classList.add('visible');
+      } else {
+        widgetOverlay.classList.remove('visible');
+      }
+    }
+
+    function updateSwatches() {
+      const tabImages = images[currentTab];
+      swatches.forEach(sw => {
+        const theme = sw.dataset.theme;
+        const available = tabImages && tabImages[theme];
+        sw.style.display = available ? '' : 'none';
+      });
+      // If current theme isn't available in this tab, select first available
+      if (!tabImages || !tabImages[currentTheme]) {
+        const firstAvailable = Object.keys(tabImages || {})[0];
+        if (firstAvailable) {
+          currentTheme = firstAvailable;
+          swatches.forEach(s => s.classList.toggle('active', s.dataset.theme === currentTheme));
+          setAccent(currentTheme);
+        }
+      }
+    }
+
+    function updatePreview() {
+      updateSwatches();
+      const tabImages = images[currentTab];
+      const src = tabImages && tabImages[currentTheme];
+      if (src) {
+        previewImg.src = src;
+        previewImg.style.opacity = '1';
+      } else {
+        // Fallback: show any available image for this theme, or keep current
+        for (const tab of ['metronome', 'drill', 'tapit']) {
+          if (images[tab] && images[tab][currentTheme]) {
+            previewImg.src = images[tab][currentTheme];
+            previewImg.style.opacity = '0.6';
+            break;
+          }
+        }
+      }
+      updateWidget();
+    }
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTab = btn.dataset.tab;
+        updatePreview();
+      });
+    });
+
+    swatches.forEach(sw => {
+      sw.addEventListener('click', () => {
+        swatches.forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        currentTheme = sw.dataset.theme;
+        setAccent(currentTheme);
+        updatePreview();
+      });
+    });
+
+    // Initial swatch visibility
+    updateSwatches();
+    updateWidget();
+
+    // ─── Particles effect for Aurora & Prism ───
+    const canvas = document.getElementById('particles-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animId = null;
+    let particleColor = '#00d4ff';
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function createParticle() {
+      return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        size: Math.random() * 2.5 + 0.5,
+        alpha: Math.random() * 0.5 + 0.2,
+        pulse: Math.random() * Math.PI * 2,
+      };
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < 80; i++) {
+        particles.push(createParticle());
+      }
+    }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.pulse += 0.02;
+
+        // Wrap around
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        const alpha = p.alpha * (0.6 + 0.4 * Math.sin(p.pulse));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = particleColor;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Draw connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = particleColor;
+            ctx.globalAlpha = 0.08 * (1 - dist / 120);
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      animId = requestAnimationFrame(drawParticles);
+    }
+
+    function startParticles(color) {
+      particleColor = color;
+      canvas.classList.add('active');
+      if (!animId) {
+        initParticles();
+        drawParticles();
+      }
+    }
+
+    function stopParticles() {
+      canvas.classList.remove('active');
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    }
+
+    // Integrate with theme switching
+    const particleThemes = { aurora: '#00d4ff', prism: '#ff3d8a' };
+
+    function updateParticles(theme) {
+      if (particleThemes[theme]) {
+        startParticles(particleThemes[theme]);
+      } else {
+        stopParticles();
+      }
+    }
+
+    // Patch setAccent to also handle particles
+    const _origSetAccent = setAccent;
+    setAccent = function(theme) {
+      _origSetAccent(theme);
+      updateParticles(theme);
+    };
+  </script>
 </body>
 </html>

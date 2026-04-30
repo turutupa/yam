@@ -47,11 +47,12 @@ jobs:
           node-version: 20
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm install
 
       - name: Extract version from commit message
         id: version
         if: startsWith(github.event.head_commit.message, 'release')
+        shell: bash
         run: |
           MSG="${{ github.event.head_commit.message }}"
           VERSION=$(echo "$MSG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
@@ -72,10 +73,12 @@ jobs:
           releaseBody: 'Download Yam for your platform below.'
           releaseDraft: false
           prerelease: false
+          tauriScript: npx tauri
           args: ${{ matrix.args }}
 
       - name: Build Tauri app (verify only)
         if: "!steps.version.outputs.tag"
+        shell: bash
         run: npx tauri build ${{ matrix.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

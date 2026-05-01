@@ -1,10 +1,18 @@
 /* Train View (Speed Ramp) */
 
+.main-content:has(.train-view) {
+  justify-content: flex-start;
+}
+
 .train-view {
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 0 4px;
+}
+
+.train-view > .play-btn {
+  margin-top: -20px !important;
 }
 
 .train-current {
@@ -16,7 +24,7 @@
 }
 
 .train-current-bpm {
-  font-size: 3rem;
+  font-size: 4rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
@@ -43,12 +51,21 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.15);
-  transition: all 0.08s ease, opacity 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+  transition:
+    all 0.08s ease,
+    opacity 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    background 0.3s ease,
+    border-color 0.3s ease;
   animation: dotIn 0.25s ease;
 }
 
 @keyframes dotIn {
-  from { transform: scale(0.3); opacity: 0; }
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
 }
 
 .train-dot.exiting {
@@ -56,20 +73,30 @@
 }
 
 @keyframes dotOut {
-  to { transform: scale(0.3); opacity: 0; width: 0; margin: 0; border-width: 0; }
+  to {
+    transform: scale(0.3);
+    opacity: 0;
+    width: 0;
+    margin: 0;
+    border-width: 0;
+  }
 }
 
 .train-dot.active {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 16px var(--accent-glow-strong, var(--accent-glow)), 0 0 32px var(--accent-glow);
+  box-shadow:
+    0 0 16px var(--accent-glow-strong, var(--accent-glow)),
+    0 0 32px var(--accent-glow);
   transform: scale(1.3);
 }
 
 .train-dot.accent {
   background: var(--beat-accent, var(--accent));
   border-color: var(--beat-accent, var(--accent));
-  box-shadow: 0 0 20px var(--accent-glow-strong, var(--accent-glow)), 0 0 48px var(--accent-glow);
+  box-shadow:
+    0 0 20px var(--accent-glow-strong, var(--accent-glow)),
+    0 0 48px var(--accent-glow);
   transform: scale(1.5);
 }
 
@@ -109,6 +136,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
+  margin-left: -40px;
 }
 
 .train-grid-legend-bottom {
@@ -131,7 +159,9 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding-left: 2px;
-  transition: opacity 0.3s ease, color 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    color 0.3s ease;
 }
 
 .train-grid {
@@ -148,7 +178,10 @@
 }
 
 @keyframes gridRowIn {
-  from { opacity: 0; transform: translateY(-4px); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .train-grid-row.exiting {
@@ -156,7 +189,12 @@
 }
 
 @keyframes gridRowOut {
-  to { opacity: 0; transform: translateY(4px) scaleY(0.6); max-height: 0; margin-top: -4px; }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scaleY(0.6);
+    max-height: 0;
+    margin-top: -4px;
+  }
 }
 
 .train-grid-cell.exiting {
@@ -164,7 +202,10 @@
 }
 
 @keyframes gridCellOut {
-  to { opacity: 0 !important; transform: scale(0.3); }
+  to {
+    opacity: 0 !important;
+    transform: scale(0.3);
+  }
 }
 
 .train-grid-bpm {
@@ -176,7 +217,11 @@
   padding-right: 6px;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  transition: color 0.3s ease, opacity 0.3s ease, transform 0.3s ease, text-shadow 0.3s ease;
+  transition:
+    color 0.3s ease,
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    text-shadow 0.3s ease;
 }
 
 .train-grid-bpm.current {
@@ -198,12 +243,18 @@
   border-radius: 4px;
   background: var(--accent);
   opacity: 0.2;
-  transition: opacity 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
   animation: gridCellIn 0.2s ease;
 }
 
 @keyframes gridCellIn {
-  from { transform: scale(0.4); opacity: 0; }
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
 }
 
 .train-grid-cell.done {
@@ -235,7 +286,9 @@
   opacity: 1;
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 12px var(--accent-glow), 0 0 24px var(--accent-glow);
+  box-shadow:
+    0 0 12px var(--accent-glow),
+    0 0 24px var(--accent-glow);
   transform: scale(1.2);
 }
 
@@ -313,15 +366,19 @@
   left: 0;
   width: 220px;
   background: var(--bg-secondary, #2a2a3e);
-  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
   border-radius: 8px;
   font-size: 0.75rem;
   line-height: 1.4;
   color: var(--text-secondary);
   z-index: 100;
   pointer-events: none;
-  transition: opacity 0.15s, visibility 0.15s, max-height 0.15s, padding 0.15s;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition:
+    opacity 0.15s,
+    visibility 0.15s,
+    max-height 0.15s,
+    padding 0.15s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .train-label-tip:hover .train-tip {
@@ -375,7 +432,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   flex-shrink: 0;
 }
 

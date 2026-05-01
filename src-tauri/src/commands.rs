@@ -264,7 +264,7 @@ pub fn configure_speed_ramp(
     {
         let mut s = state.lock().unwrap();
         s.speed_ramp.start_bpm = start_bpm.clamp(20, 300);
-        s.speed_ramp.target_bpm = target_bpm.clamp(20, 300);
+        s.speed_ramp.target_bpm = target_bpm.clamp(s.speed_ramp.start_bpm, 300);
         s.speed_ramp.increment = increment.clamp(1, 50);
         s.speed_ramp.decrement = decrement.clamp(1, 50);
         s.speed_ramp.bars_per_step = bars_per_step.clamp(1, 32);

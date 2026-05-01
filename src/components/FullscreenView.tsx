@@ -114,7 +114,7 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
               <span className="fs-ramp-target">→ {ramp.targetBpm}</span>
             </div>
           )}
-          <div className="fs-bpm">{state.bpm}</div>
+          <div className="fs-bpm">{activeTab === "train" ? (ramp.active ? ramp.currentBpm : ramp.startBpm) : state.bpm}</div>
           <div className="fs-bpm-label">BPM</div>
         </div>
 

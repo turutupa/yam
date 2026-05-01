@@ -385,6 +385,33 @@ export function MainWindow() {
               </div>
             </section>
 
+            <section className="beat-section">
+              <div className="main-beat-dots">
+                {Array.from({ length: beatsPerMeasure }, (_, beatIdx) => {
+                  const isBeatActive = activeBeat === beatIdx && isDownbeat;
+                  const isBeatDownbeat = isBeatActive && beatIdx === 0;
+                  const isAccentBeat = state.timeSignature === 1 || (beatIdx === 0 && state.timeSignature >= 2);
+                  return (
+                    <div key={beatIdx} className="main-dot-group">
+                      <div className={`main-dot ${isBeatActive ? "active" : ""} ${isBeatDownbeat ? "downbeat" : ""} ${isAccentBeat && isBeatActive ? "accent" : ""}`} />
+                      {state.subdivision > 1 && (
+                        <div className="main-sub-dots">
+                          {Array.from({ length: state.subdivision - 1 }, (_, subIdx) => (
+                            <div
+                              key={subIdx}
+                              className={`main-sub-dot ${
+                                activeBeat === beatIdx && activeSub === subIdx + 1 ? "active" : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
             <button
               className={`play-btn full-width ${state.isPlaying ? "playing" : ""}`}
               onClick={() => togglePlayback()}
@@ -449,44 +476,17 @@ export function MainWindow() {
               </div>
             </section>
 
-            <section className="beat-section">
-              <div className="main-beat-dots">
-                {Array.from({ length: beatsPerMeasure }, (_, beatIdx) => {
-                  const isBeatActive = activeBeat === beatIdx && isDownbeat;
-                  const isBeatDownbeat = isBeatActive && beatIdx === 0;
-                  const isAccentBeat = state.timeSignature === 1 || (beatIdx === 0 && state.timeSignature >= 2);
-                  return (
-                    <div key={beatIdx} className="main-dot-group">
-                      <div className={`main-dot ${isBeatActive ? "active" : ""} ${isBeatDownbeat ? "downbeat" : ""} ${isAccentBeat && isBeatActive ? "accent" : ""}`} />
-                      {state.subdivision > 1 && (
-                        <div className="main-sub-dots">
-                          {Array.from({ length: state.subdivision - 1 }, (_, subIdx) => (
-                            <div
-                              key={subIdx}
-                              className={`main-sub-dot ${
-                                activeBeat === beatIdx && activeSub === subIdx + 1 ? "active" : ""
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="time-sig-row">
-                {TIME_SIGNATURES.map((ts) => (
-                  <button
-                    key={ts.beats}
-                    className={`time-sig-btn ${state.timeSignature === ts.beats ? "active" : ""}`}
-                    onClick={() => setTimeSignature(ts.beats)}
-                  >
-                    {ts.label}
-                  </button>
-                ))}
-              </div>
-            </section>
+            <div className="time-sig-row">
+              {TIME_SIGNATURES.map((ts) => (
+                <button
+                  key={ts.beats}
+                  className={`time-sig-btn ${state.timeSignature === ts.beats ? "active" : ""}`}
+                  onClick={() => setTimeSignature(ts.beats)}
+                >
+                  {ts.label}
+                </button>
+              ))}
+            </div>
           </>
         ) : view === "train" ? (
           <TrainView state={state} currentBeat={currentBeat} />

@@ -292,7 +292,7 @@ export function TrainView({ state, currentBeat }: TrainViewProps) {
   return (
     <div className="train-view" data-highlight={!ramp.active ? highlightMode || undefined : undefined}>
       <div className="train-current">
-        <span className="train-current-bpm">{ramp.active ? ramp.currentBpm : state.bpm}</span>
+        <span className="train-current-bpm">{ramp.active ? ramp.currentBpm : startBpm}</span>
         <span className="train-current-label">BPM</span>
         {/* Beat dots */}
         <div className="train-beat-dots">
@@ -319,65 +319,16 @@ export function TrainView({ state, currentBeat }: TrainViewProps) {
         </span>
       </div>
 
-      <div className="train-summary">
-        {beatsPerBar} beats · {steps.length} steps · {barsPerStep} repeats · {ramp.active ? `${formatTime(liveRemaining)} remaining` : formatTime(totalTimeSeconds)}
-      </div>
-
-      <div className="train-grid-wrapper">
-        <div className="train-grid">
-          {steps.map((bpm, stepIdx) => {
-            const effectiveStep = cyclic && steps.length > 0 ? ramp.currentStep % steps.length : ramp.currentStep;
-            const isDone = cyclic ? false : stepIdx < ramp.currentStep;
-            const isCurrent = stepIdx === effectiveStep && ramp.active;
-            const pct = steps.length > 1 ? stepIdx / (steps.length - 1) : 0;
-            const rowOpacity = 0.15 + pct * 0.85;
-            return (
-              <div key={stepIdx} className="train-grid-row" data-row-idx={stepIdx} data-last-row={stepIdx === steps.length - 1 && ghostRows.length === 0 ? "" : undefined}>
-                <span className={`train-grid-bpm ${isCurrent ? "current" : ""} ${isDone ? "done" : ""}`}>{bpm}</span>
-                <div className="train-grid-cells">
-                  {Array.from({ length: barsPerStep }, (_, barIdx) => {
-                    const barDone = isDone || (isCurrent && barIdx < ramp.barsInStep);
-                    const barActive = isCurrent && barIdx === ramp.barsInStep;
-                    return (
-                      <div
-                        key={barIdx}
-                        className={`train-grid-cell ${barDone ? "done" : ""} ${barActive ? "current" : ""}`}
-                        data-first-cell={stepIdx === 0 && barIdx === 0 ? "" : undefined}
-                        style={{ cursor: "pointer", opacity: barDone || barActive ? undefined : rowOpacity * 0.3 }}
-                        onClick={() => { startSpeedRampFrom(stepIdx, bpm, barIdx); startTimer(stepIdx, barIdx); }}
-                      />
-                    );
-                  })}
-                  {/* Ghost cols exiting */}
-                  {ghostCols > 0 && Array.from({ length: ghostCols }, (_, i) => (
-                    <div key={`ghost-col-${i}`} className="train-grid-cell exiting" style={{ opacity: rowOpacity * 0.3 }} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          {/* Ghost rows exiting */}
-          {ghostRows.map((bpm, i) => {
-            const ghostIdx = steps.length + i;
-            const pct = steps.length > 1 ? ghostIdx / (steps.length + ghostRows.length - 1) : 1;
-            const rowOpacity = 0.15 + pct * 0.85;
-            return (
-              <div key={`ghost-row-${i}`} className="train-grid-row exiting">
-                <span className="train-grid-bpm">{bpm}</span>
-                <div className="train-grid-cells">
-                  {Array.from({ length: barsPerStep + ghostCols }, (_, barIdx) => (
-                    <div key={barIdx} className="train-grid-cell exiting" style={{ opacity: rowOpacity * 0.3 }} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="train-grid-legend-bottom">
-          <span className="train-grid-corner"></span>
-          <span className="train-grid-legend-label">Repeats →</span>
-        </div>
-      </div>
+      <button
+        className={`play-btn full-width ${ramp.active ? "playing" : ""}`}
+        onClick={ramp.active ? handleStop : handleStart}
+      >
+        {ramp.active ? (
+          <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg> Stop</>
+        ) : (
+          <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z"/></svg> Play</>
+        )}
+      </button>
 
       <div className="train-config">
           <div className="train-row" onMouseEnter={() => setHighlightMode("startBpm")} onMouseLeave={() => setHighlightMode(null)}>
@@ -390,22 +341,22 @@ export function TrainView({ state, currentBeat }: TrainViewProps) {
                 max={300}
                 value={startBpm}
                 onChange={(e) => setStartBpm(Math.max(20, Math.min(300, +e.target.value)))}
-                onBlur={() => saveWith({ startBpm })}
+                onBlur={() => { const clamped = Math.max(20, Math.min(300, startBpm)); if (clamped > targetBpm) { setTargetBpm(clamped); saveWith({ startBpm: clamped, targetBpm: clamped }); } else { saveWith({ startBpm: clamped }); } }}
               />
-              <button className="stepper-btn" onClick={() => { const v = Math.min(300, startBpm + 5); setStartBpm(v); saveWith({ startBpm: v }); }}>+</button>
+              <button className="stepper-btn" onClick={() => { const v = Math.min(300, startBpm + 5); setStartBpm(v); if (v > targetBpm) { setTargetBpm(v); saveWith({ startBpm: v, targetBpm: v }); } else { saveWith({ startBpm: v }); } }}>+</button>
             </div>
           </div>
           <div className="train-row" onMouseEnter={() => setHighlightMode("targetBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="train-label-tip">Target BPM<span className="train-tip">{TRAIN_DESCRIPTIONS.targetBpm}</span></label>
             <div className="train-stepper">
-              <button className="stepper-btn" onClick={() => { const v = Math.max(20, targetBpm - 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>−</button>
+              <button className="stepper-btn" onClick={() => { const v = Math.max(startBpm, targetBpm - 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>−</button>
               <input
                 type="number"
-                min={20}
+                min={startBpm}
                 max={300}
                 value={targetBpm}
-                onChange={(e) => setTargetBpm(Math.max(20, Math.min(300, +e.target.value)))}
-                onBlur={() => saveWith({ targetBpm })}
+                onChange={(e) => setTargetBpm(Math.max(startBpm, Math.min(300, +e.target.value)))}
+                onBlur={() => { const clamped = Math.max(startBpm, Math.min(300, targetBpm)); setTargetBpm(clamped); saveWith({ targetBpm: clamped }); }}
               />
               <button className="stepper-btn" onClick={() => { const v = Math.min(300, targetBpm + 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>+</button>
             </div>
@@ -495,16 +446,65 @@ export function TrainView({ state, currentBeat }: TrainViewProps) {
 
         </div>
 
-      <button
-        className={`play-btn full-width ${ramp.active ? "playing" : ""}`}
-        onClick={ramp.active ? handleStop : handleStart}
-      >
-        {ramp.active ? (
-          <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg> Stop</>
-        ) : (
-          <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z"/></svg> Play</>
-        )}
-      </button>
+      <div className="train-summary">
+        {beatsPerBar} beats · {steps.length} steps · {barsPerStep} repeats · {ramp.active ? `${formatTime(liveRemaining)} remaining` : formatTime(totalTimeSeconds)}
+      </div>
+
+      <div className="train-grid-wrapper">
+        <div className="train-grid">
+          {steps.map((bpm, stepIdx) => {
+            const effectiveStep = cyclic && steps.length > 0 ? ramp.currentStep % steps.length : ramp.currentStep;
+            const isDone = cyclic ? false : stepIdx < ramp.currentStep;
+            const isCurrent = stepIdx === effectiveStep && ramp.active;
+            const pct = steps.length > 1 ? stepIdx / (steps.length - 1) : 0;
+            const rowOpacity = 0.15 + pct * 0.85;
+            return (
+              <div key={stepIdx} className="train-grid-row" data-row-idx={stepIdx} data-last-row={stepIdx === steps.length - 1 && ghostRows.length === 0 ? "" : undefined}>
+                <span className={`train-grid-bpm ${isCurrent ? "current" : ""} ${isDone ? "done" : ""}`}>{bpm}</span>
+                <div className="train-grid-cells">
+                  {Array.from({ length: barsPerStep }, (_, barIdx) => {
+                    const barDone = isDone || (isCurrent && barIdx < ramp.barsInStep);
+                    const barActive = isCurrent && barIdx === ramp.barsInStep;
+                    return (
+                      <div
+                        key={barIdx}
+                        className={`train-grid-cell ${barDone ? "done" : ""} ${barActive ? "current" : ""}`}
+                        data-first-cell={stepIdx === 0 && barIdx === 0 ? "" : undefined}
+                        style={{ cursor: "pointer", opacity: barDone || barActive ? undefined : rowOpacity * 0.3 }}
+                        onClick={() => { startSpeedRampFrom(stepIdx, bpm, barIdx); startTimer(stepIdx, barIdx); }}
+                      />
+                    );
+                  })}
+                  {/* Ghost cols exiting */}
+                  {ghostCols > 0 && Array.from({ length: ghostCols }, (_, i) => (
+                    <div key={`ghost-col-${i}`} className="train-grid-cell exiting" style={{ opacity: rowOpacity * 0.3 }} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {/* Ghost rows exiting */}
+          {ghostRows.map((bpm, i) => {
+            const ghostIdx = steps.length + i;
+            const pct = steps.length > 1 ? ghostIdx / (steps.length + ghostRows.length - 1) : 1;
+            const rowOpacity = 0.15 + pct * 0.85;
+            return (
+              <div key={`ghost-row-${i}`} className="train-grid-row exiting">
+                <span className="train-grid-bpm">{bpm}</span>
+                <div className="train-grid-cells">
+                  {Array.from({ length: barsPerStep + ghostCols }, (_, barIdx) => (
+                    <div key={barIdx} className="train-grid-cell exiting" style={{ opacity: rowOpacity * 0.3 }} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="train-grid-legend-bottom">
+          <span className="train-grid-corner"></span>
+          <span className="train-grid-legend-label">Repeats →</span>
+        </div>
+      </div>
     </div>
   );
 }

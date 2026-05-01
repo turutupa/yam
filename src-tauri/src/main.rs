@@ -1,3 +1,3 @@
 fn main() {
-    yam_lib::run();
+    yames_lib::run();
 }

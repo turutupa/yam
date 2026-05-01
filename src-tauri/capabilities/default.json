@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for Yam",
+  "description": "Default capabilities for Yames",
   "windows": ["main", "floating"],
   "permissions": [
     "core:default",

@@ -1,5 +1,5 @@
 /**
- * Yam Theme System
+ * Yames Theme System
  *
  * Each theme defines a complete visual identity: backgrounds, text, accents,
  * glows, borders, and optional font overrides. Themes apply to both the main

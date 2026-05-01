@@ -16,7 +16,39 @@ type TapResult = {
 
 type Rating = "metronomic" | "tight" | "solid" | "loose" | "miss";
 
-type SessionState = "idle" | "calibrating" | "playing" | "calibration-done" | "results";
+type SessionState = "idle" | "calibrating" | "playing" | "calibration-done" | "results" | "history";
+
+type PerBeatDatum = { beat: number; offsetMs: number | null; rating: Rating };
+
+type GameResult = {
+  id: string;
+  date: string;
+  bpm: number;
+  scoredBeats: number;
+  overallRating: Rating;
+  catchPhrase: string;
+  breakdown: Record<Rating, number>;
+  avgOffset: number;
+  avgAbs: number;
+  stdDev: number;
+  hitRate: number;
+  perBeatData: PerBeatDatum[];
+  calibratedTaps: TapResult[];
+};
+
+const HISTORY_KEY = "yames-tapit-history";
+const MAX_HISTORY = 50;
+
+function loadHistory(): GameResult[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveHistory(history: GameResult[]) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+}
 
 function getOffsetRating(absMs: number): Rating {
   if (absMs <= 15) return "metronomic";
@@ -60,9 +92,12 @@ export function TrackView({ state }: TrackViewProps) {
   const [taps, setTaps] = useState<TapResult[]>([]);
   const [beatCount, setBeatCount] = useState(0);
   const [savedOffset, setSavedOffset] = useState<number | null>(null);
+  const [history, setHistory] = useState<GameResult[]>(() => loadHistory());
+  const [viewingResult, setViewingResult] = useState<GameResult | null>(null);
   const beatTimestamps = useRef<number[]>([]);
   const firstBeatTime = useRef<number>(0);
   const bpmAtStart = useRef<number>(120);
+  const hasSavedRef = useRef(false);
   const warmupBeats = 4;
   const scoredBeats = 32;
   const maxBeats = warmupBeats + scoredBeats;
@@ -72,6 +107,15 @@ export function TrackView({ state }: TrackViewProps) {
   // Load saved calibration on mount
   useEffect(() => {
     getCalibrationOffset().then((v) => setSavedOffset(v));
+  }, []);
+
+  // On mount, if user has played before, show last result
+  useEffect(() => {
+    const h = loadHistory();
+    if (h.length > 0) {
+      setViewingResult(h[0]);
+      setSession("results");
+    }
   }, []);
 
   // Stop playback when component unmounts (tab change)
@@ -198,6 +242,7 @@ export function TrackView({ state }: TrackViewProps) {
   const catchPhraseRef = useRef("");
 
   const startSession = () => {
+    setViewingResult(null);
     setTaps([]);
     setBeatCount(0);
     beatTimestamps.current = [];
@@ -209,6 +254,7 @@ export function TrackView({ state }: TrackViewProps) {
   };
 
   const startCalibration = () => {
+    setViewingResult(null);
     setTaps([]);
     setBeatCount(0);
     beatTimestamps.current = [];
@@ -220,10 +266,17 @@ export function TrackView({ state }: TrackViewProps) {
 
   const stopSession = () => {
     setPlaying(false);
-    setSession("idle");
     setTaps([]);
     setBeatCount(0);
     beatTimestamps.current = [];
+    // Go back to last result if exists, otherwise idle
+    const h = loadHistory();
+    if (h.length > 0) {
+      setViewingResult(h[0]);
+      setSession("results");
+    } else {
+      setSession("idle");
+    }
   };
 
   // Spacebar → start session when idle
@@ -281,6 +334,66 @@ export function TrackView({ state }: TrackViewProps) {
     acc[t.rating] = (acc[t.rating] || 0) + 1;
     return acc;
   }, {} as Record<Rating, number>);
+
+  // --- RESULTS DATA (must be before any early returns to satisfy hooks rules) ---
+  const perBeatData: PerBeatDatum[] = (() => {
+    if (session !== "results") return [];
+    if (viewingResult) return viewingResult.perBeatData;
+    const beats = beatTimestamps.current;
+    const beatIntervalMs = 60000 / state.bpm;
+    const data: PerBeatDatum[] = [];
+    for (let b = warmupBeats; b < beats.length; b++) {
+      const beatTime = beats[b];
+      let bestTap: typeof calibratedTaps[number] | null = null;
+      let bestDist = Infinity;
+      for (const tap of calibratedTaps) {
+        const dist = Math.abs(tap.timestamp - beatTime);
+        if (dist < bestDist && dist < beatIntervalMs * 0.5) {
+          bestDist = dist;
+          bestTap = tap;
+        }
+      }
+      if (bestTap) {
+        data.push({ beat: b + 1, offsetMs: bestTap.offsetMs, rating: bestTap.rating });
+      } else {
+        data.push({ beat: b + 1, offsetMs: null, rating: "miss" });
+      }
+    }
+    return data;
+  })();
+
+  // Save fresh results to history
+  useEffect(() => {
+    if (session === "results" && !viewingResult && perBeatData.length > 0 && !hasSavedRef.current) {
+      hasSavedRef.current = true;
+      const result: GameResult = {
+        id: crypto.randomUUID(),
+        date: new Date().toISOString(),
+        bpm: bpmAtStart.current,
+        scoredBeats,
+        overallRating,
+        catchPhrase: catchPhraseRef.current,
+        breakdown: { ...breakdown, metronomic: breakdown.metronomic || 0, tight: breakdown.tight || 0, solid: breakdown.solid || 0, loose: breakdown.loose || 0, miss: breakdown.miss || 0 },
+        avgOffset,
+        avgAbs,
+        stdDev,
+        hitRate,
+        perBeatData,
+        calibratedTaps,
+      };
+      const updated = [result, ...history];
+      setHistory(updated);
+      saveHistory(updated);
+      setViewingResult(result);
+    }
+  }, [session, viewingResult, perBeatData.length]);
+
+  // Reset save guard when starting a new game
+  useEffect(() => {
+    if (session === "playing") {
+      hasSavedRef.current = false;
+    }
+  }, [session]);
 
   // --- IDLE ---
   if (session === "idle") {
@@ -373,40 +486,27 @@ export function TrackView({ state }: TrackViewProps) {
     );
   }
 
-  // --- RESULTS ---
-  const perBeatData = (() => {
-    if (session !== "results") return [];
-    const beats = beatTimestamps.current;
-    const beatIntervalMs = 60000 / state.bpm;
-    const data: { beat: number; offsetMs: number | null; rating: Rating }[] = [];
-    for (let b = warmupBeats; b < beats.length; b++) {
-      const beatTime = beats[b];
-      let bestTap: typeof calibratedTaps[number] | null = null;
-      let bestDist = Infinity;
-      for (const tap of calibratedTaps) {
-        const dist = Math.abs(tap.timestamp - beatTime);
-        if (dist < bestDist && dist < beatIntervalMs * 0.5) {
-          bestDist = dist;
-          bestTap = tap;
-        }
-      }
-      if (bestTap) {
-        data.push({ beat: b + 1, offsetMs: bestTap.offsetMs, rating: bestTap.rating });
-      } else {
-        data.push({ beat: b + 1, offsetMs: null, rating: "miss" });
-      }
-    }
-    return data;
-  })();
-
   if (session === "results") {
-    const smoothed = perBeatData.map((_d, i) => {
+    // Use viewingResult data if viewing from history, otherwise use live computed data
+    const r = viewingResult;
+    const displayRating = r ? r.overallRating : overallRating;
+    const displayPhrase = r ? r.catchPhrase : catchPhraseRef.current;
+    const displayBreakdown = r ? r.breakdown : breakdown;
+    const displayAvgOffset = r ? r.avgOffset : avgOffset;
+    const displayAvgAbs = r ? r.avgAbs : avgAbs;
+    const displayStdDev = r ? r.stdDev : stdDev;
+    const displayHitRate = r ? r.hitRate : hitRate;
+    const displayPerBeat = r ? r.perBeatData : perBeatData;
+    const displayTaps = r ? r.calibratedTaps : calibratedTaps;
+    const displayBpm = r ? r.bpm : bpmAtStart.current;
+
+    const smoothed = displayPerBeat.map((_d, i) => {
       const window = 5;
       const half = Math.floor(window / 2);
       let sum = 0, count = 0;
-      for (let j = Math.max(0, i - half); j <= Math.min(perBeatData.length - 1, i + half); j++) {
-        if (perBeatData[j].offsetMs !== null) {
-          sum += perBeatData[j].offsetMs!;
+      for (let j = Math.max(0, i - half); j <= Math.min(displayPerBeat.length - 1, i + half); j++) {
+        if (displayPerBeat[j].offsetMs !== null) {
+          sum += displayPerBeat[j].offsetMs!;
           count++;
         }
       }
@@ -424,23 +524,24 @@ export function TrackView({ state }: TrackViewProps) {
       <div className="track-view track-results-view">
         <div className="track-results">
           <div className="track-result-header">
-            <div className="track-result-rating" style={{ color: RATING_COLORS[overallRating] }}>
-              {RATING_LABELS[overallRating]}
+            <div className="track-result-rating" style={{ color: RATING_COLORS[displayRating] }}>
+              {RATING_LABELS[displayRating]}
             </div>
-            <div className="track-result-phrase">{catchPhraseRef.current}</div>
+            <div className="track-result-phrase">{displayPhrase}</div>
+            {r && <div className="track-result-meta">{displayBpm} BPM · {new Date(r.date).toLocaleDateString()}</div>}
           </div>
 
           {/* Rating breakdown bars */}
           <div className="track-breakdown">
-            {(["metronomic", "tight", "solid", "loose", "miss"] as Rating[]).map((r) => (
-              <div key={r} className="track-breakdown-row">
-                <span className="track-breakdown-dot" style={{ background: RATING_COLORS[r] }} />
-                <span className="track-breakdown-label">{RATING_LABELS[r]}</span>
-                <span className="track-breakdown-count">{breakdown[r] || 0}</span>
+            {(["metronomic", "tight", "solid", "loose", "miss"] as Rating[]).map((rating) => (
+              <div key={rating} className="track-breakdown-row">
+                <span className="track-breakdown-dot" style={{ background: RATING_COLORS[rating] }} />
+                <span className="track-breakdown-label">{RATING_LABELS[rating]}</span>
+                <span className="track-breakdown-count">{displayBreakdown[rating] || 0}</span>
                 <div className="track-breakdown-bar">
                   <div
                     className="track-breakdown-fill"
-                    style={{ width: `${calibratedTaps.length > 0 ? ((breakdown[r] || 0) / calibratedTaps.length) * 100 : 0}%`, background: RATING_COLORS[r] }}
+                    style={{ width: `${displayTaps.length > 0 ? ((displayBreakdown[rating] || 0) / displayTaps.length) * 100 : 0}%`, background: RATING_COLORS[rating] }}
                   />
                 </div>
               </div>
@@ -450,10 +551,10 @@ export function TrackView({ state }: TrackViewProps) {
           {/* Stats tiles */}
           <div className="track-result-stats">
             {[
-              { value: `${avgOffset >= 0 ? "+" : ""}${avgOffset.toFixed(1)}ms`, label: "Avg Offset" },
-              { value: `${avgAbs.toFixed(1)}ms`, label: "Avg |Offset|" },
-              { value: `±${stdDev.toFixed(1)}ms`, label: "Std Dev" },
-              { value: `${hitRate}%`, label: "Hit Rate" },
+              { value: `${displayAvgOffset >= 0 ? "+" : ""}${displayAvgOffset.toFixed(1)}ms`, label: "Avg Offset" },
+              { value: `${displayAvgAbs.toFixed(1)}ms`, label: "Avg |Offset|" },
+              { value: `±${displayStdDev.toFixed(1)}ms`, label: "Std Dev" },
+              { value: `${displayHitRate}%`, label: "Hit Rate" },
             ].map((stat) => (
               <div key={stat.label} className="track-stat" tabIndex={0}>
                 <span className="track-stat-value">{stat.value}</span>
@@ -470,10 +571,10 @@ export function TrackView({ state }: TrackViewProps) {
               <span>0ms</span>
               <span>Late</span>
             </div>
-            <svg viewBox={`0 0 ${Math.max(perBeatData.length, 1) * 20} 120`} preserveAspectRatio="none" className="track-graph-svg">
-              <line x1="0" y1="60" x2={perBeatData.length * 20} y2="60" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+            <svg viewBox={`0 0 ${Math.max(displayPerBeat.length, 1) * 20} 120`} preserveAspectRatio="none" className="track-graph-svg">
+              <line x1="0" y1="60" x2={displayPerBeat.length * 20} y2="60" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
               {(() => {
-                const points = perBeatData
+                const points = displayPerBeat
                   .map((d, i) => d.offsetMs !== null ? { x: i * 20 + 10, y: 60 - (Math.max(-80, Math.min(80, d.offsetMs)) / 80) * 55 } : null)
                   .filter(Boolean) as { x: number; y: number }[];
                 if (points.length < 2) return null;
@@ -500,7 +601,7 @@ export function TrackView({ state }: TrackViewProps) {
                 }).join(" ");
                 return <path d={pathD} fill="none" stroke="var(--accent)" strokeWidth="2.5" />;
               })()}
-              {perBeatData.map((d, i) => {
+              {displayPerBeat.map((d, i) => {
                 const x = i * 20 + 10;
                 if (d.offsetMs === null) {
                   return <g key={i}>
@@ -510,7 +611,7 @@ export function TrackView({ state }: TrackViewProps) {
                 }
                 return null;
               })}
-              {perBeatData.map((d, i) => {
+              {displayPerBeat.map((d, i) => {
                 if (d.offsetMs === null) return null;
                 const x = i * 20 + 10;
                 const y = 60 - (Math.max(-80, Math.min(80, d.offsetMs)) / 80) * 55;
@@ -522,13 +623,13 @@ export function TrackView({ state }: TrackViewProps) {
           {/* Scatter plot */}
           <div className="track-scatter">
             <div className="track-scatter-zero" />
-            {calibratedTaps.map((t, i) => (
+            {displayTaps.map((t, i) => (
               <div
                 key={i}
                 className="track-scatter-dot"
                 style={{
                   left: `${Math.min(100, Math.max(0, (t.offsetMs + 80) / 160 * 100))}%`,
-                  top: `${(i / Math.max(calibratedTaps.length - 1, 1)) * 100}%`,
+                  top: `${(i / Math.max(displayTaps.length - 1, 1)) * 100}%`,
                   background: RATING_COLORS[t.rating],
                 }}
               />
@@ -538,6 +639,53 @@ export function TrackView({ state }: TrackViewProps) {
           </div>
         </div>
 
+        <div className="track-results-actions">
+          <button className="play-btn full-width" onClick={startSession}>
+            Try Again
+          </button>
+          {history.length > 0 && (
+            <button className="play-btn full-width secondary" onClick={() => setSession("history")}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1M2 8a6 6 0 1 1 12 0A6 6 0 0 1 2 8"/><path d="M8 3.5a.5.5 0 0 1 .5.5v4H12a.5.5 0 0 1 0 1H8a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5"/></svg>
+              History
+            </button>
+          )}
+          <button className="play-btn full-width secondary" onClick={startCalibration}>
+            Recalibrate
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- HISTORY ---
+  if (session === "history") {
+    return (
+      <div className="track-view track-history-view">
+        <div className="track-history-header">
+          <button className="track-history-back" onClick={() => { setViewingResult(history[0] || null); setSession("results"); }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fillRule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/></svg>
+          </button>
+          <h3>History</h3>
+        </div>
+        <div className="track-history-list">
+          {history.map((game) => (
+            <button
+              key={game.id}
+              className="track-history-item"
+              onClick={() => { setViewingResult(game); setSession("results"); }}
+            >
+              <span className="track-history-rating" style={{ color: RATING_COLORS[game.overallRating] }}>
+                {RATING_LABELS[game.overallRating]}
+              </span>
+              <span className="track-history-detail">
+                {game.bpm} BPM · {game.hitRate}% hits
+              </span>
+              <span className="track-history-date">
+                {new Date(game.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              </span>
+            </button>
+          ))}
+        </div>
         <div className="track-results-actions">
           <button className="play-btn full-width" onClick={startSession}>
             Try Again

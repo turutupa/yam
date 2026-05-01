@@ -2,11 +2,11 @@
 applyTo: "**"
 ---
 
-# Yam — Yet Another Metronome
+# Yames — Yet Another Metronome Everyone Skips
 
 ## What This Project Is
 
-Yam is a cross-platform desktop metronome (macOS/Windows/Linux) built with **Rust + Tauri v2 + React + TypeScript**. It is a musician-grade system utility — think Raycast or a DAW transport bar, but for rhythm practice. It runs in the background with a persistent floating widget on screen.
+Yames is a cross-platform desktop metronome (macOS/Windows/Linux) built with **Rust + Tauri v2 + React + TypeScript**. It is a musician-grade system utility — think Raycast or a DAW transport bar, but for rhythm practice. It runs in the background with a persistent floating widget on screen.
 
 ## Tech Stack
 
@@ -99,7 +99,7 @@ The metronome engine runs on a **dedicated Rust thread** (NOT the UI thread). Ke
 | `Tab` | Toggle compact/comfortable mode |
 
 ### System Tray
-Menu with "Show Yam" and "Quit" items.
+Menu with "Show Yames" and "Quit" items.
 
 ## State Shape
 
@@ -139,7 +139,7 @@ JSON serialization uses camelCase (`isPlaying`, `alwaysOnTop`) for the frontend.
 ## Build & Run
 
 ```bash
-cd yam
+cd yames
 npm install
 npm run tauri dev    # Dev mode with HMR
 npm run tauri build  # Production binary

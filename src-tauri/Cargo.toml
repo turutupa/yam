@@ -1,12 +1,12 @@
 [package]
-name = "yam"
-version = "0.3.0"
-description = "Yet Another Metronome — musician-grade floating metronome"
+name = "yames"
+version = "0.4.0"
+description = "Yet Another Metronome Everyone Skips — musician-grade floating metronome"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "yam_lib"
+name = "yames_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

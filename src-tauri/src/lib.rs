@@ -93,13 +93,13 @@ pub fn run() {
             app.manage(EngineState(Mutex::new(MetronomeEngine::new())));
 
             // Set up system tray
-            let show_i = MenuItem::with_id(app, "show", "Show Yam", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Show Yames", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
-                .tooltip("Yam")
+                .tooltip("Yames")
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         // Hide floating, show main
@@ -144,10 +144,14 @@ pub fn run() {
                         let _ = main_win.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
                     }
                 }
-                // Restore saved main window position
+                // Restore saved main window position (with bounds check)
                 if let Some(pos) = store.get("window_position_main") {
                     if let (Some(x), Some(y)) = (pos.get("x").and_then(|v| v.as_i64()), pos.get("y").and_then(|v| v.as_i64())) {
-                        let _ = main_win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                        if is_position_visible(x as i32, y as i32, &main_win) {
+                            let _ = main_win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                        } else {
+                            let _ = main_win.center();
+                        }
                     }
                 }
             }
@@ -162,7 +166,11 @@ pub fn run() {
                 let store = app.store("settings.json")?;
                 if let Some(pos) = store.get("window_position_floating") {
                     if let (Some(x), Some(y)) = (pos.get("x").and_then(|v| v.as_i64()), pos.get("y").and_then(|v| v.as_i64())) {
-                        let _ = float_win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                        if is_position_visible(x as i32, y as i32, &float_win) {
+                            let _ = float_win.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                        } else {
+                            let _ = float_win.center();
+                        }
                     }
                 }
             }
@@ -235,7 +243,40 @@ pub fn run() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running Yam");
+        .expect("error while running Yames");
+}
+
+/// Check if a window position is at least partially visible on any available monitor.
+/// Returns false if the position would place the window entirely off-screen.
+fn is_position_visible(x: i32, y: i32, window: &tauri::WebviewWindow) -> bool {
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let pos = monitor.position();
+        let size = monitor.size();
+        let margin = 100; // At least 100px must be visible
+        let screen_left = pos.x;
+        let screen_top = pos.y;
+        let screen_right = pos.x + size.width as i32;
+        let screen_bottom = pos.y + size.height as i32;
+        x > screen_left - (size.width as i32 - margin)
+            && x < screen_right - margin
+            && y > screen_top - (size.height as i32 - margin)
+            && y < screen_bottom - margin
+    } else if let Ok(monitors) = window.available_monitors() {
+        // Check against all monitors
+        for monitor in monitors {
+            let pos = monitor.position();
+            let size = monitor.size();
+            let screen_right = pos.x + size.width as i32;
+            let screen_bottom = pos.y + size.height as i32;
+            if x >= pos.x - 200 && x < screen_right && y >= pos.y - 200 && y < screen_bottom {
+                return true;
+            }
+        }
+        false
+    } else {
+        // Can't determine monitors, allow the position
+        true
+    }
 }
 
 fn setup_global_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -251,6 +292,7 @@ fn setup_global_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Er
             store.set("corner", serde_json::json!(s.corner));
             store.set("alwaysOnTop", serde_json::json!(s.always_on_top));
             store.set("accentColor", serde_json::json!(s.accent_color));
+            store.set("theme", serde_json::json!(s.theme));
             store.set("volume", serde_json::json!(s.volume));
             store.set("soundType", serde_json::json!(s.sound_type));
             store.set("timeSignature", serde_json::json!(s.time_signature));

@@ -1,20 +1,20 @@
-# yam
+# yames
 
-**Yet Another Metronome** — but not just another metronome.
+**Yet Another Metronome Everyone Skips** — but not just another metronome.
 
-Musicians deserve better than a beeping circle. Yam is a precision rhythm tool built for people who actually practice — fast, beautiful, and always within reach.
+Musicians deserve better than a beeping circle. Yames is a precision rhythm tool built for people who actually practice — fast, beautiful, and always within reach.
 
-[Website](https://turutupa.github.io/yam) &nbsp;·&nbsp; [Download](https://github.com/turutupa/yam/releases/latest) &nbsp;·&nbsp; [Request a Feature](https://github.com/turutupa/yam/issues/new)
+[Website](https://turutupa.github.io/yames) &nbsp;·&nbsp; [Download](https://github.com/turutupa/yames/releases/latest) &nbsp;·&nbsp; [Request a Feature](https://github.com/turutupa/yames/issues/new)
 
 <br>
 
 <p align="center">
-  <img src="docs/img/metronome/obsidian-metronome.png" alt="yam metronome" width="520">
+  <img src="docs/img/metronome/obsidian-metronome.png" alt="yames metronome" width="520">
 </p>
 
 <br>
 
-## Why yam?
+## Why yames?
 
 Every metronome app feels like an afterthought. A clock face. A blinking dot. We're building something you actually *want* on screen while you play.
 
@@ -42,9 +42,9 @@ Download the latest release for your platform:
 
 | Platform | Link |
 |----------|------|
-| macOS | [Download .dmg](https://github.com/turutupa/yam/releases/latest) |
-| Windows | [Download .msi](https://github.com/turutupa/yam/releases/latest) |
-| Linux | [Download .AppImage](https://github.com/turutupa/yam/releases/latest) |
+| macOS | [Download .dmg](https://github.com/turutupa/yames/releases/latest) |
+| Windows | [Download .msi](https://github.com/turutupa/yames/releases/latest) |
+| Linux | [Download .AppImage](https://github.com/turutupa/yames/releases/latest) |
 
 Or build from source:
 
@@ -78,7 +78,7 @@ Requires [Rust](https://rustup.rs/) (stable) and [Node.js](https://nodejs.org/) 
 
 ## Contributing
 
-Found a bug? Want a feature? [Open an issue](https://github.com/turutupa/yam/issues/new). PRs welcome.
+Found a bug? Want a feature? [Open an issue](https://github.com/turutupa/yames/issues/new). PRs welcome.
 
 ## License
 

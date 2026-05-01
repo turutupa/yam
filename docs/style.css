@@ -461,7 +461,8 @@ body {
 
   .widget-overlay {
     bottom: 30px;
-    left: -76px;
+    left: -56px;
+    width: 400px;
   }
 
   .preview-frame {

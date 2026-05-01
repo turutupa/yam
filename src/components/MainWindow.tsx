@@ -1,7 +1,7 @@
 import { useMetronome } from "../hooks/useMetronome";
 import { useDrag } from "../hooks/useDrag";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { setBpm, setSubdivision, togglePlayback, setWidgetMode, setAlwaysOnTop, setVolume, setSoundType, setTimeSignature, showFloating, onFullscreenChanged, setActiveTab, getActiveTab, setTheme, stopSpeedRamp } from "../ipc";
+import { setBpm, setSubdivision, togglePlayback, setWidgetMode, setAlwaysOnTop, setVolume, setSoundType, setTimeSignature, showFloating, onFullscreenChanged, setActiveTab, getActiveTab, setTheme, stopSpeedRamp, startSpeedRamp } from "../ipc";
 import type { Subdivision, WidgetMode } from "../types";
 import { THEMES } from "../themes";
 import { TrainView } from "./TrainView";
@@ -78,6 +78,21 @@ interface HotkeyEntry {
   desc: string;
 }
 
+const IS_MAC = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+
+/** Convert macOS-style symbols to platform-appropriate labels */
+function platformKey(key: string): string {
+  if (IS_MAC) return key;
+  return key
+    .replace(/⌘/g, "Ctrl")
+    .replace(/⇧/g, "Shift")
+    .replace(/⌥/g, "Alt")
+    .replace(/Ctrl\+?/g, "Ctrl+")
+    .replace(/Shift\+?/g, "Shift+")
+    .replace(/Alt\+?/g, "Alt+")
+    .replace(/\+$/g, "");
+}
+
 const HOTKEYS: HotkeyEntry[] = [
   { id: "play", action: "Play / Stop", key: "⌘⇧Space", desc: "Start or stop the metronome" },
   { id: "bpm-down", action: "BPM −5", key: "⌘⇧↓", desc: "Decrease tempo by 5 BPM" },
@@ -146,6 +161,17 @@ export function MainWindow() {
   const activeBeat = currentBeat ? currentBeat.beat % beatsPerMeasure : -1;
   const activeSub = currentBeat ? currentBeat.subdivision : -1;
   const isDownbeat = currentBeat?.isDownbeat ?? false;
+
+  // Pulse state for floating play button — triggers briefly on each downbeat
+  const [isPulsing, setIsPulsing] = useState(false);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isDownbeat && state.isPlaying) {
+      setIsPulsing(true);
+      if (pulseTimer.current) clearTimeout(pulseTimer.current);
+      pulseTimer.current = setTimeout(() => setIsPulsing(false), 180);
+    }
+  }, [currentBeat]);
 
   const handleBpmChange = (value: number) => {
     const clamped = Math.max(20, Math.min(300, value));
@@ -286,7 +312,7 @@ export function MainWindow() {
     <div className="main-window" data-playing={state.isPlaying}>
       <ThemeEffects themeId={state.theme} />
       <header className="main-header" onDoubleClick={() => { if (view !== "settings" && view !== "track") setIsFullscreen(true); }}>
-        <h1>yam <span className="header-subtitle">Yet Another Metronome</span></h1>
+        <h1>yames <span className="header-subtitle">Yet Another Metronome Everyone Skips</span></h1>
         <div className="header-actions">
           <div className="header-volume-wrap">
             <button className="header-btn header-volume-btn">
@@ -411,17 +437,6 @@ export function MainWindow() {
                 })}
               </div>
             </section>
-
-            <button
-              className={`play-btn full-width ${state.isPlaying ? "playing" : ""}`}
-              onClick={() => togglePlayback()}
-            >
-              {state.isPlaying ? (
-                <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg> Stop</>
-              ) : (
-                <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z"/></svg> Play</>
-              )}
-            </button>
 
             <section className="control-section">
               <div className="sub-dropdown-wrapper" ref={dropdownRef}>
@@ -566,7 +581,7 @@ export function MainWindow() {
                         setPendingKeys("");
                       }}
                     >
-                      {keyBindings[hk.id] || "—"}
+                      {platformKey(keyBindings[hk.id] || "—")}
                     </button>
                     <button
                       className={`hotkey-bind-btn ${bindingFor?.id === hk.id && bindingFor.type === "foot" ? "listening" : ""}`}
@@ -584,6 +599,27 @@ export function MainWindow() {
           </>
         )}
       </div>
+
+      {/* Floating play button for Metronome and Drill */}
+      {(view === "beat" || view === "train") && (
+        <button
+          className={`floating-play-btn ${(state.isPlaying || state.speedRamp?.active) ? "playing" : ""} ${isPulsing ? "pulse" : ""}`}
+          onClick={() => {
+            if (view === "train") {
+              if (state.speedRamp?.active) stopSpeedRamp();
+              else startSpeedRamp();
+            } else {
+              togglePlayback();
+            }
+          }}
+        >
+          {(view === "train" ? state.speedRamp?.active : state.isPlaying) ? (
+            <><svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg> Stop</>
+          ) : (
+            <><svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z"/></svg> Play</>
+          )}
+        </button>
+      )}
 
       {bindingFor && (
         <div className="keybinding-overlay" onClick={() => { setBindingFor(null); setPendingKeys(""); }}>

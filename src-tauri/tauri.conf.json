@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicklasxyz/tauri-v2-schema/main/tauri.conf.json",
-  "productName": "Yam",
-  "version": "0.3.0",
-  "identifier": "com.yam.metronome",
+  "productName": "Yames",
+  "version": "0.4.0",
+  "identifier": "com.yames.metronome",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Yam",
+        "title": "Yames",
         "url": "index.html?window=main",
         "width": 560,
         "height": 820,
@@ -32,7 +32,7 @@
       },
       {
         "label": "floating",
-        "title": "Yam Widget",
+        "title": "Yames Widget",
         "url": "index.html?window=floating",
         "width": 400,
         "height": 160,
@@ -48,7 +48,7 @@
     "trayIcon": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": true,
-      "tooltip": "Yam"
+      "tooltip": "Yames"
     },
     "security": {
       "csp": null

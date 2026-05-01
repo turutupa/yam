@@ -475,3 +475,91 @@
 .track-scatter-label-right {
   right: 4px;
 }
+
+/* Result meta (BPM + date) */
+.track-result-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* History view */
+.track-history-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.track-history-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 12px;
+}
+
+.track-history-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.track-history-back {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+.track-history-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.track-history-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.track-history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: inherit;
+}
+.track-history-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.track-history-rating {
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 80px;
+}
+
+.track-history-detail {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.track-history-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}

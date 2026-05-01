@@ -319,17 +319,6 @@ export function TrainView({ state, currentBeat }: TrainViewProps) {
         </span>
       </div>
 
-      <button
-        className={`play-btn full-width ${ramp.active ? "playing" : ""}`}
-        onClick={ramp.active ? handleStop : handleStart}
-      >
-        {ramp.active ? (
-          <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="1.5"/></svg> Stop</>
-        ) : (
-          <><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z"/></svg> Play</>
-        )}
-      </button>
-
       <div className="train-config">
           <div className="train-row" onMouseEnter={() => setHighlightMode("startBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="train-label-tip">Start BPM<span className="train-tip">{TRAIN_DESCRIPTIONS.startBpm}</span></label>

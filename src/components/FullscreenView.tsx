@@ -28,11 +28,11 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
   const exitFullscreen = () => onExit();
 
   const [zenStyle, setZenStyle] = useState<ZenStyle>(() => {
-    return (localStorage.getItem("yam-zen-style") as ZenStyle) || "focus";
+    return (localStorage.getItem("yames-zen-style") as ZenStyle) || "focus";
   });
   const handleZenStyle = (s: ZenStyle) => {
     setZenStyle(s);
-    localStorage.setItem("yam-zen-style", s);
+    localStorage.setItem("yames-zen-style", s);
   };
 
   // Use document-level listener so Escape works regardless of focus

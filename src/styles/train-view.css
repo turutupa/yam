@@ -7,12 +7,8 @@
 .train-view {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
   padding: 0 4px;
-}
-
-.train-view > .play-btn {
-  margin-top: -20px !important;
 }
 
 .train-current {
@@ -20,7 +16,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 16px 0 8px;
+  padding: 16px 0 0px;
 }
 
 .train-current-bpm {
@@ -127,7 +123,8 @@
   text-align: center;
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin-bottom: -12px;
+  margin-bottom: 0px;
+  margin-top: 6px;
 }
 
 /* Rotated grid: rows = BPM steps, cols = repeats */

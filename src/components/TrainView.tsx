@@ -76,15 +76,6 @@ export function TrainView({ state, currentBeat }: TrainViewProps) {
     });
   };
 
-  const handleStart = () => {
-    saveWith({});
-    setTimeout(() => startSpeedRamp(), 50);
-  };
-
-  const handleStop = () => {
-    stopSpeedRamp();
-  };
-
   // Spacebar → start/stop
   useEffect(() => {
     const handleSpace = (e: KeyboardEvent) => {

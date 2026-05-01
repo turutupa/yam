@@ -110,6 +110,12 @@ body {
   text-decoration: none;
   transition: all 0.3s ease;
   width: fit-content;
+  white-space: nowrap;
+}
+
+.btn-download svg {
+  width: 28px;
+  height: 28px;
 }
 
 .btn-download:hover {
@@ -405,6 +411,14 @@ body {
 
 /* Mobile: stacked, content on top, showcase below */
 /* (This is the default — mobile-first) */
+
+@media (max-width: 860px) {
+  .btn-download {
+    padding: 20px 32px;
+    font-size: 1.4rem;
+    gap: 12px;
+  }
+}
 
 /* Desktop: side-by-side, image overflows right edge */
 @media (min-width: 861px) {

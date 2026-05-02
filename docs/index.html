@@ -342,19 +342,15 @@
               <p class="popover-subtitle">No extra steps needed — just works.</p>
               <code class="popover-brew-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(()=>{this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)})">brew install --cask turutupa/tap/yames</code>
               <div class="popover-divider"></div>
-              <p class="popover-manual-title">Or download directly:</p>
-              <p class="popover-manual-note">macOS requires a one-time step after install:</p>
-              <ol class="popover-steps">
-                <li><strong>Right-click</strong> the app → <strong>Open</strong></li>
-                <li>Click <strong>"Open"</strong> in the dialog</li>
-              </ol>
+              <p class="popover-manual-title">Or download the installer:</p>
+              <p class="popover-manual-note">If macOS blocks the installer, right-click it → Open.</p>
               <a class="popover-download-btn" id="popover-download-btn" href="#">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                Download .dmg
+                Download .pkg
               </a>
             </div>
           </div>
@@ -493,8 +489,8 @@
 
       // Asset filename patterns to match from GitHub releases
       const ASSET_PATTERNS = {
-        "macos-silicon": /aarch64\.dmg$/,
-        "macos-intel": /x64\.dmg$/,
+        "macos-silicon": /aarch64\.pkg$/,
+        "macos-intel": /x64\.pkg$/,
         "windows": /x64-setup\.exe$/,
         "linux": /amd64\.deb$/,
       };

@@ -1,5 +1,5 @@
 name: yames
-version: '0.4.2'
+version: '0.4.3'
 summary: Musician-grade desktop metronome with floating widget
 description: |
   Yames (Yet Another Metronome Everyone Skips) is a free, open-source desktop
@@ -29,7 +29,7 @@ apps:
 parts:
   yames:
     plugin: dump
-    source: https://github.com/turutupa/yames/releases/download/v0.4.2/Yames_0.4.2_amd64.deb
+    source: https://github.com/turutupa/yames/releases/download/v0.4.3/Yames_0.4.3_amd64.deb
     source-type: deb
     stage-packages:
       - libwebkit2gtk-4.1-0

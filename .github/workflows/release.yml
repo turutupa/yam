@@ -86,8 +86,82 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  update-homebrew:
+  build-pkg:
     needs: build
+    if: startsWith(github.event.head_commit.message, 'release')
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          VERSION=$(echo "$MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for release assets
+        run: sleep 30
+
+      - name: Create postinstall script
+        run: |
+          mkdir -p scripts
+          cat > scripts/postinstall << 'SCRIPT'
+          #!/bin/bash
+          xattr -cr "/Applications/Yames.app"
+          SCRIPT
+          chmod +x scripts/postinstall
+
+      - name: Build ARM .pkg
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ARM_URL="https://github.com/turutupa/yames/releases/download/v${VERSION}/Yames_${VERSION}_aarch64.dmg"
+          curl -fSL -o arm.dmg "$ARM_URL" --retry 5 --retry-delay 10
+          hdiutil attach arm.dmg -nobrowse -mountpoint /Volumes/YamesARM
+          mkdir -p pkg-root/Applications
+          cp -R "/Volumes/YamesARM/Yames.app" pkg-root/Applications/
+          hdiutil detach /Volumes/YamesARM
+          pkgbuild --root pkg-root \
+            --scripts scripts \
+            --identifier com.yames.metronome \
+            --version "$VERSION" \
+            --install-location / \
+            "Yames_${VERSION}_aarch64.pkg"
+          rm -rf pkg-root
+
+      - name: Build Intel .pkg
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          INTEL_URL="https://github.com/turutupa/yames/releases/download/v${VERSION}/Yames_${VERSION}_x64.dmg"
+          curl -fSL -o intel.dmg "$INTEL_URL" --retry 5 --retry-delay 10
+          hdiutil attach intel.dmg -nobrowse -mountpoint /Volumes/YamesIntel
+          mkdir -p pkg-root/Applications
+          cp -R "/Volumes/YamesIntel/Yames.app" pkg-root/Applications/
+          hdiutil detach /Volumes/YamesIntel
+          pkgbuild --root pkg-root \
+            --scripts scripts \
+            --identifier com.yames.metronome \
+            --version "$VERSION" \
+            --install-location / \
+            "Yames_${VERSION}_x64.pkg"
+          rm -rf pkg-root
+
+      - name: Upload .pkg to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release upload "v${VERSION}" \
+            "Yames_${VERSION}_aarch64.pkg" \
+            "Yames_${VERSION}_x64.pkg" \
+            --clobber
+
+  update-homebrew:
+    needs: [build, build-pkg]
     if: startsWith(github.event.head_commit.message, 'release')
     runs-on: macos-latest
     permissions:

@@ -62,10 +62,11 @@ body {
   line-height: 1;
 }
 
+
 .brand .subtitle {
   font-size: 1rem;
   color: var(--text-dim);
-  margin-top: -10px;
+  margin-top: -8px;
   margin-left: 3em;
   font-weight: 600 !important;
 }
@@ -338,8 +339,14 @@ body {
 }
 
 @keyframes popover-in {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .popover-close {

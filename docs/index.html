@@ -524,14 +524,14 @@
         "macos-silicon": "brew install --cask turutupa/tap/yames",
         "macos-intel": "brew install --cask turutupa/tap/yames",
         "windows": "winget install turutupa.yames",
-        "linux": "flatpak install flathub io.github.turutupa.yames",
+        // "linux": "flatpak install flathub io.github.turutupa.yames",
       };
 
       const CLI_LABELS = {
         "macos-silicon": "or install via Homebrew (recommended):",
         "macos-intel": "or install via Homebrew (recommended):",
         "windows": "or install via winget (recommended):",
-        "linux": "or install via Flatpak (recommended):",
+        // "linux": "or install via Flatpak (recommended):",
       };
 
       function setOS(os) {
@@ -544,6 +544,8 @@
         const cliLabel = document.querySelector(".brew-label");
         if (cliCmd) cliCmd.textContent = CLI_COMMANDS[os] || CLI_COMMANDS["macos-silicon"];
         if (cliLabel) cliLabel.textContent = CLI_LABELS[os] || CLI_LABELS["macos-silicon"];
+        const cliInstall = document.getElementById("cli-install");
+        if (cliInstall) cliInstall.style.display = CLI_COMMANDS[os] ? "" : "none";
       }
       setOS(detectedOS);
       pills.forEach((p) =>

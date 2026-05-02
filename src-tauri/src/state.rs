@@ -31,10 +31,10 @@ impl Default for SpeedRamp {
     fn default() -> Self {
         Self {
             start_bpm: 80,
-            target_bpm: 140,
+            target_bpm: 120,
             increment: 5,
             decrement: 3,
-            bars_per_step: 4,
+            bars_per_step: 10,
             beats_per_bar: 4,
             mode: "linear".to_string(),
             cyclic: false,

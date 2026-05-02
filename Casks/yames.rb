@@ -3,12 +3,12 @@ cask "yames" do
 
   on_arm do
     url "https://github.com/turutupa/yames/releases/download/v#{version}/Yames_#{version}_aarch64.dmg"
-    sha256 :no_check
+    sha256 "4e7f4afc23217ed9ca668f53ff651717e324e126854124b87e12890d5f9d9f14"
   end
 
   on_intel do
     url "https://github.com/turutupa/yames/releases/download/v#{version}/Yames_#{version}_x64.dmg"
-    sha256 :no_check
+    sha256 "fca3abb74f9646a4e909d8720e88ee146fcd2ff82962d833d7ca3dad09dc4bb5"
   end
 
   name "Yames"
@@ -21,12 +21,6 @@ cask "yames" do
   end
 
   app "Yames.app"
-
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/Yames.app"],
-                   sudo: false
-  end
 
   zap trash: [
     "~/Library/Application Support/com.yames.metronome",

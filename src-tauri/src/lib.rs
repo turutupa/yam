@@ -212,6 +212,14 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             match event {
+                tauri::WindowEvent::CloseRequested { .. } => {
+                    // Quit the entire app when user closes any window
+                    if let Some(engine_state) = window.try_state::<EngineState>() {
+                        let mut engine = engine_state.0.lock().unwrap();
+                        engine.shutdown();
+                    }
+                    window.app_handle().exit(0);
+                }
                 tauri::WindowEvent::Resized(size) => {
                     // Save main window size on resize
                     if window.label() == "main" && size.width > 0 && size.height > 0 {

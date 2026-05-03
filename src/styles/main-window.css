@@ -984,7 +984,7 @@
 }
 
 .setting-hint {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   opacity: 0.6;
 }
@@ -1280,7 +1280,7 @@
 }
 
 .about-text {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   margin-bottom: 14px;
   line-height: 1.5;

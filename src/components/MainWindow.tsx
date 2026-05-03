@@ -9,6 +9,7 @@ import { DrillView } from "./DrillView";
 import { TrackView } from "./TrackView";
 import { FullscreenView } from "./FullscreenView";
 import { ThemeEffects } from "./ThemeEffects";
+import { useGamepad, formatGamepadButton, isGamepadBinding } from "../hooks/useGamepad";
 import "../styles/main-window.css";
 
 // Force the webview to reclaim keyboard focus after macOS fullscreen exit.
@@ -423,6 +424,112 @@ export function MainWindow() {
     return () => document.removeEventListener("keydown", handleBinding);
   }, [bindingFor, handleBinding]);
 
+  // Shared action dispatcher — called by keyboard handler and gamepad hook
+  const dispatchAction = useCallback((actionId: HotkeyAction) => {
+    // Tab/settings/widget actions work from any view
+    if (actionId === "tab-1" || actionId === "tab-2" || actionId === "tab-3" || actionId === "settings" || actionId === "toggle-widget") {
+      switch (actionId) {
+        case "tab-1": setView("beat"); break;
+        case "tab-2": setView("drill"); break;
+        case "tab-3": setView("track"); break;
+        case "settings":
+          if (view === "settings") setView(prevTab.current);
+          else { prevTab.current = view as "beat" | "drill" | "track"; setView("settings"); }
+          break;
+        case "toggle-widget":
+          showFloating();
+          break;
+      }
+      return;
+    }
+    if (view === "settings") return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    switch (actionId) {
+      case "play":
+        if (view === "drill") {
+          if (state.speedRamp?.active) {
+            stopSpeedRamp();
+          } else {
+            configureSpeedRamp({
+              startBpm: state.speedRamp.startBpm,
+              targetBpm: state.speedRamp.targetBpm,
+              increment: state.speedRamp.increment,
+              decrement: state.speedRamp.decrement,
+              barsPerStep: state.speedRamp.barsPerStep,
+              beatsPerBar: state.speedRamp.beatsPerBar,
+              mode: state.speedRamp.mode,
+              cyclic: state.speedRamp.cyclic,
+            });
+            setTimeout(() => startSpeedRamp(), 50);
+          }
+        } else if (view === "beat") {
+          togglePlayback();
+        }
+        break;
+      case "bpm-up": handleBpmChange(state.bpm + 5); break;
+      case "bpm-down": handleBpmChange(state.bpm - 5); break;
+      case "bpm-up-1": handleBpmChange(state.bpm + 1); break;
+      case "bpm-down-1": handleBpmChange(state.bpm - 1); break;
+      case "sub-next": {
+        const subs: Subdivision[] = [1, 2, 3, 4, 5, 6];
+        const idx = subs.indexOf(state.subdivision as Subdivision);
+        setSubdivision(subs[(idx + 1) % subs.length]);
+        break;
+      }
+      case "sub-prev": {
+        const subs: Subdivision[] = [1, 2, 3, 4, 5, 6];
+        const idx = subs.indexOf(state.subdivision as Subdivision);
+        setSubdivision(subs[(idx - 1 + subs.length) % subs.length]);
+        break;
+      }
+      case "sig-next": {
+        const vals = TIME_SIGNATURES.map(t => t.beats);
+        const idx = vals.indexOf(state.timeSignature);
+        setTimeSignature(vals[(idx + 1) % vals.length]);
+        break;
+      }
+      case "sig-prev": {
+        const vals = TIME_SIGNATURES.map(t => t.beats);
+        const idx = vals.indexOf(state.timeSignature);
+        setTimeSignature(vals[(idx - 1 + vals.length) % vals.length]);
+        break;
+      }
+      case "fullscreen":
+        if (view !== "track") {
+          if (isFullscreen) {
+            (async () => {
+              const win = getCurrentWindow();
+              if (await win.isFullscreen()) {
+                await win.setFullscreen(false);
+                await new Promise(r => setTimeout(r, 600));
+              }
+              setIsFullscreen(false);
+              await win.setAlwaysOnTop(state.alwaysOnTop);
+              await win.setFocus();
+              await forceWebviewFocus();
+            })();
+          } else {
+            setIsFullscreen(true);
+          }
+        }
+        break;
+      case "os-fullscreen": {
+        (async () => {
+          const win = getCurrentWindow();
+          const isFull = await win.isFullscreen();
+          await win.setFullscreen(!isFull);
+          if (isFull) {
+            await new Promise(r => setTimeout(r, 800));
+            await win.setAlwaysOnTop(state.alwaysOnTop);
+            await win.setFocus();
+            await forceWebviewFocus();
+          }
+        })();
+        break;
+      }
+    }
+  }, [view, state.bpm, state.subdivision, state.timeSignature, state.speedRamp?.active, isFullscreen, setView]);
+
   // Unified local hotkey dispatcher — reads from keyBindings
   useEffect(() => {
     if (bindingFor) return;
@@ -438,117 +545,24 @@ export function MainWindow() {
       if (!combo) return;
       const actionId = Object.entries(keyBindings).find(([_, key]) => key === combo)?.[0] as HotkeyAction | undefined;
       if (!actionId) return;
-      // Tab/settings/widget actions work from any view
-      if (actionId === "tab-1" || actionId === "tab-2" || actionId === "tab-3" || actionId === "settings" || actionId === "toggle-widget") {
-        e.preventDefault();
-        switch (actionId) {
-          case "tab-1": setView("beat"); break;
-          case "tab-2": setView("drill"); break;
-          case "tab-3": setView("track"); break;
-          case "settings":
-            if (view === "settings") setView(prevTab.current);
-            else { prevTab.current = view as "beat" | "drill" | "track"; setView("settings"); }
-            break;
-          case "toggle-widget":
-            showFloating();
-            break;
-        }
-        return;
-      }
-      if (view === "settings") return;
       e.preventDefault();
-      // Blur focused buttons to prevent keyup from triggering a click (double-toggle)
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      switch (actionId) {
-        case "play":
-          if (view === "drill") {
-            if (state.speedRamp?.active) {
-              stopSpeedRamp();
-            } else {
-              configureSpeedRamp({
-                startBpm: state.speedRamp.startBpm,
-                targetBpm: state.speedRamp.targetBpm,
-                increment: state.speedRamp.increment,
-                decrement: state.speedRamp.decrement,
-                barsPerStep: state.speedRamp.barsPerStep,
-                beatsPerBar: state.speedRamp.beatsPerBar,
-                mode: state.speedRamp.mode,
-                cyclic: state.speedRamp.cyclic,
-              });
-              setTimeout(() => startSpeedRamp(), 50);
-            }
-          } else if (view === "beat") {
-            togglePlayback();
-          }
-          break;
-        case "bpm-up": handleBpmChange(state.bpm + 5); break;
-        case "bpm-down": handleBpmChange(state.bpm - 5); break;
-        case "bpm-up-1": handleBpmChange(state.bpm + 1); break;
-        case "bpm-down-1": handleBpmChange(state.bpm - 1); break;
-        case "sub-next": {
-          const subs: Subdivision[] = [1, 2, 3, 4, 5, 6];
-          const idx = subs.indexOf(state.subdivision as Subdivision);
-          setSubdivision(subs[(idx + 1) % subs.length]);
-          break;
-        }
-        case "sub-prev": {
-          const subs: Subdivision[] = [1, 2, 3, 4, 5, 6];
-          const idx = subs.indexOf(state.subdivision as Subdivision);
-          setSubdivision(subs[(idx - 1 + subs.length) % subs.length]);
-          break;
-        }
-        case "sig-next": {
-          const vals = TIME_SIGNATURES.map(t => t.beats);
-          const idx = vals.indexOf(state.timeSignature);
-          setTimeSignature(vals[(idx + 1) % vals.length]);
-          break;
-        }
-        case "sig-prev": {
-          const vals = TIME_SIGNATURES.map(t => t.beats);
-          const idx = vals.indexOf(state.timeSignature);
-          setTimeSignature(vals[(idx - 1 + vals.length) % vals.length]);
-          break;
-        }
-        case "fullscreen":
-          if (view !== "track") {
-            if (isFullscreen) {
-              // Exiting zen — do full cleanup (OS fullscreen + focus)
-              (async () => {
-                const win = getCurrentWindow();
-                if (await win.isFullscreen()) {
-                  await win.setFullscreen(false);
-                  await new Promise(r => setTimeout(r, 600));
-                }
-                setIsFullscreen(false);
-                await win.setAlwaysOnTop(state.alwaysOnTop);
-                await win.setFocus();
-                await forceWebviewFocus();
-              })();
-            } else {
-              setIsFullscreen(true);
-            }
-          }
-          break;
-        case "os-fullscreen": {
-          (async () => {
-            const win = getCurrentWindow();
-            const isFull = await win.isFullscreen();
-            await win.setFullscreen(!isFull);
-            if (isFull) {
-              // Exiting OS fullscreen — wait for macOS animation, restore state
-              await new Promise(r => setTimeout(r, 800));
-              await win.setAlwaysOnTop(state.alwaysOnTop);
-              await win.setFocus();
-              await forceWebviewFocus();
-            }
-          })();
-          break;
-        }
-      }
+      dispatchAction(actionId);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [view, keyBindings, state.bpm, state.subdivision, state.timeSignature, state.speedRamp?.active, isFullscreen, bindingFor, setView]);
+  }, [view, keyBindings, isFullscreen, bindingFor, setView, dispatchAction]);
+
+  // Gamepad / footswitch support
+  useGamepad({
+    enabled: true,
+    onButtonPress: bindingFor?.type === "foot" ? (id) => {
+      setFootBindings((prev) => ({ ...prev, [bindingFor.id]: id }));
+      setBindingFor(null);
+      setPendingKeys("");
+    } : undefined,
+    bindings: !bindingFor ? footBindings : undefined,
+    onAction: !bindingFor ? (id) => dispatchAction(id as HotkeyAction) : undefined,
+  });
 
   // Resize window based on current view
   const sliderPercent = ((state.bpm - 20) / (300 - 20)) * 100;
@@ -954,10 +968,9 @@ export function MainWindow() {
                           Global
                           <span className="hotkey-soon-badge">soon</span>
                         </span>
-                        <span data-tooltip="Bind a USB foot pedal or external controller">
+                        <span data-tooltip="Bind a USB foot pedal or gamepad controller">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="14" width="16" height="6" rx="2"/><path d="M8 14V10a4 4 0 0 1 8 0v4"/></svg>
                           Foot
-                          <span className="hotkey-soon-badge">soon</span>
                         </span>
                       </div>
                       {items.map((hk) => (
@@ -979,10 +992,13 @@ export function MainWindow() {
                             {hk.globalAllowed ? platformKey(globalBindings[hk.id] || "—") : "—"}
                           </button>
                           <button
-                            className="hotkey-bind-btn"
-                            disabled
+                            className={`hotkey-bind-btn ${bindingFor?.id === hk.id && bindingFor.type === "foot" ? "listening" : ""}`}
+                            onClick={() => {
+                              setBindingFor({ id: hk.id, type: "foot" });
+                              setPendingKeys("");
+                            }}
                           >
-                            {footBindings[hk.id] || "—"}
+                            {footBindings[hk.id] ? (isGamepadBinding(footBindings[hk.id]) ? formatGamepadButton(footBindings[hk.id]) : platformKey(footBindings[hk.id])) : "—"}
                           </button>
                         </div>
                       ))}
@@ -1094,7 +1110,11 @@ export function MainWindow() {
               {pendingKeys ? (
                 <span className="keybinding-capture-keys">{pendingKeys}</span>
               ) : (
-                <span className="keybinding-capture-waiting">Press desired key combination…</span>
+                <span className="keybinding-capture-waiting">
+                  {bindingFor.type === "foot"
+                    ? "Press a button on your foot pedal or gamepad…"
+                    : "Press desired key combination…"}
+                </span>
               )}
             </div>
             <div className="keybinding-capture-actions">

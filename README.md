@@ -50,7 +50,7 @@ If you're working on a passage, building speed on scales, or training endurance,
 
 ## Tap It
 
-Not sure what tempo a song is? Tap along and Yames figures out the BPM for you. It also tracks your accuracy — how consistent your taps are — so you can see your internal clock improving over time.
+Practice keeping tempo by tapping along. Yames tracks your accuracy — how consistent your taps are — so you can see your internal clock improving over time.
 
 <p align="center">
   <img src="docs/img/tapit/obsidian-tap.png" alt="Yames tap tempo" height="310">

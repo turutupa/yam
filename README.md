@@ -115,19 +115,19 @@ Global shortcuts work even when Yames isn't focused — play/stop, BPM nudge, an
 <summary>Metronome themes</summary>
 <br>
 <p align="center">
-  <img src="docs/img/metronome/neon-metronome.png" width="280">
-  <img src="docs/img/metronome/lavender-metronome.png" width="280">
-  <img src="docs/img/metronome/prism-metronome.png" width="280">
+  <img src="docs/img/metronome/neon-metronome.png" width="260">
+  <img src="docs/img/metronome/lavender-metronome.png" width="260">
+  <img src="docs/img/metronome/prism-metronome.png" width="260">
 </p>
 <p align="center">
-  <img src="docs/img/metronome/ivory-metronome.png" width="280">
-  <img src="docs/img/metronome/arctic-metronome.png" width="280">
-  <img src="docs/img/metronome/mono-metronome.png" width="280">
+  <img src="docs/img/metronome/ivory-metronome.png" width="260">
+  <img src="docs/img/metronome/arctic-metronome.png" width="260">
+  <img src="docs/img/metronome/mono-metronome.png" width="260">
 </p>
 <p align="center">
-  <img src="docs/img/metronome/sand-metronome.png" width="280">
-  <img src="docs/img/metronome/velvet-metronome.png" width="280">
-  <img src="docs/img/metronome/aurora-metronome.png" width="280">
+  <img src="docs/img/metronome/sand-metronome.png" width="260">
+  <img src="docs/img/metronome/velvet-metronome.png" width="260">
+  <img src="docs/img/metronome/aurora-metronome.png" width="260">
 </p>
 </details>
 
@@ -135,19 +135,19 @@ Global shortcuts work even when Yames isn't focused — play/stop, BPM nudge, an
 <summary>Drill themes</summary>
 <br>
 <p align="center">
-  <img src="docs/img/drill/neon-drill.png" width="280">
-  <img src="docs/img/drill/lavender-drill.png" width="280">
-  <img src="docs/img/drill/prism-drill.png" width="280">
+  <img src="docs/img/drill/neon-drill.png" width="260">
+  <img src="docs/img/drill/lavender-drill.png" width="260">
+  <img src="docs/img/drill/prism-drill.png" width="260">
 </p>
 <p align="center">
-  <img src="docs/img/drill/ivory-drill.png" width="280">
-  <img src="docs/img/drill/arctic-drill.png" width="280">
-  <img src="docs/img/drill/mono-drill.png" width="280">
+  <img src="docs/img/drill/ivory-drill.png" width="260">
+  <img src="docs/img/drill/arctic-drill.png" width="260">
+  <img src="docs/img/drill/mono-drill.png" width="260">
 </p>
 <p align="center">
-  <img src="docs/img/drill/sand-drill.png" width="280">
-  <img src="docs/img/drill/velvet-drill.png" width="280">
-  <img src="docs/img/drill/aurora-drill.png" width="280">
+  <img src="docs/img/drill/sand-drill.png" width="260">
+  <img src="docs/img/drill/velvet-drill.png" width="260">
+  <img src="docs/img/drill/aurora-drill.png" width="260">
 </p>
 </details>
 

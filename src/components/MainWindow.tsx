@@ -11,6 +11,7 @@ import { useMetronome } from "../hooks/useMetronome";
 import {
   checkForUpdate,
   configureSpeedRamp,
+  downloadAndInstallUpdate,
   getActiveTab,
   onFullscreenChanged,
   openUrl,
@@ -491,7 +492,7 @@ export function MainWindow() {
   const [animationStyle, setAnimationStyle] = useState<"fade" | "scale" | "blur" | "slide" | "reveal">("scale");
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
   const [updateStatus, setUpdateStatus] = useState<
-    "idle" | "checking" | "available" | "up-to-date"
+    "idle" | "checking" | "available" | "up-to-date" | "downloading"
   >("idle");
   const [latestVersion, setLatestVersion] = useState("");
   const [appVersion, setAppVersion] = useState("0.0.0");
@@ -1485,7 +1486,12 @@ export function MainWindow() {
             {updateStatus === "available" && (
               <div
                 className="update-banner"
-                onClick={() => openUrl("https://turutupa.github.io/yames/")}
+                onClick={() => {
+                  setUpdateStatus("downloading");
+                  downloadAndInstallUpdate().catch(() => {
+                    setUpdateStatus("available");
+                  });
+                }}
               >
                 <svg
                   width="16"
@@ -1502,7 +1508,25 @@ export function MainWindow() {
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
                 <span>Yames v{latestVersion || "0.6.0"} is available</span>
-                <span className="update-banner-action">Download →</span>
+                <span className="update-banner-action">Install &amp; Restart →</span>
+              </div>
+            )}
+            {updateStatus === "downloading" && (
+              <div className="update-banner update-banner-downloading">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="spinning"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <span>Updating Yames…</span>
               </div>
             )}
             <section className="settings-section">
@@ -1971,14 +1995,18 @@ export function MainWindow() {
                     {updateStatus === "available" && (
                       <button
                         className="update-available-btn"
-                        onClick={() =>
-                          openUrl(
-                            "https://github.com/turutupa/yames/releases/latest",
-                          )
-                        }
+                        onClick={() => {
+                          setUpdateStatus("downloading");
+                          downloadAndInstallUpdate().catch(() => {
+                            setUpdateStatus("available");
+                          });
+                        }}
                       >
-                        v{latestVersion} available — Download
+                        v{latestVersion} available — Install
                       </button>
+                    )}
+                    {updateStatus === "downloading" && (
+                      <span className="update-status">Updating…</span>
                     )}
                     {updateStatus === "up-to-date" && (
                       <span className="update-status up-to-date">

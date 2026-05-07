@@ -146,7 +146,10 @@ export async function getCalibrationOffset(): Promise<number | null> {
   return invoke<number | null>("get_calibration_offset");
 }
 
-// Update checker — compares current version against latest GitHub release
+// Update checker — uses Tauri updater plugin for in-app updates
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+
 export interface UpdateInfo {
   hasUpdate: boolean;
   currentVersion: string;
@@ -157,18 +160,26 @@ export interface UpdateInfo {
 export async function checkForUpdate(currentVersion: string): Promise<UpdateInfo> {
   const releaseUrl = "https://github.com/turutupa/yames/releases/latest";
   try {
-    const res = await fetch("https://api.github.com/repos/turutupa/yames/releases/latest");
-    if (!res.ok) return { hasUpdate: false, currentVersion, latestVersion: currentVersion, releaseUrl };
-    const data = await res.json();
-    const latest = (data.tag_name || "").replace(/^v/, "");
-    return {
-      hasUpdate: compareSemver(latest, currentVersion) > 0,
-      currentVersion,
-      latestVersion: latest,
-      releaseUrl,
-    };
+    const update = await check();
+    if (update) {
+      return {
+        hasUpdate: true,
+        currentVersion,
+        latestVersion: update.version,
+        releaseUrl,
+      };
+    }
+    return { hasUpdate: false, currentVersion, latestVersion: currentVersion, releaseUrl };
   } catch {
     return { hasUpdate: false, currentVersion, latestVersion: currentVersion, releaseUrl };
+  }
+}
+
+export async function downloadAndInstallUpdate(): Promise<void> {
+  const update = await check();
+  if (update) {
+    await update.downloadAndInstall();
+    await relaunch();
   }
 }
 

@@ -1518,6 +1518,20 @@
   opacity: 1;
 }
 
+.update-banner-downloading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.update-banner .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* =================== Update check =================== */
 .update-check-btn {
   background: none;

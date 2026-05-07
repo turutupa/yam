@@ -1,6 +1,6 @@
 [package]
 name = "yames"
-version = "0.5.1"
+version = "0.5.2"
 description = "Yet Another Metronome Everyone Skips — musician-grade floating metronome"
 authors = ["you"]
 edition = "2021"
@@ -20,3 +20,5 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rodio = { version = "0.19", default-features = false, features = ["wav"] }
 cpal = "0.15"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

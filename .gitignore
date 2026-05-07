@@ -6,3 +6,4 @@
 src-tauri/target/
 package-lock.json
 .winget
+certs/

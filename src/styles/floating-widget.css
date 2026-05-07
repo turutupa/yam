@@ -10,6 +10,13 @@
   user-select: none;
 }
 
+/* Windows/Linux: fill entire window to prevent white background bleed */
+.floating-widget.os-other {
+  border-radius: 0;
+  height: 100vh;
+  justify-content: center;
+}
+
 .floating-widget[data-playing="true"] {
   border-color: var(--accent-glow);
 }
@@ -101,7 +108,7 @@
 .fw-bpm-adj:hover {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   border-color: var(--accent-glow);
-  color: white;
+  color: var(--text-primary);
 }
 
 .fw-play {
@@ -190,8 +197,8 @@
 }
 
 .fw-sub-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
 }
 
 .fw-sub-icon {

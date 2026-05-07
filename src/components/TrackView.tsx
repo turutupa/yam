@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   getCalibrationOffset,
   onBeat,
@@ -459,7 +460,7 @@ export function TrackView({ state }: TrackViewProps) {
   if (session === "idle") {
     return (
       <div className="track-view">
-        <div className="track-intro">
+        <div className="track-intro view-stagger-item" style={{ animationDelay: '0ms' }}>
           <div className="track-intro-icon">🎯</div>
           <h3>Rhythm Accuracy</h3>
           <p>
@@ -490,13 +491,13 @@ export function TrackView({ state }: TrackViewProps) {
             ))}
           </div>
         </div>
-        <button className="play-btn full-width" onClick={startSession}>
+        <button className="play-btn full-width view-stagger-item" style={{ animationDelay: '80ms' }} onClick={startSession}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z" />
           </svg>
           Start
         </button>
-        <div className="track-secondary-actions">
+        <div className="track-secondary-actions view-stagger-item" style={{ animationDelay: '120ms' }}>
           <button
             className="play-btn full-width secondary"
             onClick={startCalibration}
@@ -666,7 +667,7 @@ export function TrackView({ state }: TrackViewProps) {
           </button>
         </div>
         <div className="track-results">
-          <div className="track-result-header">
+          <div className="track-result-header view-stagger-item" style={{ animationDelay: '0ms' }}>
             <div className="track-result-rating-wrap">
               <span className="track-result-prefix">Your timing was</span>
               <span
@@ -682,7 +683,7 @@ export function TrackView({ state }: TrackViewProps) {
           </div>
 
           {/* Rating breakdown bars */}
-          <div className="track-breakdown">
+          <div className="track-breakdown view-stagger-item" style={{ animationDelay: '60ms' }}>
             {(
               ["metronomic", "tight", "solid", "loose", "miss"] as Rating[]
             ).map((rating) => (
@@ -711,7 +712,7 @@ export function TrackView({ state }: TrackViewProps) {
           </div>
 
           {/* Accuracy graph */}
-          <div className="track-accuracy-graph">
+          <div className="track-accuracy-graph view-stagger-item" style={{ animationDelay: '120ms' }}>
             <div className="track-graph-y-labels">
               <span>Early</span>
               <span>0ms</span>
@@ -840,7 +841,7 @@ export function TrackView({ state }: TrackViewProps) {
           </div>
 
           {/* Scatter plot */}
-          <div className="track-scatter">
+          <div className="track-scatter view-stagger-item" style={{ animationDelay: '180ms' }}>
             <div className="track-scatter-zero" />
             {displayTaps.map((t, i) => (
               <div
@@ -858,9 +859,12 @@ export function TrackView({ state }: TrackViewProps) {
           </div>
         </div>
 
-        <button className="play-btn full-width track-floating-cta" onClick={startSession}>
-          Try Again
-        </button>
+        {createPortal(
+          <button className="play-btn full-width track-floating-cta" onClick={startSession}>
+            Try Again
+          </button>,
+          document.body
+        )}
       </div>
     );
   }
@@ -897,10 +901,11 @@ export function TrackView({ state }: TrackViewProps) {
           </button>
         </div>
         <div className="track-history-list">
-          {history.map((game) => (
+          {history.map((game, i) => (
             <button
               key={game.id}
-              className="track-history-item"
+              className="track-history-item view-stagger-item"
+              style={{ animationDelay: `${i * 40}ms` }}
               onClick={() => {
                 setViewingResult(game);
                 setSession("results");
@@ -924,9 +929,12 @@ export function TrackView({ state }: TrackViewProps) {
             </button>
           ))}
         </div>
-        <button className="play-btn full-width track-floating-cta" onClick={startSession}>
-          Try Again
-        </button>
+        {createPortal(
+          <button className="play-btn full-width track-floating-cta" onClick={startSession}>
+            Try Again
+          </button>,
+          document.body
+        )}
         {showClearConfirm && (
           <div className="keybinding-overlay" onClick={() => setShowClearConfirm(false)}>
             <div className="keybinding-capture" onClick={(e) => e.stopPropagation()}>

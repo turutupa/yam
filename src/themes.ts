@@ -45,6 +45,8 @@ const mono: Theme = {
     "--shadow": "0 8px 32px rgba(0, 0, 0, 0.5)",
     "--font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     "--font-weight": "400",
+    "--radius": "4px",
+    "--radius-sm": "3px",
   },
 };
 
@@ -74,6 +76,8 @@ const obsidian: Theme = {
     "--shadow": "0 8px 32px rgba(0, 0, 0, 0.6)",
     "--font-family": "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
     "--font-weight": "400",
+    "--radius": "6px",
+    "--radius-sm": "4px",
   },
 };
 
@@ -103,6 +107,8 @@ const velvet: Theme = {
     "--shadow": "0 8px 32px rgba(0, 0, 0, 0.5)",
     "--font-family": "'Comfortaa', 'Nunito', system-ui, sans-serif",
     "--font-weight": "600",
+    "--radius": "16px",
+    "--radius-sm": "12px",
   },
 };
 
@@ -132,6 +138,8 @@ const neon: Theme = {
     "--shadow": "0 8px 32px rgba(0, 0, 0, 0.5)",
     "--font-family": "'Orbitron', 'Rajdhani', 'Exo 2', monospace",
     "--font-weight": "500",
+    "--radius": "10px",
+    "--radius-sm": "8px",
   },
 };
 
@@ -161,6 +169,8 @@ const aurora: Theme = {
     "--shadow": "0 8px 32px rgba(0, 212, 255, 0.1), 0 2px 8px rgba(191, 90, 242, 0.08)",
     "--font-family": "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     "--font-weight": "500",
+    "--radius": "20px",
+    "--radius-sm": "14px",
   },
 };
 
@@ -194,6 +204,8 @@ const ivory: Theme = {
     "--shadow": "0 8px 32px rgba(44, 36, 22, 0.1)",
     "--font-family": "'Georgia', 'Palatino', 'Times New Roman', serif",
     "--font-weight": "500",
+    "--radius": "14px",
+    "--radius-sm": "10px",
   },
 };
 
@@ -223,6 +235,8 @@ const arctic: Theme = {
     "--shadow": "0 8px 32px rgba(15, 23, 42, 0.08)",
     "--font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     "--font-weight": "500",
+    "--radius": "10px",
+    "--radius-sm": "7px",
   },
 };
 
@@ -252,6 +266,8 @@ const sand: Theme = {
     "--shadow": "0 8px 32px rgba(41, 37, 36, 0.08)",
     "--font-family": "'Avenir Next', 'Avenir', -apple-system, sans-serif",
     "--font-weight": "500",
+    "--radius": "12px",
+    "--radius-sm": "8px",
   },
 };
 
@@ -281,6 +297,8 @@ const lavender: Theme = {
     "--shadow": "0 8px 32px rgba(30, 19, 56, 0.08)",
     "--font-family": "'Quicksand', 'Nunito', system-ui, sans-serif",
     "--font-weight": "600",
+    "--radius": "18px",
+    "--radius-sm": "12px",
   },
 };
 
@@ -310,6 +328,8 @@ const prism: Theme = {
     "--shadow": "0 8px 32px rgba(160, 80, 200, 0.12), 0 2px 8px rgba(255, 61, 138, 0.08)",
     "--font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     "--font-weight": "500",
+    "--radius": "20px",
+    "--radius-sm": "14px",
   },
 };
 

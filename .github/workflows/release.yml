@@ -304,7 +304,7 @@ jobs:
           SHA256: ${{ steps.sha.outputs.sha256 }}
         run: |
           cat > winget/turutupa.yames.yaml << EOF
-          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+          # yaml-language-server: \$schema=https://aka.ms/winget-manifest.singleton.1.12.0.schema.json
           PackageIdentifier: turutupa.yames
           PackageVersion: $VERSION
           PackageLocale: en-US
@@ -328,11 +328,11 @@ jobs:
             - tempo
           Installers:
             - Architecture: x64
-              InstallerType: nsis
+              InstallerType: nullsoft
               InstallerUrl: https://github.com/turutupa/yames/releases/download/v${VERSION}/Yames_${VERSION}_x64-setup.exe
               InstallerSha256: $SHA256
           ManifestType: singleton
-          ManifestVersion: 1.6.0
+          ManifestVersion: 1.12.0
           EOF
           sed -i 's/^          //' winget/turutupa.yames.yaml
 

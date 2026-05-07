@@ -122,6 +122,7 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
     <div
       className="fullscreen-view"
       data-playing={state.isPlaying}
+      data-zen-style={zenStyle}
       onDoubleClick={exitFullscreen}
     >
       <ZenEffects style={zenStyle} currentBeat={currentBeat} isPlaying={state.isPlaying} activeTab={activeTab} beatsPerMeasure={beatsPerMeasure} />

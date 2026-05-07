@@ -18,9 +18,10 @@ interface DrillViewProps {
   state: AppState;
   currentBeat: BeatEvent | null;
   autoCollapse?: boolean;
+  animations?: boolean;
 }
 
-export function DrillView({ state, currentBeat, autoCollapse = true }: DrillViewProps) {
+export function DrillView({ state, currentBeat, autoCollapse = true, animations = true }: DrillViewProps) {
   const ramp = state.speedRamp;
   const [highlightMode, setHighlightMode] = useState<"beats" | "repeats" | "startBpm" | "targetBpm" | null>(null);
   const [configCollapsed, setConfigCollapsed] = useState(false);
@@ -223,8 +224,8 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
   const isDownbeat = currentBeat?.isDownbeat ?? false;
 
   return (
-    <div className="drill-view" data-highlight={!ramp.active ? highlightMode || undefined : undefined}>
-      <div className="drill-current">
+    <div className="drill-view" data-highlight={!ramp.active ? highlightMode || undefined : undefined} data-animations={animations ? undefined : "off"} data-active={ramp.active ? "" : undefined}>
+      <div className="drill-current view-stagger-item" style={{ animationDelay: '0ms' }}>
         <span className="drill-current-bpm">{ramp.active ? ramp.currentBpm : startBpm}</span>
         <span className="drill-current-label">BPM</span>
         {/* Beat dots */}
@@ -252,7 +253,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
         </span>
       </div>
 
-      <div className={`drill-config ${configCollapsed ? "collapsed" : ""}`}>
+      <div className={`drill-config view-stagger-item ${configCollapsed ? "collapsed" : ""}`} style={{ animationDelay: '30ms' }}>
         <button className="drill-config-toggle" onClick={() => { setUserToggledConfig(true); setConfigCollapsed(!configCollapsed); }}>
           <span className="drill-config-summary">
             {startBpm}
@@ -275,7 +276,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
           </svg>
         </button>
         <div className="drill-config-body">
-          <div className="drill-row" onMouseEnter={() => setHighlightMode("startBpm")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '40ms' }} onMouseEnter={() => setHighlightMode("startBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Start BPM<span className="drill-tip">{DRILL_DESCRIPTIONS.startBpm}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(20, startBpm - 5); setStartBpm(v); saveWith({ startBpm: v }); }}>−</button>
@@ -290,7 +291,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
               <button className="stepper-btn" onClick={() => { const v = Math.min(300, startBpm + 5); setStartBpm(v); if (v > targetBpm) { setTargetBpm(v); saveWith({ startBpm: v, targetBpm: v }); } else { saveWith({ startBpm: v }); } }}>+</button>
             </div>
           </div>
-          <div className="drill-row" onMouseEnter={() => setHighlightMode("targetBpm")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '70ms' }} onMouseEnter={() => setHighlightMode("targetBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Target BPM<span className="drill-tip">{DRILL_DESCRIPTIONS.targetBpm}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(startBpm, targetBpm - 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>−</button>
@@ -305,7 +306,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
               <button className="stepper-btn" onClick={() => { const v = Math.min(300, targetBpm + 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>+</button>
             </div>
           </div>
-          <div className="drill-row">
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '100ms' }}>
             <label className="drill-label-tip">Speed Up<span className="drill-tip">{DRILL_DESCRIPTIONS.increment}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(1, increment - 1); setIncrement(v); saveWith({ increment: v }); }}>−</button>
@@ -321,7 +322,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
             </div>
           </div>
           {mode === "zigzag" && (
-            <div className="drill-row">
+            <div className="drill-row view-stagger-item" style={{ animationDelay: '130ms' }}>
               <label className="drill-label-tip">Slow Down<span className="drill-tip">{DRILL_DESCRIPTIONS.decrement}</span></label>
               <div className="drill-stepper">
                 <button className="stepper-btn" onClick={() => { const v = Math.max(1, decrement - 1); setDecrement(v); saveWith({ decrement: v }); }}>−</button>
@@ -337,7 +338,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
               </div>
             </div>
           )}
-          <div className="drill-row" onMouseEnter={() => setHighlightMode("beats")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '160ms' }} onMouseEnter={() => setHighlightMode("beats")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Beats<span className="drill-tip">{DRILL_DESCRIPTIONS.beats}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(1, beatsPerBar - 1); setBeatsPerBar(v); saveWith({ beatsPerBar: v }); }}>−</button>
@@ -352,7 +353,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
               <button className="stepper-btn" onClick={() => { const v = Math.min(12, beatsPerBar + 1); setBeatsPerBar(v); saveWith({ beatsPerBar: v }); }}>+</button>
             </div>
           </div>
-          <div className="drill-row" onMouseEnter={() => setHighlightMode("repeats")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '190ms' }} onMouseEnter={() => setHighlightMode("repeats")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Repeats<span className="drill-tip">{DRILL_DESCRIPTIONS.repeat}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(1, barsPerStep - 1); setBarsPerStep(v); saveWith({ barsPerStep: v }); }}>−</button>
@@ -367,7 +368,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
               <button className="stepper-btn" onClick={() => { const v = Math.min(32, barsPerStep + 1); setBarsPerStep(v); saveWith({ barsPerStep: v }); }}>+</button>
             </div>
           </div>
-          <div className="drill-row">
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '220ms' }}>
             <label className="drill-label-tip">Mode<span className="drill-tip">{DRILL_DESCRIPTIONS.mode}</span></label>
             <div className="toggle-group">
               <button className={`toggle-btn ${mode === "linear" ? "active" : ""}`} onClick={() => { setMode("linear"); saveWith({ mode: "linear" }); }}>
@@ -378,7 +379,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
               </button>
             </div>
           </div>
-          <div className="drill-row">
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '250ms' }}>
             <label className="drill-label-tip">Cyclic<span className="drill-tip">{DRILL_DESCRIPTIONS.cyclic}</span></label>
             <button
               className={`toggle-btn ${cyclic ? "active" : ""}`}
@@ -391,7 +392,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
         </div>
       </div>
 
-      <div className="drill-summary">
+      <div className="drill-summary view-stagger-item" style={{ animationDelay: '280ms' }}>
         {beatsPerBar} beats · {steps.length} steps · {barsPerStep} repeats · {ramp.active ? `${formatTime(liveRemaining)} remaining` : formatTime(totalTimeSeconds)}
       </div>
 
@@ -415,7 +416,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true }: DrillView
                         key={barIdx}
                         className={`drill-grid-cell ${barDone ? "done" : ""} ${barActive ? "current" : ""}`}
                         data-first-cell={stepIdx === 0 && barIdx === 0 ? "" : undefined}
-                        style={{ cursor: "pointer", opacity: barDone || barActive ? undefined : rowOpacity * 0.3 }}
+                        style={{ cursor: "pointer", opacity: barDone || barActive ? undefined : rowOpacity * 0.3, animationDelay: `${300 + (stepIdx * 20) + (barIdx * 15)}ms` }}
                         onClick={() => { startSpeedRampFrom(stepIdx, bpm, barIdx); startTimer(stepIdx, barIdx); }}
                       />
                     );

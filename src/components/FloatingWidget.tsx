@@ -224,7 +224,7 @@ export function FloatingWidget() {
     return (
       <div
         ref={widgetRef}
-        className="floating-widget compact"
+        className={`floating-widget compact ${IS_MAC ? "os-mac" : "os-other"}`}
         data-playing={state.isPlaying}
       >
         {bpmDisplay}
@@ -276,7 +276,7 @@ export function FloatingWidget() {
   return (
     <div
       ref={widgetRef}
-      className="floating-widget comfortable"
+      className={`floating-widget comfortable ${IS_MAC ? "os-mac" : "os-other"}`}
       data-playing={state.isPlaying}
     >
       <div className="fw-top-row">

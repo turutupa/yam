@@ -342,6 +342,7 @@ function CosmosEffect({ currentBeat, isPlaying }: { currentBeat: BeatEvent | nul
     x: number; y: number; vx: number; vy: number;
     size: number; opacity: number; hue: number;
     ripple: number; // 0-1, decays after accent
+    depth: number; // 0 = far background, 1 = foreground
   }>>([]);
   const rafRef = useRef(0);
   const prevBeatRef = useRef(-1);
@@ -373,10 +374,6 @@ function CosmosEffect({ currentBeat, isPlaying }: { currentBeat: BeatEvent | nul
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    resize();
-    window.addEventListener("resize", resize);
-
     const getAccentHue = () => {
       const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
       const hex = accent.replace("#", "");
@@ -398,35 +395,60 @@ function CosmosEffect({ currentBeat, isPlaying }: { currentBeat: BeatEvent | nul
     const baseHue = getAccentHue();
     const hues = [baseHue, (baseHue + 30) % 360, (baseHue + 330) % 360];
 
-    particlesRef.current = Array.from({ length: 35 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+    const makeParticle = (xRange: [number, number], yRange: [number, number]) => ({
+      x: xRange[0] + Math.random() * (xRange[1] - xRange[0]),
+      y: yRange[0] + Math.random() * (yRange[1] - yRange[0]),
       vx: (Math.random() - 0.5) * 0.25,
       vy: (Math.random() - 0.5) * 0.25,
-      size: Math.random() * 2.5 + 1,
-      opacity: Math.random() * 0.4 + 0.1,
+      size: Math.random() * 4 + 1.5,
+      opacity: Math.random() * 0.45 + 0.1,
       hue: hues[Math.floor(Math.random() * hues.length)],
       ripple: 0,
-    }));
+      depth: Math.random(), // 0 = far background, 1 = foreground
+    });
+
+    const TARGET_DENSITY = 65 / (window.innerWidth * window.innerHeight); // particles per px²
+
+    const resize = () => {
+      const prevW = canvas.width;
+      const prevH = canvas.height;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const targetCount = Math.round(canvas.width * canvas.height * TARGET_DENSITY);
+
+      if (particlesRef.current.length < targetCount) {
+        // Spawn particles in newly exposed area
+        const count = targetCount - particlesRef.current.length;
+        for (let i = 0; i < count; i++) {
+          if (canvas.width > prevW && Math.random() < 0.5) {
+            particlesRef.current.push(makeParticle([prevW, canvas.width], [0, canvas.height]));
+          } else {
+            particlesRef.current.push(makeParticle([0, canvas.width], [prevH, canvas.height]));
+          }
+        }
+      } else if (particlesRef.current.length > targetCount) {
+        // Remove excess particles when shrinking (e.g. exiting fullscreen)
+        particlesRef.current.length = targetCount;
+      }
+    };
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    window.addEventListener("resize", resize);
+
+    particlesRef.current = Array.from({ length: 65 }, () =>
+      makeParticle([0, canvas.width], [0, canvas.height])
+    );
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const { x: mx, y: my } = mouseRef.current;
 
-      // Cursor glow
-      if (mx > 0 && my > 0) {
-        const gradient = ctx.createRadialGradient(mx, my, 0, mx, my, 180);
-        const accentColor = getComputedStyle(document.documentElement).getPropertyValue("--accent-glow").trim() || "rgba(233, 69, 96, 0.3)";
-        gradient.addColorStop(0, accentColor);
-        gradient.addColorStop(1, "transparent");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(mx - 180, my - 180, 360, 360);
-      }
-
       // Particles with accent ripples
       for (const p of particlesRef.current) {
-        p.x += p.vx;
-        p.y += p.vy;
+        const depthScale = 0.25 + p.depth * 0.75; // 0.25–1.0
+        p.x += p.vx * depthScale;
+        p.y += p.vy * depthScale;
         if (p.x < -10) p.x = canvas.width + 10;
         if (p.x > canvas.width + 10) p.x = -10;
         if (p.y < -10) p.y = canvas.height + 10;
@@ -439,30 +461,34 @@ function CosmosEffect({ currentBeat, isPlaying }: { currentBeat: BeatEvent | nul
         const dx = p.x - mx;
         const dy = p.y - my;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const boost = dist < 160 ? (1 - dist / 160) * 0.5 : 0;
-        const alpha = Math.min(1, p.opacity + boost);
+        const boost = dist < 160 ? (1 - dist / 160) * 0.5 * depthScale : 0;
+        const alpha = Math.min(1, (p.opacity * depthScale) + boost);
 
         // Core particle
+        const beatPulse = p.ripple > 0.02 ? p.ripple : 0;
+        const beatLight = 65 + beatPulse * 10;
+        const alpha2 = Math.min(1, alpha + beatPulse * 0.15);
+        const drawSize = (p.size * depthScale) + boost * 2;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size + boost * 2, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${alpha})`;
+        ctx.arc(p.x, p.y, drawSize, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 80%, ${beatLight}%, ${alpha2})`;
         ctx.fill();
 
         // Soft glow
-        if (alpha > 0.25) {
+        if (alpha2 > 0.25) {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 3 + boost * 3, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${alpha * 0.12})`;
+          ctx.arc(p.x, p.y, drawSize * 3 + boost * 3, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${p.hue}, 80%, ${beatLight}%, ${alpha2 * 0.12})`;
           ctx.fill();
         }
 
         // Accent ripple ring around particle
         if (p.ripple > 0.02) {
-          const rippleRadius = p.size + (12 * (1 - p.ripple));
+          const rippleRadius = drawSize + (12 * depthScale * (1 - p.ripple));
           ctx.beginPath();
           ctx.arc(p.x, p.y, rippleRadius, 0, Math.PI * 2);
-          ctx.strokeStyle = `hsla(${p.hue}, 80%, 65%, ${p.ripple * 0.3})`;
-          ctx.lineWidth = 0.7;
+          ctx.strokeStyle = `hsla(${p.hue}, 80%, 65%, ${p.ripple * 0.3 * depthScale})`;
+          ctx.lineWidth = 0.7 * depthScale;
           ctx.stroke();
           p.ripple *= 0.91;
         }

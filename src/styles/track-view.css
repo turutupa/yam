@@ -298,7 +298,9 @@
   pointer-events: none;
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
   z-index: 50;
 }
 

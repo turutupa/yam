@@ -1,0 +1,594 @@
+/* ─── View Transition Wrapper ─────────────────────────────────────────────── */
+.view-transition-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: inherit;
+}
+
+/* Beat view: center content */
+.main-content[data-view="beat"] .view-transition-wrapper {
+  justify-content: center;
+}
+
+/* Scrollable views */
+.main-content[data-view="drill"] .view-transition-wrapper,
+.main-content[data-view="settings"] .view-transition-wrapper,
+.main-content[data-view="track"] .view-transition-wrapper {
+  justify-content: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scrollable views — hide scrollbar by default */
+.view-transition-wrapper::-webkit-scrollbar {
+  width: 0;
+}
+
+/* Settings page — show themed scrollbar */
+.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  filter: brightness(1.2);
+}
+
+/* ─── Per-theme scrollbar overrides (settings only) ──────────────────────── */
+
+/* Mono — minimal, sharp, muted */
+.main-content[data-view="settings"] [data-theme-transition="mono"]::-webkit-scrollbar { width: 6px; }
+.main-content[data-view="settings"] [data-theme-transition="mono"]::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 1px;
+}
+.main-content[data-view="settings"] [data-theme-transition="mono"]::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Obsidian — solid amber */
+.main-content[data-view="settings"] [data-theme-transition="obsidian"]::-webkit-scrollbar { width: 7px; }
+.main-content[data-view="settings"] [data-theme-transition="obsidian"]::-webkit-scrollbar-thumb {
+  background: #b87a08;
+  border-radius: 4px;
+}
+.main-content[data-view="settings"] [data-theme-transition="obsidian"]::-webkit-scrollbar-thumb:hover {
+  background: #d4940a;
+}
+
+/* Velvet — solid purple */
+.main-content[data-view="settings"] [data-theme-transition="velvet"]::-webkit-scrollbar { width: 8px; }
+.main-content[data-view="settings"] [data-theme-transition="velvet"]::-webkit-scrollbar-thumb {
+  background: #7c3aed;
+  border-radius: 4px;
+}
+.main-content[data-view="settings"] [data-theme-transition="velvet"]::-webkit-scrollbar-thumb:hover {
+  background: #9461f7;
+}
+
+/* Neon — solid cyan with glow */
+.main-content[data-view="settings"] [data-theme-transition="neon"]::-webkit-scrollbar { width: 6px; }
+.main-content[data-view="settings"] [data-theme-transition="neon"]::-webkit-scrollbar-thumb {
+  background: #06b6d4;
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
+}
+.main-content[data-view="settings"] [data-theme-transition="neon"]::-webkit-scrollbar-thumb:hover {
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+}
+
+/* Aurora — wide glassy (keep translucent) */
+.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar { width: 18px; }
+.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+}
+.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Ivory — solid warm brown */
+.main-content[data-view="settings"] [data-theme-transition="ivory"]::-webkit-scrollbar { width: 7px; }
+.main-content[data-view="settings"] [data-theme-transition="ivory"]::-webkit-scrollbar-thumb {
+  background: #a0784a;
+  border-radius: 4px;
+}
+.main-content[data-view="settings"] [data-theme-transition="ivory"]::-webkit-scrollbar-thumb:hover {
+  background: #b8925e;
+}
+
+/* Arctic — solid ice blue */
+.main-content[data-view="settings"] [data-theme-transition="arctic"]::-webkit-scrollbar { width: 8px; }
+.main-content[data-view="settings"] [data-theme-transition="arctic"]::-webkit-scrollbar-thumb {
+  background: #0284c7;
+  border-radius: 4px;
+}
+.main-content[data-view="settings"] [data-theme-transition="arctic"]::-webkit-scrollbar-thumb:hover {
+  background: #0ea5e9;
+}
+
+/* Sand — solid earth tone */
+.main-content[data-view="settings"] [data-theme-transition="sand"]::-webkit-scrollbar { width: 7px; }
+.main-content[data-view="settings"] [data-theme-transition="sand"]::-webkit-scrollbar-thumb {
+  background: #92400e;
+  border-radius: 4px;
+}
+.main-content[data-view="settings"] [data-theme-transition="sand"]::-webkit-scrollbar-thumb:hover {
+  background: #b45309;
+}
+
+/* Lavender — solid purple */
+.main-content[data-view="settings"] [data-theme-transition="lavender"]::-webkit-scrollbar { width: 9px; }
+.main-content[data-view="settings"] [data-theme-transition="lavender"]::-webkit-scrollbar-thumb {
+  background: #7c3aed;
+  border-radius: 5px;
+}
+.main-content[data-view="settings"] [data-theme-transition="lavender"]::-webkit-scrollbar-thumb:hover {
+  background: #8b5cf6;
+}
+
+/* Prism — wide, glassy rainbow (keep translucent) */
+.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar { width: 18px; }
+.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+}
+.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(236, 72, 153, 0.4), rgba(167, 139, 250, 0.4), rgba(59, 130, 246, 0.4));
+  border-radius: 6px;
+  border: 1px solid rgba(236, 72, 153, 0.2);
+}
+.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(236, 72, 153, 0.6), rgba(167, 139, 250, 0.6), rgba(59, 130, 246, 0.6));
+}
+
+/* ─── Staggered view enter animations ─────────────────────────────────────── */
+
+/* Mono — no animation */
+[data-theme-transition="mono"] .view-entering > *,
+[data-theme-transition="mono"] .view-entering .drill-grid-cell,
+[data-theme-transition="mono"] .view-entering .main-dot-group {
+  animation: none !important;
+}
+
+/* Settings page — no animations, render immediately */
+.main-content[data-view="settings"] .view-transition-wrapper.view-entering > * {
+  animation: none !important;
+}
+
+/* Drill page — only grid cells animate, everything else instant */
+.main-content[data-view="drill"] .view-transition-wrapper.view-entering > * {
+  animation: none !important;
+}
+
+/* Skip grid cell view-enter animation when drill is active */
+.drill-view[data-active] .drill-grid-cell {
+  animation: none !important;
+}
+
+/* All other themes: staggered animation on direct children */
+.view-transition-wrapper.view-entering > * {
+  animation: var(--view-enter-animation, fade-in) var(--view-enter-duration, 200ms) var(--view-enter-easing, ease-out) both;
+}
+
+.view-transition-wrapper.view-entering > *:nth-child(1) { animation-delay: 0ms; }
+.view-transition-wrapper.view-entering > *:nth-child(2) { animation-delay: var(--view-stagger, 50ms); }
+.view-transition-wrapper.view-entering > *:nth-child(3) { animation-delay: calc(var(--view-stagger, 50ms) * 2); }
+.view-transition-wrapper.view-entering > *:nth-child(4) { animation-delay: calc(var(--view-stagger, 50ms) * 3); }
+.view-transition-wrapper.view-entering > *:nth-child(5) { animation-delay: calc(var(--view-stagger, 50ms) * 4); }
+.view-transition-wrapper.view-entering > *:nth-child(6) { animation-delay: calc(var(--view-stagger, 50ms) * 5); }
+.view-transition-wrapper.view-entering > *:nth-child(7) { animation-delay: calc(var(--view-stagger, 50ms) * 6); }
+.view-transition-wrapper.view-entering > *:nth-child(8) { animation-delay: calc(var(--view-stagger, 50ms) * 7); }
+
+/* ─── Per-element stagger: any element with .view-stagger-item ───────────── */
+.view-transition-wrapper.view-entering .view-stagger-item {
+  animation: var(--view-enter-animation, fade-in) var(--view-enter-duration, 200ms) var(--view-enter-easing, ease-out) both;
+  /* animationDelay set inline via style prop */
+}
+
+/* ─── Per-element stagger: drill grid cells ──────────────────────────────── */
+.view-transition-wrapper.view-entering .drill-grid-cell {
+  animation: grid-cell-enter var(--view-enter-duration, 200ms) var(--view-enter-easing, ease-out) backwards;
+  /* animationDelay set inline via style prop (row*20 + col*15 ms) */
+}
+
+/* ─── Per-element stagger: beat dots ─────────────────────────────────────── */
+.view-transition-wrapper.view-entering .main-dot-group {
+  animation: var(--view-enter-animation, fade-in) var(--view-enter-duration, 200ms) var(--view-enter-easing, ease-out) both;
+  /* animationDelay set inline via style prop (beatIdx*40ms) */
+}
+
+/* ─── Theme-specific animation settings ──────────────────────────────────── */
+
+[data-theme-transition="mono"] {
+  --view-stagger: 0ms;
+}
+
+[data-theme-transition="obsidian"] {
+  --view-enter-animation: fade-scale;
+  --view-enter-duration: 380ms;
+  --view-enter-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --view-stagger: 55ms;
+}
+
+[data-theme-transition="velvet"] {
+  --view-enter-animation: fade-scale;
+  --view-enter-duration: 420ms;
+  --view-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --view-stagger: 70ms;
+}
+
+[data-theme-transition="neon"] {
+  --view-enter-animation: fade-slide-right;
+  --view-enter-duration: 300ms;
+  --view-enter-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  --view-stagger: 45ms;
+}
+
+[data-theme-transition="aurora"] {
+  --view-enter-animation: fade-reveal;
+  --view-enter-duration: 450ms;
+  --view-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --view-stagger: 80ms;
+}
+
+[data-theme-transition="ivory"] {
+  --view-enter-animation: fade-in;
+  --view-enter-duration: 350ms;
+  --view-enter-easing: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --view-stagger: 60ms;
+}
+
+[data-theme-transition="arctic"] {
+  --view-enter-animation: fade-in;
+  --view-enter-duration: 320ms;
+  --view-enter-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --view-stagger: 50ms;
+}
+
+[data-theme-transition="sand"] {
+  --view-enter-animation: fade-in;
+  --view-enter-duration: 400ms;
+  --view-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --view-stagger: 65ms;
+}
+
+[data-theme-transition="lavender"] {
+  --view-enter-animation: fade-blur;
+  --view-enter-duration: 420ms;
+  --view-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --view-stagger: 75ms;
+}
+
+[data-theme-transition="prism"] {
+  --view-enter-animation: fade-reveal;
+  --view-enter-duration: 420ms;
+  --view-enter-easing: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --view-stagger: 85ms;
+}
+
+/* ─── Zen Transition ─────────────────────────────────────────────────────── */
+.zen-transition-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+/* Zen enter — per theme */
+.zen-transition-wrapper.zen-entering {
+  animation: var(--zen-enter-animation, fade-in) var(--zen-enter-duration, 300ms) var(--zen-enter-easing, ease-out) both;
+}
+
+/* Zen exit — per theme */
+.zen-transition-wrapper.zen-exiting {
+  animation: var(--zen-exit-animation, fade-out) var(--zen-exit-duration, 300ms) var(--zen-exit-easing, ease-in) both;
+}
+
+/* Mono — no zen animation */
+[data-theme-transition="mono"].zen-entering,
+[data-theme-transition="mono"].zen-exiting {
+  animation: none;
+}
+
+/* Obsidian */
+[data-theme-transition="obsidian"] {
+  --zen-enter-animation: fade-scale;
+  --zen-enter-duration: 380ms;
+  --zen-enter-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --zen-exit-animation: fade-scale-out;
+  --zen-exit-duration: 380ms;
+  --zen-exit-easing: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Velvet */
+[data-theme-transition="velvet"] {
+  --zen-enter-animation: fade-scale;
+  --zen-enter-duration: 400ms;
+  --zen-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --zen-exit-animation: fade-scale-out;
+  --zen-exit-duration: 400ms;
+  --zen-exit-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Neon */
+[data-theme-transition="neon"] {
+  --zen-enter-animation: fade-slide-right;
+  --zen-enter-duration: 300ms;
+  --zen-enter-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  --zen-exit-animation: fade-slide-left-out;
+  --zen-exit-duration: 300ms;
+  --zen-exit-easing: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Aurora */
+[data-theme-transition="aurora"] {
+  --zen-enter-animation: fade-reveal;
+  --zen-enter-duration: 450ms;
+  --zen-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --zen-exit-animation: fade-reveal-out;
+  --zen-exit-duration: 450ms;
+  --zen-exit-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ivory */
+[data-theme-transition="ivory"] {
+  --zen-enter-animation: fade-in;
+  --zen-enter-duration: 350ms;
+  --zen-enter-easing: ease-out;
+  --zen-exit-animation: fade-out;
+  --zen-exit-duration: 350ms;
+  --zen-exit-easing: ease-in;
+}
+
+/* Arctic */
+[data-theme-transition="arctic"] {
+  --zen-enter-animation: fade-in;
+  --zen-enter-duration: 320ms;
+  --zen-enter-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --zen-exit-animation: fade-out;
+  --zen-exit-duration: 320ms;
+  --zen-exit-easing: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sand */
+[data-theme-transition="sand"] {
+  --zen-enter-animation: fade-in;
+  --zen-enter-duration: 380ms;
+  --zen-enter-easing: ease-out;
+  --zen-exit-animation: fade-out;
+  --zen-exit-duration: 380ms;
+  --zen-exit-easing: ease-in;
+}
+
+/* Lavender */
+[data-theme-transition="lavender"] {
+  --zen-enter-animation: fade-blur;
+  --zen-enter-duration: 400ms;
+  --zen-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --zen-exit-animation: fade-blur-out;
+  --zen-exit-duration: 400ms;
+  --zen-exit-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Prism */
+[data-theme-transition="prism"] {
+  --zen-enter-animation: fade-reveal;
+  --zen-enter-duration: 420ms;
+  --zen-enter-easing: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --zen-exit-animation: fade-reveal-out;
+  --zen-exit-duration: 420ms;
+  --zen-exit-easing: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ─── Keyframes (Enter) ──────────────────────────────────────────────────── */
+
+@keyframes grid-cell-enter {
+  from { opacity: 0; transform: scale(0.5); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-slide-right {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-scale {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-blur {
+  from { opacity: 0; filter: blur(6px); }
+  to { opacity: 1; filter: blur(0px); }
+}
+
+@keyframes fade-reveal {
+  from { opacity: 0; clip-path: circle(0% at 50% 50%); }
+  to { opacity: 1; clip-path: circle(100% at 50% 50%); }
+}
+
+/* ─── Keyframes (Exit) ───────────────────────────────────────────────────── */
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fade-slide-up-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-12px); }
+}
+
+@keyframes fade-slide-down-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+@keyframes fade-slide-left-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-16px); }
+}
+
+@keyframes fade-scale-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.97); }
+}
+
+@keyframes fade-blur-out {
+  from { opacity: 1; filter: blur(0px); }
+  to { opacity: 0; filter: blur(6px); }
+}
+
+@keyframes fade-reveal-out {
+  from { opacity: 1; clip-path: circle(100% at 50% 50%); }
+  to { opacity: 0; clip-path: circle(0% at 50% 50%); }
+}
+
+/* ─── Animation Style Overrides ────────────────────────────────────────── */
+/* User-chosen style overrides the theme default */
+
+[data-animation-style="fade"] {
+  --view-enter-animation: fade-in;
+  --zen-enter-animation: fade-in;
+  --zen-exit-animation: fade-out;
+}
+
+[data-animation-style="scale"] {
+  --view-enter-animation: fade-scale;
+  --zen-enter-animation: fade-scale;
+  --zen-exit-animation: fade-scale-out;
+}
+
+[data-animation-style="blur"] {
+  --view-enter-animation: fade-blur;
+  --zen-enter-animation: fade-blur;
+  --zen-exit-animation: fade-blur-out;
+}
+
+[data-animation-style="slide"] {
+  --view-enter-animation: fade-slide-right;
+  --zen-enter-animation: fade-slide-right;
+  --zen-exit-animation: fade-slide-left-out;
+}
+
+[data-animation-style="reveal"] {
+  --view-enter-animation: fade-reveal;
+  --zen-enter-animation: fade-reveal;
+  --zen-exit-animation: fade-reveal-out;
+}
+
+/* ─── Animation Level Overrides ─────────────────────────────────────────── */
+/* These MUST come after theme-specific and style settings to override duration/stagger */
+
+/* Smooth: keeps chosen animation type, longer duration */
+[data-animation-level="smooth"] {
+  --view-enter-duration: 500ms;
+  --view-stagger: 70ms;
+  --zen-enter-duration: 650ms;
+  --zen-exit-duration: 650ms;
+}
+
+/* Expressive: keeps chosen animation type, dramatic duration */
+[data-animation-level="expressive"] {
+  --view-enter-duration: 750ms;
+  --view-stagger: 120ms;
+  --zen-enter-duration: 900ms;
+  --zen-exit-duration: 900ms;
+}
+
+/* Expressive: intensified keyframes per animation style */
+[data-animation-level="expressive"][data-animation-style="scale"] {
+  --view-enter-animation: fade-scale-expressive;
+  --zen-enter-animation: fade-scale-expressive;
+  --zen-exit-animation: fade-scale-expressive-out;
+}
+
+[data-animation-level="expressive"][data-animation-style="blur"] {
+  --view-enter-animation: fade-blur-expressive;
+  --zen-enter-animation: fade-blur-expressive;
+  --zen-exit-animation: fade-blur-expressive-out;
+}
+
+/* Subtle ALWAYS overrides to fade-in (too fast for complex effects) */
+[data-animation-level="subtle"][data-animation-style] {
+  --view-enter-animation: fade-in;
+  --view-enter-duration: 350ms;
+  --view-stagger: 35ms;
+  --zen-enter-animation: fade-in;
+  --zen-enter-duration: 500ms;
+  --zen-exit-animation: fade-out;
+  --zen-exit-duration: 500ms;
+}
+
+/* ─── Level-specific Keyframes ──────────────────────────────────────────── */
+
+@keyframes fade-scale-subtle {
+  from { opacity: 0; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-scale-expressive {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-scale-expressive-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.92); }
+}
+
+@keyframes fade-blur-subtle {
+  from { opacity: 0; filter: blur(2px); }
+  to { opacity: 1; filter: blur(0px); }
+}
+
+@keyframes fade-blur-expressive {
+  from { opacity: 0; filter: blur(12px); }
+  to { opacity: 1; filter: blur(0px); }
+}
+
+@keyframes fade-blur-expressive-out {
+  from { opacity: 1; filter: blur(0px); }
+  to { opacity: 0; filter: blur(12px); }
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .view-transition-wrapper.view-entering > *,
+  .zen-transition-wrapper.zen-entering,
+  .zen-transition-wrapper.zen-exiting {
+    animation: none;
+  }
+}

@@ -608,3 +608,13 @@
   background: var(--accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
+
+/* Disable all drill animations when view animations are off */
+.drill-view[data-animations="off"] .drill-grid-row,
+.drill-view[data-animations="off"] .drill-grid-cell,
+.drill-view[data-animations="off"] .drill-dot,
+.drill-view[data-animations="off"] .drill-grid-row.exiting,
+.drill-view[data-animations="off"] .drill-grid-cell.exiting,
+.drill-view[data-animations="off"] .drill-dot.exiting {
+  animation: none;
+}

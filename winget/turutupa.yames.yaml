@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.12.0.schema.json
 PackageIdentifier: turutupa.yames
 PackageVersion: 0.5.1
 PackageLocale: en-US
@@ -22,8 +22,8 @@ Tags:
   - tempo
 Installers:
   - Architecture: x64
-    InstallerType: nsis
+    InstallerType: nullsoft
     InstallerUrl: https://github.com/turutupa/yames/releases/download/v0.5.1/Yames_0.5.1_x64-setup.exe
     InstallerSha256: 79D847E32A036B10AC065177DC587CACEEEFAC2DD4C29D84CA6B344928156D3B
 ManifestType: singleton
-ManifestVersion: 1.6.0
+ManifestVersion: 1.12.0

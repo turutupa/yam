@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { BeatEvent } from "../types";
 
 interface Particle {
   x: number;
@@ -8,6 +9,7 @@ interface Particle {
   size: number;
   opacity: number;
   hue: number;
+  ripple: number;
 }
 
 const PARTICLE_THEMES: Record<string, { hues: number[]; count: number; glow: string; glowMid: string; blend: string; glowRadius: number; particleLightness: number; particleBaseOpacity: number }> = {
@@ -15,12 +17,24 @@ const PARTICLE_THEMES: Record<string, { hues: number[]; count: number; glow: str
   prism:  { hues: [330, 280, 200, 30], count: 30, glow: "rgba(255, 61, 138, 0.5)", glowMid: "rgba(255, 61, 138, 0.15)", blend: "multiply", glowRadius: 130, particleLightness: 45, particleBaseOpacity: 0.6 },
 };
 
-export function ThemeEffects({ themeId }: { themeId: string }) {
+export function ThemeEffects({ themeId, currentBeat, isPlaying }: { themeId: string; currentBeat: BeatEvent | null; isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -200, y: -200 });
   const particlesRef = useRef<Particle[]>([]);
   const rafRef = useRef(0);
+  const prevBeatRef = useRef(-1);
   const config = PARTICLE_THEMES[themeId];
+
+  // Beat pulse — trigger ripple on downbeats
+  useEffect(() => {
+    if (!config || !isPlaying || !currentBeat) return;
+    if (!currentBeat.isDownbeat) return;
+    if (currentBeat.beat === prevBeatRef.current) return;
+    prevBeatRef.current = currentBeat.beat;
+    for (const p of particlesRef.current) {
+      p.ripple = 0.3 + Math.random() * 0.25;
+    }
+  }, [currentBeat, isPlaying, config]);
 
   // Track mouse
   useEffect(() => {
@@ -47,23 +61,46 @@ export function ThemeEffects({ themeId }: { themeId: string }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Init particles
-    particlesRef.current = Array.from({ length: config.count }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+    const makeParticle = (xRange: [number, number], yRange: [number, number]): Particle => ({
+      x: xRange[0] + Math.random() * (xRange[1] - xRange[0]),
+      y: yRange[0] + Math.random() * (yRange[1] - yRange[0]),
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.3,
       size: Math.random() * 2.5 + 1.5,
       opacity: Math.random() * config.particleBaseOpacity + config.particleBaseOpacity * 0.3,
       hue: config.hues[Math.floor(Math.random() * config.hues.length)],
-    }));
+      ripple: 0,
+    });
+
+    const TARGET_DENSITY = config.count / (window.innerWidth * window.innerHeight);
+
+    const resize = () => {
+      const prevW = canvas.width;
+      const prevH = canvas.height;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // Spawn particles in newly exposed area
+      if (canvas.width > prevW || canvas.height > prevH) {
+        const newArea = canvas.width * canvas.height - prevW * prevH;
+        const count = Math.max(0, Math.round(newArea * TARGET_DENSITY));
+        for (let i = 0; i < count; i++) {
+          if (canvas.width > prevW && Math.random() < (canvas.width - prevW) / (canvas.width - prevW + Math.max(0, canvas.height - prevH))) {
+            particlesRef.current.push(makeParticle([prevW, canvas.width], [0, canvas.height]));
+          } else {
+            particlesRef.current.push(makeParticle([0, canvas.width], [prevH, canvas.height]));
+          }
+        }
+      }
+    };
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    window.addEventListener("resize", resize);
+
+    // Init particles
+    particlesRef.current = Array.from({ length: config.count }, () =>
+      makeParticle([0, canvas.width], [0, canvas.height])
+    );
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -102,19 +139,33 @@ export function ThemeEffects({ themeId }: { themeId: string }) {
         const dy = p.y - my;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const boost = dist < 150 ? (1 - dist / 150) * 0.6 : 0;
-        const alpha = Math.min(1, p.opacity + boost);
+        const beatPulse = p.ripple > 0.02 ? p.ripple : 0;
+        const alpha = Math.min(1, p.opacity + boost + beatPulse * 0.4);
+        const beatLight = config.particleLightness + beatPulse * 30;
 
+        // Core particle
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size + boost * 2, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 85%, ${config.particleLightness}%, ${alpha})`;
+        ctx.fillStyle = `hsla(${p.hue}, 85%, ${beatLight}%, ${alpha})`;
         ctx.fill();
 
         // Subtle glow ring
         if (alpha > 0.3) {
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size * 3 + boost * 4, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${p.hue}, 85%, ${config.particleLightness}%, ${alpha * 0.2})`;
+          ctx.fillStyle = `hsla(${p.hue}, 85%, ${beatLight}%, ${alpha * 0.2})`;
           ctx.fill();
+        }
+
+        // Beat ripple ring
+        if (p.ripple > 0.02) {
+          const rippleRadius = p.size + (14 * (1 - p.ripple));
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, rippleRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `hsla(${p.hue}, 85%, ${config.particleLightness}%, ${p.ripple * 0.35})`;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+          p.ripple *= 0.91;
         }
       }
 

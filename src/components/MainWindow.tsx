@@ -33,12 +33,15 @@ import {
   togglePlayback,
 } from "../ipc";
 import "../styles/main-window.css";
+import "../styles/transitions.css";
 import { THEMES } from "../themes";
 import type { Subdivision, WidgetMode } from "../types";
 import { DrillView } from "./DrillView";
 import { FullscreenView } from "./FullscreenView";
 import { ThemeEffects } from "./ThemeEffects";
 import { TrackView } from "./TrackView";
+import { ViewTransition } from "./ViewTransition";
+import { ZenTransition } from "./ZenTransition";
 
 // Force the webview to reclaim keyboard focus after macOS fullscreen exit.
 // The hidden-input trick is the only reliable way — body.focus()/click() don't work.
@@ -484,6 +487,8 @@ export function MainWindow() {
   const [buttonFlash, setButtonFlash] = useState(true);
   const [activeBorder, setActiveBorder] = useState(true);
   const [drillAutoCollapse, setDrillAutoCollapse] = useState(true);
+  const [viewTransitions, setViewTransitions] = useState<"off" | "subtle" | "smooth" | "expressive">("off");
+  const [animationStyle, setAnimationStyle] = useState<"fade" | "scale" | "blur" | "slide" | "reveal">("scale");
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
   const [updateStatus, setUpdateStatus] = useState<
     "idle" | "checking" | "available" | "up-to-date"
@@ -516,6 +521,19 @@ export function MainWindow() {
       if (ab !== undefined) setActiveBorder(ab);
       const dac = await storeLoad<boolean>("drillAutoCollapse");
       if (dac !== undefined) setDrillAutoCollapse(dac);
+      const vt = await storeLoad<string | boolean>("viewTransitions");
+      if (vt !== undefined) {
+        // Backwards compatibility: convert old boolean format
+        if (typeof vt === "boolean") {
+          setViewTransitions(vt ? "smooth" : "off");
+        } else if (vt === "off" || vt === "subtle" || vt === "smooth" || vt === "expressive") {
+          setViewTransitions(vt);
+        }
+      }
+      const as = await storeLoad<string>("animationStyle");
+      if (as && ["fade", "scale", "blur", "slide", "reveal"].includes(as)) {
+        setAnimationStyle(as as any);
+      }
       const acu = await storeLoad<boolean>("autoCheckUpdates");
       if (acu !== undefined) setAutoCheckUpdates(acu);
 
@@ -938,33 +956,33 @@ export function MainWindow() {
     prevFullscreen.current = isFullscreen;
   }, [isFullscreen, state.alwaysOnTop]);
 
-  // Fullscreen zen mode
-  if (isFullscreen) {
-    return (
+  // Fullscreen zen mode — rendered as overlay via ZenTransition below
+  const zenExitHandler = useCallback(async () => {
+    const win = getCurrentWindow();
+    if (await win.isFullscreen()) {
+      await win.setFullscreen(false);
+      await new Promise((r) => setTimeout(r, FULLSCREEN_EXIT_DELAY));
+    }
+    setIsFullscreen(false);
+    // alwaysOnTop + focus handled by the effect above
+  }, []);
+
+  return (
+    <>
+    <ZenTransition isActive={isFullscreen} themeId={state.theme} disabled={viewTransitions === "off"} level={viewTransitions} animStyle={animationStyle}>
       <FullscreenView
         state={state}
         currentBeat={currentBeat}
         activeTab={view === "drill" ? "drill" : "beat"}
-        onExit={async () => {
-          const win = getCurrentWindow();
-          if (await win.isFullscreen()) {
-            await win.setFullscreen(false);
-            await new Promise((r) => setTimeout(r, FULLSCREEN_EXIT_DELAY));
-          }
-          setIsFullscreen(false);
-          // alwaysOnTop + focus handled by the effect above
-        }}
+        onExit={zenExitHandler}
       />
-    );
-  }
-
-  return (
+    </ZenTransition>
     <div
-      className={`main-window ${isOsFullscreen ? "os-fullscreen" : ""}`}
+      className={`main-window ${isOsFullscreen ? "os-fullscreen" : ""} ${IS_MAC ? "os-mac" : "os-other"}`}
       data-playing={state.isPlaying}
       data-border={activeBorder}
     >
-      <ThemeEffects themeId={state.theme} />
+      {!isFullscreen && <ThemeEffects themeId={state.theme} currentBeat={currentBeat} isPlaying={state.isPlaying} />}
       <header className="main-header">
         {view !== "settings" && (
           <nav className="tab-bar">
@@ -1230,10 +1248,11 @@ export function MainWindow() {
           setIsFullscreen(true);
         }}
       >
+        <ViewTransition viewKey={view} themeId={state.theme} disabled={viewTransitions === "off"} level={viewTransitions} animStyle={animationStyle}>
         {view === "beat" ? (
           <>
             <section className="bpm-section">
-              <div className="bpm-display">
+              <div className="bpm-display view-stagger-item" style={{ animationDelay: '0ms' }}>
                 <button
                   className="bpm-btn"
                   onClick={() => handleBpmChange(state.bpm - 5)}
@@ -1272,7 +1291,7 @@ export function MainWindow() {
                   +
                 </button>
               </div>
-              <div className="bpm-slider-wrap">
+              <div className="bpm-slider-wrap view-stagger-item" style={{ animationDelay: '40ms' }}>
                 <input
                   type="range"
                   className="bpm-slider"
@@ -1301,7 +1320,7 @@ export function MainWindow() {
                     state.timeSignature === 1 ||
                     (beatIdx === 0 && state.timeSignature >= 2);
                   return (
-                    <div key={beatIdx} className="main-dot-group">
+                    <div key={beatIdx} className="main-dot-group" style={{ animationDelay: `${beatIdx * 40}ms` }}>
                       <div
                         className={`main-dot ${isBeatActive ? "active" : ""} ${isBeatDownbeat ? "downbeat" : ""} ${isAccentBeat && isBeatActive ? "accent" : ""}`}
                       />
@@ -1330,7 +1349,7 @@ export function MainWindow() {
             </section>
 
             <section className="control-section">
-              <div className="sub-dropdown-wrapper" ref={dropdownRef}>
+              <div className="sub-dropdown-wrapper view-stagger-item" ref={dropdownRef} style={{ animationDelay: '100ms' }}>
                 <button
                   className="main-sub-btn"
                   onClick={() => setSubOpen(!subOpen)}
@@ -1383,7 +1402,7 @@ export function MainWindow() {
                   </div>
                 )}
               </div>
-              <div className="sub-dropdown-wrapper" ref={soundDropdownRef}>
+              <div className="sub-dropdown-wrapper view-stagger-item" ref={soundDropdownRef} style={{ animationDelay: '130ms' }}>
                 <button
                   className="main-sub-btn"
                   onClick={() => setSoundOpen(!soundOpen)}
@@ -1439,10 +1458,11 @@ export function MainWindow() {
             </section>
 
             <div className="time-sig-row">
-              {TIME_SIGNATURES.map((ts) => (
+              {TIME_SIGNATURES.map((ts, i) => (
                 <button
                   key={ts.beats}
-                  className={`time-sig-btn ${state.timeSignature === ts.beats ? "active" : ""}`}
+                  className={`time-sig-btn view-stagger-item ${state.timeSignature === ts.beats ? "active" : ""}`}
+                  style={{ animationDelay: `${150 + i * 30}ms` }}
                   onClick={() => setTimeSignature(ts.beats)}
                 >
                   {ts.label}
@@ -1455,6 +1475,7 @@ export function MainWindow() {
             state={state}
             currentBeat={currentBeat}
             autoCollapse={drillAutoCollapse}
+            animations={viewTransitions !== "off"}
           />
         ) : view === "track" ? (
           <TrackView state={state} currentBeat={currentBeat} />
@@ -1518,6 +1539,10 @@ export function MainWindow() {
                   {state.alwaysOnTop ? "On" : "Off"}
                 </button>
               </div>
+            </section>
+
+            <section className="settings-section">
+              <h2>Appearance</h2>
               <div className="setting-row">
                 <div className="setting-label">
                   <label>Button flash</label>
@@ -1554,7 +1579,57 @@ export function MainWindow() {
               </div>
               <div className="setting-row">
                 <div className="setting-label">
-                  <label>Drill auto-collapse</label>
+                  <label>View animations</label>
+                  <span className="setting-hint">
+                    Animate elements when switching views
+                  </span>
+                </div>
+                <div className="toggle-group">
+                  {(["off", "subtle", "smooth", "expressive"] as const).map((level) => (
+                    <button
+                      key={level}
+                      className={`toggle-btn ${viewTransitions === level ? "active" : ""}`}
+                      onClick={() => {
+                        setViewTransitions(level);
+                        storeSave("viewTransitions", level);
+                      }}
+                    >
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {viewTransitions !== "off" && (
+                <div className="setting-row">
+                  <div className="setting-label">
+                    <label>Animation style</label>
+                    <span className="setting-hint">
+                      Effect used when switching views
+                    </span>
+                  </div>
+                  <div className="toggle-group">
+                    {(["fade", "scale", "blur", "slide", "reveal"] as const).map((style) => (
+                      <button
+                        key={style}
+                        className={`toggle-btn ${animationStyle === style ? "active" : ""}`}
+                        onClick={() => {
+                          setAnimationStyle(style);
+                          storeSave("animationStyle", style);
+                        }}
+                      >
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="settings-section">
+              <h2>Drill</h2>
+              <div className="setting-row">
+                <div className="setting-label">
+                  <label>Auto-collapse</label>
                   <span className="setting-hint">
                     Collapse drill config while playing
                   </span>
@@ -1939,6 +2014,7 @@ export function MainWindow() {
             </section>
           </>
         )}
+        </ViewTransition>
       </div>
 
       {/* Reset keybindings confirmation */}
@@ -2070,5 +2146,6 @@ export function MainWindow() {
         </div>
       )}
     </div>
+    </>
   );
 }

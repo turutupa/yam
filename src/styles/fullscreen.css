@@ -38,21 +38,25 @@
   gap: 48px;
 }
 
-/* Subtle glow ring when playing */
-.fullscreen-view[data-playing="true"]::before {
+/* Subtle glow ring when playing — only for gravity, sweep, warp, rain */
+.fullscreen-view[data-playing="true"][data-zen-style="gravity"]::before,
+.fullscreen-view[data-playing="true"][data-zen-style="sweep"]::before,
+.fullscreen-view[data-playing="true"][data-zen-style="warp"]::before,
+.fullscreen-view[data-playing="true"][data-zen-style="rain"]::before {
   content: "";
   position: absolute;
   inset: -50%;
   border-radius: 50%;
   background: radial-gradient(circle, var(--accent-glow) 0%, transparent 50%);
-  opacity: 0.15;
+  opacity: 0.25;
   animation: fs-breathe 2s ease-in-out infinite;
   pointer-events: none;
+  z-index: 1;
 }
 
 @keyframes fs-breathe {
-  0%, 100% { transform: scale(0.8); opacity: 0.1; }
-  50% { transform: scale(1); opacity: 0.2; }
+  0%, 100% { transform: scale(0.8); opacity: 0.15; }
+  50% { transform: scale(1); opacity: 0.35; }
 }
 
 /* Center BPM */
@@ -451,7 +455,7 @@
   pointer-events: none;
   background: radial-gradient(
     ellipse at center,
-    color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 25%, transparent) 0%,
     transparent 60%
   );
   animation: zenPulseBreathe 4s ease-in-out infinite;
@@ -459,7 +463,7 @@
 
 @keyframes zenPulseBreathe {
   0%, 100% {
-    opacity: 0.4;
+    opacity: 0.6;
     transform: scale(0.85);
   }
   50% {

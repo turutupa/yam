@@ -18,6 +18,11 @@
   border-radius: 0;
 }
 
+/* Windows/Linux: OS frame is square, no content rounding needed */
+.main-window.os-other {
+  border-radius: 0;
+}
+
 .main-header {
   position: absolute;
   top: 0;
@@ -177,8 +182,7 @@
 
 .main-content {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   padding: 56px 24px 64px;
   display: flex;
   flex-direction: column;
@@ -197,25 +201,19 @@
   margin-right: auto;
 }
 
+.main-content[data-view="settings"] > .view-transition-wrapper {
+  max-width: none;
+}
+
+.main-content[data-view="settings"] > .view-transition-wrapper > * {
+  max-width: 680px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .main-content[data-view="track"] {
   justify-content: flex-start;
-}
-
-.main-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.main-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.main-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
 }
 
 /* =================== BPM Section =================== */
@@ -268,7 +266,7 @@
 .bpm-btn {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   background: var(--accent-subtle, rgba(233, 69, 96, 0.15));
   color: var(--accent);
   font-size: 1.5rem;
@@ -423,7 +421,7 @@
   box-shadow:
     0 6px 28px var(--accent-glow),
     0 0 12px var(--accent-glow);
-  transform: translateY(-1px);
+  translate: 0 -1px;
   color: var(--accent-text, white);
 }
 
@@ -477,8 +475,8 @@
   padding: 0 14px;
   min-height: 48px;
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
   color: var(--text-primary);
   font-size: 0.9rem;
   white-space: nowrap;
@@ -486,8 +484,9 @@
 }
 
 .main-sub-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--text-primary) 15%, transparent);
+  color: var(--text-primary);
 }
 
 .main-sub-icon {
@@ -534,8 +533,8 @@
 }
 
 .sub-dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .sub-dropdown-item.active {
@@ -920,8 +919,8 @@
   flex: 1;
   padding: 8px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
   color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 500;
@@ -935,7 +934,7 @@
 }
 
 .time-sig-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   color: var(--text-primary);
 }
 
@@ -974,6 +973,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
+  gap: 16px;
 }
 
 .setting-label {
@@ -1493,7 +1493,9 @@
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .update-banner:hover {
@@ -1525,7 +1527,9 @@
   padding: 3px 10px;
   border-radius: 4px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .update-check-btn:hover {
@@ -1550,8 +1554,13 @@
 }
 
 @keyframes update-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .update-status {

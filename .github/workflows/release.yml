@@ -7,6 +7,7 @@ on:
 
 jobs:
   build:
+    if: startsWith(github.event.head_commit.message, 'release') || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -86,13 +87,6 @@ jobs:
           prerelease: false
           tauriScript: npx tauri
           args: ${{ matrix.args }}
-
-      - name: Build Tauri app (verify only)
-        if: "!steps.version.outputs.tag"
-        shell: bash
-        run: npx tauri build ${{ matrix.args }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   update-homebrew:
     needs: build

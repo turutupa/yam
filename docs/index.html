@@ -334,26 +334,6 @@
             <span class="note">Free & open-source</span>
           </div>
 
-          <!-- macOS popover (shown on download click) -->
-          <div class="macos-popover-backdrop" id="macos-popover-backdrop">
-            <div class="macos-popover" id="macos-popover">
-              <button class="popover-close" id="popover-close" aria-label="Close">&times;</button>
-              <p class="popover-title">Recommended: install via Homebrew</p>
-              <p class="popover-subtitle">No extra steps needed — just works.</p>
-              <code class="popover-brew-cmd" onclick="navigator.clipboard.writeText(this.textContent).then(()=>{this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)})">brew install --cask turutupa/tap/yames</code>
-              <div class="popover-divider"></div>
-              <p class="popover-manual-title">Or download the installer:</p>
-              <p class="popover-manual-note">If macOS blocks the installer, right-click it → Open.</p>
-              <a class="popover-download-btn" id="popover-download-btn" href="#">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Download .pkg
-              </a>
-            </div>
-          </div>
         </div>
 
         <!-- Right: Theme showcase -->
@@ -489,8 +469,8 @@
 
       // Asset filename patterns to match from GitHub releases
       const ASSET_PATTERNS = {
-        "macos-silicon": /aarch64\.pkg$/,
-        "macos-intel": /x64\.pkg$/,
+        "macos-silicon": /aarch64\.dmg$/,
+        "macos-intel": /x64\.dmg$/,
         "windows": /x64-setup\.exe$/,
         "linux": /amd64\.deb$/,
       };
@@ -879,30 +859,6 @@
         _origSetAccent(theme);
         updateParticles(theme);
       };
-
-      // macOS download popover
-      (function () {
-        const backdrop = document.getElementById("macos-popover-backdrop");
-        const popover = document.getElementById("macos-popover");
-        const popoverBtn = document.getElementById("popover-download-btn");
-        const closeBtn = document.getElementById("popover-close");
-
-        downloadBtn.addEventListener("click", function (e) {
-          if (detectedOS.startsWith("macos")) {
-            e.preventDefault();
-            popoverBtn.href = assetURLs[detectedOS] || FALLBACK;
-            backdrop.classList.add("visible");
-          }
-        });
-
-        closeBtn.addEventListener("click", function () {
-          backdrop.classList.remove("visible");
-        });
-
-        backdrop.addEventListener("click", function (e) {
-          if (e.target === backdrop) backdrop.classList.remove("visible");
-        });
-      })();
     </script>
   </body>
 </html>

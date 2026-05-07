@@ -1,0 +1,50 @@
+#!/bin/bash
+# Pre-push hook: full build verification before pushing release commits
+# Mirrors CI: TypeScript check → Vite build → Rust/Tauri build → cleanup
+
+# Read stdin for push info
+while read local_ref local_sha remote_ref remote_sha; do
+  # Check if any commit being pushed starts with "release"
+  commits=$(git log --format=%s "$remote_sha..$local_sha" 2>/dev/null || git log --format=%s "$local_sha" -1)
+  if echo "$commits" | grep -q "^release"; then
+    echo "🔍 Release commit detected — running full pre-push build checks..."
+    START_TIME=$(date +%s)
+
+    # TypeScript check
+    echo ""
+    echo "  [1/3] Checking TypeScript..."
+    if ! npx tsc --noEmit; then
+      echo "❌ TypeScript errors found. Fix before pushing a release."
+      exit 1
+    fi
+    echo "  ✓ TypeScript OK"
+
+    # Vite build check
+    echo ""
+    echo "  [2/3] Building frontend (Vite)..."
+    if ! npx vite build > /dev/null 2>&1; then
+      echo "❌ Vite build failed. Fix before pushing a release."
+      exit 1
+    fi
+    echo "  ✓ Vite build OK"
+
+    # Rust/Tauri cargo check (fast — no full binary, just compile check)
+    echo ""
+    echo "  [3/3] Checking Rust (cargo check)..."
+    if ! cargo check --manifest-path src-tauri/Cargo.toml 2>&1 | tail -5; then
+      echo "❌ Rust compilation errors found. Fix before pushing a release."
+      exit 1
+    fi
+    echo "  ✓ Rust OK"
+
+    # Cleanup build artifacts from vite
+    rm -rf dist
+
+    END_TIME=$(date +%s)
+    ELAPSED=$((END_TIME - START_TIME))
+    echo ""
+    echo "✅ All pre-push checks passed (${ELAPSED}s). Pushing..."
+  fi
+done
+
+exit 0

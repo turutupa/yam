@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://turutupa.github.io/yames/sitemap.xml
+Sitemap: https://yames.app/sitemap.xml

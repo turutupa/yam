@@ -18,7 +18,7 @@ use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager,
+    Manager,
 };
 use tauri_plugin_store::StoreExt;
 

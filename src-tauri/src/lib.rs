@@ -1,14 +1,18 @@
 mod commands;
 mod engine;
+mod midi;
 mod state;
 
 use commands::{
     get_state, get_active_tab, get_calibration_offset, open_url, save_window_position, set_active_tab, set_always_on_top, set_bpm, set_calibration_offset,
     set_playing, set_sound_type, set_subdivision, set_theme, set_time_signature, set_volume, set_widget_mode,
     set_widget_always_on_top, show_floating, show_main, toggle_playback, configure_speed_ramp, start_speed_ramp,
-    start_speed_ramp_from, stop_speed_ramp, EngineState,
+    start_speed_ramp_from, stop_speed_ramp,
+    list_midi_devices, connect_midi_device, disconnect_midi_device, set_midi_binding, clear_midi_binding, get_midi_bindings,
+    EngineState,
 };
 use engine::MetronomeEngine;
+use midi::create_shared_midi;
 use state::{create_shared_state, SharedState};
 use std::sync::Mutex;
 use tauri::{
@@ -21,7 +25,6 @@ use tauri_plugin_store::StoreExt;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -96,6 +99,26 @@ pub fn run() {
 
             app.manage(shared_state);
             app.manage(EngineState(Mutex::new(MetronomeEngine::new())));
+
+            // Set up MIDI listener
+            let shared_midi = create_shared_midi();
+            {
+                let listener = shared_midi.lock().unwrap();
+                // Restore saved MIDI bindings
+                let store = app.store("settings.json")?;
+                if let Some(bindings_val) = store.get("midiBindings") {
+                    if let Ok(bindings) = serde_json::from_value::<Vec<midi::MidiBinding>>(bindings_val.clone()) {
+                        listener.set_bindings(bindings);
+                    }
+                }
+                // Start device polling
+                listener.start_device_polling(app.handle().clone());
+                // Auto-reconnect to last device
+                if let Some(device_name) = store.get("midiDevice").and_then(|v| v.as_str().map(String::from)) {
+                    let _ = listener.connect(&device_name, app.handle().clone());
+                }
+            }
+            app.manage(shared_midi);
 
             // Set up system tray
             let show_i = MenuItem::with_id(app, "show", "Show Yames", true, None::<&str>)?;
@@ -184,9 +207,6 @@ pub fn run() {
                 }
             }
 
-            // Register global shortcuts
-            setup_global_shortcuts(app)?;
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -214,6 +234,12 @@ pub fn run() {
             set_calibration_offset,
             get_calibration_offset,
             open_url,
+            list_midi_devices,
+            connect_midi_device,
+            disconnect_midi_device,
+            set_midi_binding,
+            clear_midi_binding,
+            get_midi_bindings,
         ])
         .on_window_event(|window, event| {
             match event {
@@ -290,133 +316,4 @@ fn is_position_visible(x: i32, y: i32, window: &tauri::WebviewWindow) -> bool {
         // Can't determine monitors, allow the position
         true
     }
-}
-
-fn setup_global_shortcuts(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
-
-    fn persist(app_handle: &AppHandle, shared: &state::SharedState) {
-        use tauri_plugin_store::StoreExt;
-        if let Ok(store) = app_handle.store("settings.json") {
-            let s = shared.lock().unwrap();
-            store.set("bpm", serde_json::json!(s.bpm));
-            store.set("subdivision", serde_json::json!(s.subdivision));
-            store.set("mode", serde_json::json!(s.mode));
-            store.set("corner", serde_json::json!(s.corner));
-            store.set("alwaysOnTop", serde_json::json!(s.always_on_top));
-            store.set("widgetAlwaysOnTop", serde_json::json!(s.widget_always_on_top));
-            store.set("accentColor", serde_json::json!(s.accent_color));
-            store.set("theme", serde_json::json!(s.theme));
-            store.set("volume", serde_json::json!(s.volume));
-            store.set("soundType", serde_json::json!(s.sound_type));
-            store.set("timeSignature", serde_json::json!(s.time_signature));
-            store.set("speedRamp", serde_json::json!({
-                "startBpm": s.speed_ramp.start_bpm,
-                "targetBpm": s.speed_ramp.target_bpm,
-                "increment": s.speed_ramp.increment,
-                "decrement": s.speed_ramp.decrement,
-                "barsPerStep": s.speed_ramp.bars_per_step,
-                "beatsPerBar": s.speed_ramp.beats_per_bar,
-                "mode": s.speed_ramp.mode,
-                "cyclic": s.speed_ramp.cyclic,
-            }));
-        }
-    }
-
-    // Cmd+Shift+Space → Play / Stop
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+Space", move |_app, _shortcut, event| {
-        if event.state != ShortcutState::Pressed { return; }
-        let state: tauri::State<state::SharedState> = app_handle.state();
-        let engine_state: tauri::State<EngineState> = app_handle.state();
-        let is_playing = state.lock().unwrap().is_playing;
-
-        let mut engine = engine_state.0.lock().unwrap();
-        if is_playing {
-            engine.stop();
-            state.lock().unwrap().is_playing = false;
-        } else {
-            engine.start(state.inner().clone(), app_handle.clone());
-            state.lock().unwrap().is_playing = true;
-        }
-        let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
-    })?;
-
-    // Cmd+Shift+Up → BPM +5
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+Up", move |_app, _shortcut, event| {
-        if event.state != ShortcutState::Pressed { return; }
-        let state: tauri::State<state::SharedState> = app_handle.state();
-        {
-            let mut s = state.lock().unwrap();
-            s.bpm = (s.bpm + 5).min(300);
-        }
-        let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
-        persist(&app_handle, &state);
-    })?;
-
-    // Cmd+Shift+Down → BPM -5
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+Down", move |_app, _shortcut, event| {
-        if event.state != ShortcutState::Pressed { return; }
-        let state: tauri::State<state::SharedState> = app_handle.state();
-        {
-            let mut s = state.lock().unwrap();
-            s.bpm = (s.bpm.saturating_sub(5)).max(20);
-        }
-        let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
-        persist(&app_handle, &state);
-    })?;
-
-    // Cmd+Shift+Alt+Up → BPM +1
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+Alt+Up", move |_app, _shortcut, event| {
-        if event.state != ShortcutState::Pressed { return; }
-        let state: tauri::State<state::SharedState> = app_handle.state();
-        {
-            let mut s = state.lock().unwrap();
-            s.bpm = (s.bpm + 1).min(300);
-        }
-        let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
-        persist(&app_handle, &state);
-    })?;
-
-    // Cmd+Shift+Alt+Down → BPM -1
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+Alt+Down", move |_app, _shortcut, event| {
-        if event.state != ShortcutState::Pressed { return; }
-        let state: tauri::State<state::SharedState> = app_handle.state();
-        {
-            let mut s = state.lock().unwrap();
-            s.bpm = s.bpm.saturating_sub(1).max(20);
-        }
-        let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
-        persist(&app_handle, &state);
-    })?;
-
-    // Cmd+Shift+O → Toggle between main window and floating widget
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+O", move |_app, _shortcut, event| {
-        if event.state != ShortcutState::Pressed { return; }
-        if let Some(main_win) = app_handle.get_webview_window("main") {
-            if let Some(float_win) = app_handle.get_webview_window("floating") {
-                let main_visible = main_win.is_visible().unwrap_or(false);
-                if main_visible {
-                    let _ = main_win.hide();
-                    let _ = float_win.show();
-                } else {
-                    let _ = float_win.hide();
-                    let _ = main_win.show();
-                    let _ = main_win.set_focus();
-                }
-                // Persist which window is now visible
-                use tauri_plugin_store::StoreExt;
-                if let Ok(store) = app_handle.store("settings.json") {
-                    store.set("lastWindow", serde_json::json!(if main_visible { "floating" } else { "main" }));
-                }
-            }
-        }
-    })?;
-
-    Ok(())
 }

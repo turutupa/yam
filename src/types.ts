@@ -40,3 +40,29 @@ export type BeatEvent = {
   subdivision: number;
   isDownbeat: boolean;
 };
+
+// ---------------------------------------------------------------------------
+// MIDI types
+// ---------------------------------------------------------------------------
+
+export type MidiMsgType = "cc" | "note" | "pc";
+
+export type MidiDeviceInfo = {
+  id: number;
+  name: string;
+  isConnected: boolean;
+};
+
+export type MidiActivity = {
+  channel: number;
+  type: MidiMsgType;
+  number: number;
+  value: number;
+};
+
+export type MidiBinding = {
+  action: string;
+  channel: number | null;
+  msgType: MidiMsgType;
+  number: number;
+};

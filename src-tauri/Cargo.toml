@@ -22,3 +22,4 @@ rodio = { version = "0.19", default-features = false, features = ["wav"] }
 cpal = "0.15"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+midir = "0.10"

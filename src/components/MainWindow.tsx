@@ -1,12 +1,13 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag } from "../hooks/useDrag";
 import {
   formatGamepadButton,
   isGamepadBinding,
   useGamepad,
 } from "../hooks/useGamepad";
+import { useMidi } from "../hooks/useMidi";
 import { useMetronome } from "../hooks/useMetronome";
 import {
   checkForUpdate,
@@ -222,6 +223,24 @@ function eventToCombo(e: KeyboardEvent): string {
   return parts.join("");
 }
 
+/** Split a combo string like "⌘⇧Space" into individual key parts: ["⌘", "⇧", "Space"] */
+function splitCombo(combo: string): string[] {
+  const parts: string[] = [];
+  let i = 0;
+  const modifiers = new Set(["⌘", "⌃", "⌥", "⇧", "↑", "↓", "←", "→"]);
+  while (i < combo.length) {
+    if (modifiers.has(combo[i])) {
+      parts.push(combo[i]);
+      i++;
+    } else {
+      // Rest of the string is the key name (e.g. "Space", "Tab", "F1", or single char)
+      parts.push(combo.slice(i));
+      break;
+    }
+  }
+  return parts;
+}
+
 const HOTKEYS: HotkeyEntry[] = [
   {
     id: "play",
@@ -355,6 +374,107 @@ const HOTKEY_GROUPS: { key: string; label: string }[] = [
   { key: "navigation", label: "Navigation" },
 ];
 
+// Custom themed dropdown for MIDI device selection
+function MidiDeviceDropdown({
+  devices,
+  value,
+  onChange,
+}: {
+  devices: { id: number; name: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const options = useMemo(
+    () => [
+      { value: "", label: "None" },
+      ...devices.map((d) => ({ value: d.name, label: d.name })),
+    ],
+    [devices],
+  );
+
+  const selected = options.find((o) => o.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className={`midi-dropdown ${open ? "open" : ""}`} ref={ref}>
+      <button
+        className="midi-dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
+        <span className="midi-dropdown-value">
+          {value ? (
+            <>
+              <span className="midi-dropdown-dot connected" />
+              {selected.label}
+            </>
+          ) : (
+            selected.label
+          )}
+        </span>
+        <svg
+          className="midi-dropdown-chevron"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="midi-dropdown-menu">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              className={`midi-dropdown-item ${opt.value === value ? "selected" : ""}`}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {opt.value === value && (
+                <svg
+                  className="midi-dropdown-check"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Delay for macOS fullscreen exit animation to complete before restoring window state
 const FULLSCREEN_EXIT_DELAY = 600;
 
@@ -449,7 +569,7 @@ export function MainWindow() {
   );
   const [bindingFor, setBindingFor] = useState<{
     id: string;
-    type: "key" | "global" | "foot";
+    type: "key" | "global";
   } | null>(null);
   const bindingsLoaded = useRef(false);
 
@@ -656,6 +776,27 @@ export function MainWindow() {
   const [pendingKeys, setPendingKeys] = useState<string>("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+
+  // Unified input tester
+  const [inputTestMode, setInputTestMode] = useState(false);
+  const [inputTestLog, setInputTestLog] = useState<Array<{
+    source: "keyboard" | "midi" | "gamepad";
+    label: string;
+    detail?: string;
+    action?: string;
+  }>>([]);
+  const inputTestLogRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard conflict confirmation state
+  const [pendingKeyConflict, setPendingKeyConflict] = useState<{
+    combo: string;
+    conflictAction: string;
+    conflictActionLabel: string;
+    targetAction: string;
+    targetActionLabel: string;
+    type: "key" | "global";
+  } | null>(null);
+
   const resetAllBindings = useCallback(() => {
     setKeyBindings(Object.fromEntries(HOTKEYS.map((hk) => [hk.id, hk.key])));
     setGlobalBindings(
@@ -685,18 +826,35 @@ export function MainWindow() {
         setPendingKeys(combo);
       }
       if (combo && !["Meta", "Control", "Alt", "Shift"].includes(e.key)) {
+        // Check for conflict
+        const source = bindingFor.type === "key" ? keyBindings : globalBindings;
+        const conflictEntry = Object.entries(source).find(
+          ([action, bound]) => bound === combo && action !== bindingFor.id,
+        );
+        if (conflictEntry) {
+          const conflictHk = HOTKEYS.find((h) => h.id === conflictEntry[0]);
+          const targetHk = HOTKEYS.find((h) => h.id === bindingFor.id);
+          setPendingKeyConflict({
+            combo,
+            conflictAction: conflictEntry[0],
+            conflictActionLabel: conflictHk?.action ?? conflictEntry[0],
+            targetAction: bindingFor.id,
+            targetActionLabel: targetHk?.action ?? bindingFor.id,
+            type: bindingFor.type,
+          });
+          return; // Don't apply yet — wait for confirmation
+        }
+        // No conflict — apply immediately
         if (bindingFor.type === "key") {
           setKeyBindings((prev) => ({ ...prev, [bindingFor.id]: combo }));
         } else if (bindingFor.type === "global") {
           setGlobalBindings((prev) => ({ ...prev, [bindingFor.id]: combo }));
-        } else {
-          setFootBindings((prev) => ({ ...prev, [bindingFor.id]: combo }));
         }
         setBindingFor(null);
         setPendingKeys("");
       }
     },
-    [bindingFor],
+    [bindingFor, keyBindings, globalBindings],
   );
 
   const handleResetBinding = useCallback(() => {
@@ -709,8 +867,6 @@ export function MainWindow() {
         ...prev,
         [bindingFor.id]: hk?.globalKey || hk?.key || "",
       }));
-    } else {
-      setFootBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
     }
     setBindingFor(null);
     setPendingKeys("");
@@ -722,18 +878,42 @@ export function MainWindow() {
       setKeyBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
     } else if (bindingFor.type === "global") {
       setGlobalBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
-    } else {
-      setFootBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
     }
     setBindingFor(null);
     setPendingKeys("");
   }, [bindingFor]);
 
+  const acceptKeyConflict = useCallback(() => {
+    if (!pendingKeyConflict) return;
+    const { combo, conflictAction, targetAction, type } = pendingKeyConflict;
+    if (type === "key") {
+      setKeyBindings((prev) => ({
+        ...prev,
+        [conflictAction]: "",
+        [targetAction]: combo,
+      }));
+    } else {
+      setGlobalBindings((prev) => ({
+        ...prev,
+        [conflictAction]: "",
+        [targetAction]: combo,
+      }));
+    }
+    setPendingKeyConflict(null);
+    setBindingFor(null);
+    setPendingKeys("");
+  }, [pendingKeyConflict]);
+
+  const rejectKeyConflict = useCallback(() => {
+    setPendingKeyConflict(null);
+    setPendingKeys("");
+  }, []);
+
   useEffect(() => {
-    if (!bindingFor) return;
+    if (!bindingFor || pendingKeyConflict) return;
     document.addEventListener("keydown", handleBinding);
     return () => document.removeEventListener("keydown", handleBinding);
-  }, [bindingFor, handleBinding]);
+  }, [bindingFor, handleBinding, pendingKeyConflict]);
 
   // Shared action dispatcher — called by keyboard handler and gamepad hook
   const dispatchAction = useCallback(
@@ -790,7 +970,7 @@ export function MainWindow() {
               });
               setTimeout(() => startSpeedRamp(), 50);
             }
-          } else if (view === "beat") {
+          } else {
             togglePlayback();
           }
           break;
@@ -886,8 +1066,12 @@ export function MainWindow() {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      // Escape: exit zen > exit settings (hardcoded — only Escape is hardcoded)
+      // Escape: exit zen > exit settings, or close tester
       if (e.key === "Escape") {
+        if (inputTestMode) {
+          setInputTestMode(false);
+          return;
+        }
         if (isFullscreen) {
           e.preventDefault();
           setIsFullscreen(false);
@@ -904,27 +1088,96 @@ export function MainWindow() {
       const actionId = Object.entries(keyBindings).find(
         ([_, key]) => key === combo,
       )?.[0] as HotkeyAction | undefined;
+      // Feed tester if open
+      if (inputTestMode) {
+        // Skip lone modifier keys — they're not valid bindings
+        if (["Meta", "Control", "Alt", "Shift"].includes(e.key)) return;
+        e.preventDefault();
+        const hk = actionId ? HOTKEYS.find((h) => h.id === actionId) : null;
+        setInputTestLog((prev) => [...prev.slice(-99), {
+          source: "keyboard" as const,
+          label: combo,
+          action: hk?.action,
+        }]);
+        requestAnimationFrame(() => {
+          const el = inputTestLogRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+        return;
+      }
       if (!actionId) return;
       e.preventDefault();
       dispatchAction(actionId);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [view, keyBindings, isFullscreen, bindingFor, setView, dispatchAction]);
+  }, [view, keyBindings, isFullscreen, bindingFor, setView, dispatchAction, inputTestMode]);
 
-  // Gamepad / footswitch support
+  // MIDI controller support
+  const [midiAutoAccept, setMidiAutoAccept] = useState(false);
+  const inputTestModeRef = useRef(false);
+  useEffect(() => { inputTestModeRef.current = inputTestMode; }, [inputTestMode]);
+
+  const midi = useMidi((action) => {
+    if (inputTestModeRef.current) return;
+    dispatchAction(action as HotkeyAction);
+  }, midiAutoAccept, inputTestMode);
+
+  // Accumulate MIDI activity into test log when test mode is on
+  useEffect(() => {
+    if (!midi.lastActivity) return;
+    // Feed unified input tester
+    if (inputTestMode) {
+      const activity = midi.lastActivity;
+      const bound = midi.bindings.find(
+        (b) => b.msgType === activity.type && b.number === activity.number && b.channel === activity.channel,
+      );
+      const hk = bound ? HOTKEYS.find((h) => h.id === bound.action) : null;
+      setInputTestLog((prev) => [...prev.slice(-99), {
+        source: "midi" as const,
+        label: `${activity.type.toUpperCase()} #${activity.number}`,
+        detail: `Ch${activity.channel + 1} Val${activity.value}`,
+        action: hk?.action,
+      }]);
+      requestAnimationFrame(() => {
+        const el = inputTestLogRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    }
+  }, [inputTestMode, midi.lastActivity]);
+
+  // Clear unified tester log when closed
+  useEffect(() => {
+    if (!inputTestMode) setInputTestLog([]);
+  }, [inputTestMode]);
+
+  // Gamepad / footswitch support (merged into MIDI column)
   useGamepad({
     enabled: true,
     onButtonPress:
-      bindingFor?.type === "foot"
+      midi.learnMode
         ? (id) => {
-            setFootBindings((prev) => ({ ...prev, [bindingFor.id]: id }));
-            setBindingFor(null);
-            setPendingKeys("");
+            setFootBindings((prev) => ({ ...prev, [midi.learnMode!]: id }));
+            midi.cancelLearn();
+          }
+        : inputTestMode
+        ? (id) => {
+            // Feed tester with gamepad input
+            const actionId = Object.entries(footBindings).find(([_, b]) => b === id)?.[0];
+            const hk = actionId ? HOTKEYS.find((h) => h.id === actionId) : null;
+            setInputTestLog((prev) => [...prev.slice(-99), {
+              source: "gamepad" as const,
+              label: formatGamepadButton(id),
+              action: hk?.action,
+            }]);
+            requestAnimationFrame(() => {
+              const el = inputTestLogRef.current;
+              if (el) el.scrollTop = el.scrollHeight;
+            });
           }
         : undefined,
-    bindings: !bindingFor ? footBindings : undefined,
-    onAction: !bindingFor
+    bindings: !midi.learnMode && !inputTestMode ? footBindings : undefined,
+    onAction: !midi.learnMode && !inputTestMode
       ? (id) => dispatchAction(id as HotkeyAction)
       : undefined,
   });
@@ -1732,7 +1985,59 @@ export function MainWindow() {
             </section>
 
             <section className="hotkeys-section">
-              <h2>Hotkeys</h2>
+              <h2>MIDI</h2>
+              <div className="midi-device-section">
+                <div className="midi-device-row">
+                  <label className="midi-label">Device</label>
+                  <MidiDeviceDropdown
+                    devices={midi.devices}
+                    value={midi.connectedDevice || ""}
+                    onChange={(val) => {
+                      if (val) {
+                        midi.connect(val);
+                      } else {
+                        midi.disconnect();
+                      }
+                    }}
+                  />
+                  <button
+                    className="midi-refresh-btn"
+                    onClick={() => midi.refreshDevices()}
+                    title="Refresh MIDI devices"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 4 23 10 17 10" />
+                      <polyline points="1 20 1 14 7 14" />
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                  </button>
+                </div>
+                {midi.connectedDevice && (
+                  <div className="midi-status">
+                    <span className="midi-status-dot connected" />
+                    Connected
+                  </div>
+                )}
+                {!midi.connectedDevice && midi.devices.length === 0 && (
+                  <div className="midi-status">
+                    <span className="midi-status-dot" />
+                    No MIDI devices detected
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="hotkeys-section">
+              <div className="hotkeys-section-header">
+                <h2>Hotkeys</h2>
+                <button
+                  className={`input-test-btn ${inputTestMode ? "active" : ""}`}
+                  onClick={() => setInputTestMode((v) => !v)}
+                  title="Test all input bindings (keyboard, MIDI, gamepad)"
+                >
+                  {inputTestMode ? "Stop test" : "Test inputs"}
+                </button>
+              </div>
               {HOTKEY_GROUPS.map((group) => {
                 const items = HOTKEYS.filter((hk) => hk.group === group.key);
                 if (items.length === 0) return null;
@@ -1776,7 +2081,7 @@ export function MainWindow() {
                           Global
                           <span className="hotkey-soon-badge">soon</span>
                         </span>
-                        <span data-tooltip="Bind a USB foot pedal or gamepad controller">
+                        <span data-tooltip="Bind a MIDI controller or USB foot pedal">
                           <svg
                             width="14"
                             height="14"
@@ -1787,11 +2092,11 @@ export function MainWindow() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <rect x="4" y="14" width="16" height="6" rx="2" />
-                            <path d="M8 14V10a4 4 0 0 1 8 0v4" />
+                            <path d="M9 18V5l12-2v13" />
+                            <circle cx="6" cy="18" r="3" />
+                            <circle cx="18" cy="16" r="3" />
                           </svg>
-                          Foot
-                          <span className="hotkey-soon-badge">midi soon</span>
+                          MIDI
                         </span>
                       </div>
                       {items.map((hk) => (
@@ -1817,17 +2122,42 @@ export function MainWindow() {
                               : "—"}
                           </button>
                           <button
-                            className={`hotkey-bind-btn ${bindingFor?.id === hk.id && bindingFor.type === "foot" ? "listening" : ""}`}
+                            className={`hotkey-bind-btn ${midi.learnMode === hk.id ? "listening" : ""}`}
                             onClick={() => {
-                              setBindingFor({ id: hk.id, type: "foot" });
-                              setPendingKeys("");
+                              if (midi.learnMode === hk.id) {
+                                midi.cancelLearn();
+                              } else {
+                                midi.startLearn(hk.id);
+                              }
                             }}
+                            title={
+                              midi.learnMode === hk.id
+                                ? "Listening… press a MIDI button or foot pedal"
+                                : (() => {
+                                    const midiBinding = midi.bindings.find((b) => b.action === hk.id);
+                                    if (midiBinding) {
+                                      const prefix = midiBinding.msgType === "cc" ? "CC" : midiBinding.msgType === "note" ? "Note" : "PC";
+                                      return `Bound to ${prefix}#${midiBinding.number}. Click to re-learn.`;
+                                    }
+                                    return "Click to learn MIDI / pedal binding";
+                                  })()
+                            }
                           >
-                            {footBindings[hk.id]
-                              ? isGamepadBinding(footBindings[hk.id])
-                                ? formatGamepadButton(footBindings[hk.id])
-                                : platformKey(footBindings[hk.id])
-                              : "—"}
+                            {(() => {
+                              const midiBinding = midi.bindings.find((b) => b.action === hk.id);
+                              const gamepadBound = footBindings[hk.id];
+                              if (midi.learnMode === hk.id) return "…";
+                              if (midiBinding) {
+                                const prefix = midiBinding.msgType === "cc" ? "CC" : midiBinding.msgType === "note" ? "N" : "PC";
+                                return `${prefix}#${midiBinding.number}`;
+                              }
+                              if (gamepadBound) {
+                                return isGamepadBinding(gamepadBound)
+                                  ? formatGamepadButton(gamepadBound)
+                                  : platformKey(gamepadBound);
+                              }
+                              return "—";
+                            })()}
                           </button>
                         </div>
                       ))}
@@ -2122,53 +2452,188 @@ export function MainWindow() {
         </button>
       )}
 
+      {/* MIDI binding conflict confirmation dialog */}
+      {midi.pendingConflict && (
+        <div className="keybinding-overlay" onClick={() => midi.rejectConflict()}>
+          <div className="keybinding-capture" onClick={(e) => e.stopPropagation()}>
+            <span className="keybinding-capture-title">MIDI Conflict</span>
+            <div className="conflict-body">
+              <div className="conflict-signal">
+                <span className="conflict-signal-badge">
+                  {midi.pendingConflict.activity.type.toUpperCase()} #{midi.pendingConflict.activity.number}
+                </span>
+                <span className="conflict-signal-detail">
+                  Ch{midi.pendingConflict.activity.channel}
+                </span>
+              </div>
+              <p className="conflict-message">
+                is already bound to{" "}
+                <strong>
+                  {HOTKEYS.find((h) => h.id === midi.pendingConflict!.existingBinding.action)?.action
+                    ?? midi.pendingConflict.existingBinding.action}
+                </strong>.
+                <br />
+                Overwrite and assign to{" "}
+                <strong>
+                  {HOTKEYS.find((h) => h.id === midi.pendingConflict!.targetAction)?.action
+                    ?? midi.pendingConflict.targetAction}
+                </strong>?
+              </p>
+            </div>
+            <div className="keybinding-capture-actions">
+              <button className="keybinding-btn-reset" onClick={() => midi.rejectConflict()}>
+                Cancel
+              </button>
+              <button
+                className="conflict-accept-btn"
+                onClick={() => midi.acceptConflict()}
+              >
+                Overwrite
+              </button>
+            </div>
+            <label className="conflict-dont-ask">
+              <input
+                type="checkbox"
+                checked={midiAutoAccept}
+                onChange={(e) => setMidiAutoAccept(e.target.checked)}
+              />
+              Don't ask again
+            </label>
+          </div>
+        </div>
+      )}
+
       {bindingFor && (
         <div
           className="keybinding-overlay"
           onClick={() => {
             setBindingFor(null);
             setPendingKeys("");
+            setPendingKeyConflict(null);
           }}
         >
           <div
             className="keybinding-capture"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="keybinding-capture-title">
-              {HOTKEYS.find((hk) => hk.id === bindingFor.id)?.action} —{" "}
-              {bindingFor.type === "key"
-                ? "Keyboard"
-                : bindingFor.type === "global"
-                  ? "Global"
-                  : "Footswitch"}
-            </span>
-            <div className="keybinding-capture-display">
-              {pendingKeys ? (
-                <span className="keybinding-capture-keys">{pendingKeys}</span>
-              ) : (
-                <span className="keybinding-capture-waiting">
-                  {bindingFor.type === "foot"
-                    ? "Press a button on your foot pedal or gamepad…"
-                    : "Press desired key combination…"}
+            {pendingKeyConflict ? (
+              <>
+                <span className="keybinding-capture-title">Hotkey Conflict</span>
+                <div className="conflict-body">
+                  <div className="conflict-signal">
+                    <span className="conflict-signal-badge">{pendingKeyConflict.combo}</span>
+                  </div>
+                  <p className="conflict-message">
+                    is already bound to{" "}
+                    <strong>{pendingKeyConflict.conflictActionLabel}</strong>.
+                    <br />
+                    Overwrite and assign to{" "}
+                    <strong>{pendingKeyConflict.targetActionLabel}</strong>?
+                  </p>
+                </div>
+                <div className="keybinding-capture-actions">
+                  <button className="keybinding-btn-reset" onClick={rejectKeyConflict}>
+                    Cancel
+                  </button>
+                  <button className="conflict-accept-btn" onClick={acceptKeyConflict}>
+                    Overwrite
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="keybinding-capture-title">
+                  {HOTKEYS.find((hk) => hk.id === bindingFor.id)?.action} —{" "}
+                  {bindingFor.type === "key"
+                    ? "Keyboard"
+                    : "Global"}
                 </span>
+                <div className="keybinding-capture-display">
+                  {pendingKeys ? (
+                    <span className="keybinding-capture-keys">{pendingKeys}</span>
+                  ) : (
+                    <span className="keybinding-capture-waiting">
+                      Press desired key combination…
+                    </span>
+                  )}
+                </div>
+                <div className="keybinding-capture-actions">
+                  <button
+                    className="keybinding-btn-reset"
+                    onClick={handleResetBinding}
+                  >
+                    Reset to default
+                  </button>
+                  <button
+                    className="keybinding-btn-remove"
+                    onClick={handleRemoveBinding}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <span className="keybinding-capture-hint">
+                  Press Escape to cancel
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Unified input tester modal */}
+      {inputTestMode && (
+        <div className="keybinding-overlay" onClick={() => setInputTestMode(false)}>
+          <div className="input-tester-modal" onClick={(e) => e.stopPropagation()}>
+            <span className="keybinding-capture-title">Input Tester</span>
+            <div className="input-tester-hint">
+              Press keys, MIDI buttons, or gamepad buttons to see what they map to.
+            </div>
+            <div className="input-tester-log" ref={inputTestLogRef}>
+              {inputTestLog.length === 0 ? (
+                <div className="midi-tester-empty">Waiting for input…</div>
+              ) : (
+                inputTestLog.map((entry, i) => (
+                  <div className={`input-tester-row ${i === inputTestLog.length - 1 ? "latest" : ""}`} key={i}>
+                    <span className={`input-tester-source input-tester-source--${entry.source}`}>
+                      {entry.source === "keyboard" ? "KEY" : entry.source === "midi" ? "MIDI" : "PAD"}
+                    </span>
+                    <span className="input-tester-keys">
+                      {entry.source === "keyboard" ? (
+                        splitCombo(entry.label).map((k, j) => (
+                          <kbd key={j} className="input-tester-kbd">{k}</kbd>
+                        ))
+                      ) : entry.source === "midi" ? (
+                        <>
+                          <span className="input-tester-pill midi">{entry.label}</span>
+                          {entry.detail && entry.detail.split(/\s+/).map((d, j) => (
+                            <span key={j} className="input-tester-pill midi-subtle">{d}</span>
+                          ))}
+                        </>
+                      ) : (
+                        <span className="input-tester-pill gamepad">{entry.label}</span>
+                      )}
+                    </span>
+                    <span className="input-tester-action">
+                      {entry.action ? (
+                        <span className="midi-tester-mapped">{entry.action}</span>
+                      ) : (
+                        <span className="midi-tester-unmapped">—</span>
+                      )}
+                    </span>
+                  </div>
+                ))
               )}
             </div>
             <div className="keybinding-capture-actions">
-              <button
-                className="keybinding-btn-reset"
-                onClick={handleResetBinding}
-              >
-                Reset to default
+              <button className="keybinding-btn-reset" onClick={() => setInputTestLog([])}>
+                Clear
               </button>
-              <button
-                className="keybinding-btn-remove"
-                onClick={handleRemoveBinding}
-              >
-                Remove
+              <button className="keybinding-btn-remove" onClick={() => setInputTestMode(false)}>
+                Close
               </button>
             </div>
             <span className="keybinding-capture-hint">
-              Press Escape to cancel
+              Press Escape to close
             </span>
           </div>
         </div>

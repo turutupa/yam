@@ -6,9 +6,9 @@
     <title>Yames — Free Desktop Metronome App for Musicians | macOS, Windows, Linux</title>
     <meta
       name="description"
-      content="Yames is a free, open-source desktop metronome app for macOS, Windows, and Linux. Always-on-top floating widget, sub-millisecond precision, zen mode, drill practice, and beautiful themes. Download now."
+      content="Yames is a free, open-source desktop metronome app for macOS, Windows, and Linux. Always-on-top floating widget, sub-millisecond precision, MIDI controller support, zen mode, drill practice, and beautiful themes. Download now."
     />
-    <meta name="keywords" content="metronome, desktop metronome, free metronome app, metronome for musicians, yames, yames metronome, floating metronome, always on top metronome, practice metronome, BPM, tempo, rhythm practice, metronome macOS, metronome Windows, metronome Linux, open source metronome, musician tools, DAW metronome, drill practice, tap tempo" />
+    <meta name="keywords" content="metronome, desktop metronome, free metronome app, metronome for musicians, yames, yames metronome, floating metronome, always on top metronome, practice metronome, BPM, tempo, rhythm practice, metronome macOS, metronome Windows, metronome Linux, open source metronome, musician tools, DAW metronome, drill practice, tap tempo, MIDI metronome, MIDI controller metronome, keyboard shortcuts metronome" />
     <meta name="author" content="turutupa" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://yames.app/" />
@@ -23,7 +23,7 @@
     <meta property="og:title" content="Yames — Free Desktop Metronome App for Musicians" />
     <meta
       property="og:description"
-      content="Free, open-source desktop metronome with always-on-top floating widget, sub-millisecond precision, zen mode, and 10 beautiful themes. Available for macOS, Windows, and Linux."
+      content="Free, open-source desktop metronome with always-on-top floating widget, sub-millisecond precision, MIDI controller support, zen mode, and 10 beautiful themes. Available for macOS, Windows, and Linux."
     />
     <meta property="og:image" content="https://yames.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
@@ -37,7 +37,7 @@
     <meta name="twitter:title" content="Yames — Free Desktop Metronome App for Musicians" />
     <meta
       name="twitter:description"
-      content="Free, open-source desktop metronome with always-on-top floating widget, sub-millisecond precision, zen mode, and 10 beautiful themes. macOS, Windows, Linux."
+      content="Free, open-source desktop metronome with always-on-top floating widget, sub-millisecond precision, MIDI controller support, zen mode, and 10 beautiful themes. macOS, Windows, Linux."
     />
     <meta name="twitter:image" content="https://yames.app/og-image.png" />
     <meta name="twitter:image:alt" content="Yames desktop metronome app screenshot" />
@@ -62,7 +62,7 @@
       "@type": "SoftwareApplication",
       "name": "Yames",
       "alternateName": ["Yames Metronome", "yames", "YAMES"],
-      "description": "A free, open-source desktop metronome app for musicians. Features an always-on-top floating widget, sub-millisecond audio precision, zen mode with immersive visuals, drill practice mode, tap tempo, and 10 beautiful themes. Available for macOS, Windows, and Linux.",
+      "description": "A free, open-source desktop metronome app for musicians. Features an always-on-top floating widget, sub-millisecond audio precision, MIDI controller support, zen mode with immersive visuals, drill practice mode, tap tempo, customizable keyboard shortcuts, and 10 beautiful themes. Available for macOS, Windows, and Linux.",
       "url": "https://yames.app/",
       "downloadUrl": "https://github.com/turutupa/yames/releases/latest",
       "applicationCategory": "MultimediaApplication",
@@ -96,11 +96,12 @@
       "featureList": [
         "Always-on-top floating metronome widget",
         "Sub-millisecond audio precision timing",
+        "MIDI controller support with customizable bindings",
+        "Customizable keyboard shortcuts",
         "Zen mode with immersive fullscreen visuals",
         "Drill practice mode with BPM progression",
         "Tap tempo detection",
         "10 beautiful color themes",
-        "Global keyboard shortcuts",
         "Subdivision support (quarter, eighth, triplet, sixteenth)",
         "Cross-platform: macOS, Windows, Linux",
         "System tray integration"
@@ -159,7 +160,7 @@
           "name": "What makes Yames different from other metronomes?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yames is designed as a musician-grade system utility. It stays floating on top of all your windows, uses sub-millisecond precision timing, offers immersive Zen mode visuals, includes drill practice for progressive BPM training, and provides 10 beautiful themes — all in a lightweight native app."
+            "text": "Yames is designed as a musician-grade system utility. It stays floating on top of all your windows, uses sub-millisecond precision timing, supports MIDI controllers and customizable keyboard shortcuts, offers immersive Zen mode visuals, includes drill practice for progressive BPM training, and provides 10 beautiful themes — all in a lightweight native app."
           }
         },
         {
@@ -167,7 +168,15 @@
           "name": "Does Yames work with my DAW?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes! Yames is designed to float on top of any application including DAWs like Ableton Live, Logic Pro, FL Studio, Pro Tools, and Reaper. It stays always-on-top so you can see the tempo while working in your DAW."
+            "text": "Yes! Yames is designed to float on top of any application including DAWs like Ableton Live, Logic Pro, FL Studio, Pro Tools, and Reaper. It stays always-on-top so you can see the tempo while working in your DAW. You can also connect a MIDI controller to start, stop, and adjust BPM without leaving your DAW."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Yames support MIDI controllers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! Yames supports MIDI controllers out of the box. Connect any MIDI device and bind Control Change, Note On, or Program Change messages to actions like play/stop, BPM adjust, subdivision, and more. Bindings are fully customizable and persist across sessions."
           }
         },
         {
@@ -248,16 +257,16 @@
 
           <div class="features">
             <p class="feature">
-              <strong>Minimal & beautiful.</strong> Crafted with intention — no
-              clutter, just rhythm.
-            </p>
-            <p class="feature">
-              <strong>Always floating.</strong> Stays on top of your DAW, sheet
-              music, or browser while you practice.
+              <strong>Minimal & beautiful.</strong> Always floating on top of
+              your DAW — no clutter, just rhythm.
             </p>
             <p class="feature">
               <strong>Zen mode.</strong> Fullscreen immersive visuals that
               respond to the beat.
+            </p>
+            <p class="feature">
+              <strong>Total control.</strong> MIDI controllers and customizable
+              keyboard shortcuts — practice without breaking focus.
             </p>
           </div>
 

@@ -182,3 +182,49 @@ export async function downloadAndInstallUpdate(): Promise<void> {
     await relaunch();
   }
 }
+
+// ---------------------------------------------------------------------------
+// MIDI
+// ---------------------------------------------------------------------------
+import type { MidiDeviceInfo, MidiBinding, MidiActivity, MidiMsgType } from "./types";
+
+export async function listMidiDevices(): Promise<MidiDeviceInfo[]> {
+  return invoke<MidiDeviceInfo[]>("list_midi_devices");
+}
+
+export async function connectMidiDevice(deviceName: string): Promise<void> {
+  return invoke("connect_midi_device", { deviceName });
+}
+
+export async function disconnectMidiDevice(): Promise<void> {
+  return invoke("disconnect_midi_device");
+}
+
+export async function setMidiBinding(
+  action: string,
+  channel: number | null,
+  msgType: MidiMsgType,
+  number: number,
+): Promise<void> {
+  return invoke("set_midi_binding", { action, channel, msgType, number });
+}
+
+export async function clearMidiBinding(action: string): Promise<void> {
+  return invoke("clear_midi_binding", { action });
+}
+
+export async function getMidiBindings(): Promise<MidiBinding[]> {
+  return invoke<MidiBinding[]>("get_midi_bindings");
+}
+
+export function onMidiAction(callback: (action: string) => void) {
+  return listen<{ action: string }>("midi-action", (e) => callback(e.payload.action));
+}
+
+export function onMidiActivity(callback: (activity: MidiActivity) => void) {
+  return listen<MidiActivity>("midi-activity", (e) => callback(e.payload));
+}
+
+export function onMidiDevicesChanged(callback: (devices: MidiDeviceInfo[]) => void) {
+  return listen<MidiDeviceInfo[]>("midi-devices-changed", (e) => callback(e.payload));
+}

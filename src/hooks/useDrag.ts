@@ -25,6 +25,8 @@ export function useDrag() {
     let lastScreenY = 0;
     let winX = 0;
     let winY = 0;
+    let rafId = 0;
+    let dirty = false;
 
     async function onMouseDown(e: MouseEvent) {
       if (e.button !== 0) return;
@@ -74,14 +76,27 @@ export function useDrag() {
       lastScreenY = e.screenY;
       winX += dx;
       winY += dy;
-      getCurrentWindow().setPosition(
-        new PhysicalPosition(Math.round(winX), Math.round(winY))
-      );
+      // Coalesce moves to one setPosition per frame
+      if (!dirty) {
+        dirty = true;
+        rafId = requestAnimationFrame(() => {
+          dirty = false;
+          getCurrentWindow().setPosition(
+            new PhysicalPosition(Math.round(winX), Math.round(winY))
+          );
+        });
+      }
     }
 
     async function onMouseUp() {
       if (dragging && !nativeTookOver) {
         dragging = false;
+        if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+        dirty = false;
+        // Apply final position synchronously
+        await getCurrentWindow().setPosition(
+          new PhysicalPosition(Math.round(winX), Math.round(winY))
+        );
         document.body.style.userSelect = "";
         document.body.style.webkitUserSelect = "";
         try {

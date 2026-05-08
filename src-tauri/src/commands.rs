@@ -1,4 +1,5 @@
 use crate::engine::MetronomeEngine;
+use crate::midi::{MidiBinding, MidiDeviceInfo, MidiMsgType, SharedMidi};
 use crate::state::{AppState, SharedState};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -379,4 +380,95 @@ pub fn open_url(url: String) {
     { let _ = std::process::Command::new("cmd").args(["/C", "start", &url]).spawn(); }
     #[cfg(target_os = "linux")]
     { let _ = std::process::Command::new("xdg-open").arg(&url).spawn(); }
+}
+
+// ---------------------------------------------------------------------------
+// MIDI Commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn list_midi_devices(midi: State<SharedMidi>) -> Vec<MidiDeviceInfo> {
+    let listener = midi.lock().unwrap();
+    listener.list_devices()
+}
+
+#[tauri::command]
+pub fn connect_midi_device(
+    device_name: String,
+    midi: State<SharedMidi>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let listener = midi.lock().unwrap();
+    listener.connect(&device_name, app_handle.clone())?;
+    // Persist connected device
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        store.set("midiDevice", serde_json::json!(device_name));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn disconnect_midi_device(midi: State<SharedMidi>, app_handle: AppHandle) -> Result<(), String> {
+    let listener = midi.lock().unwrap();
+    listener.disconnect();
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        store.delete("midiDevice");
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_midi_binding(
+    action: String,
+    channel: Option<u8>,
+    msg_type: String,
+    number: u8,
+    midi: State<SharedMidi>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let mt = match msg_type.as_str() {
+        "cc" => MidiMsgType::ControlChange,
+        "note" => MidiMsgType::NoteOn,
+        "pc" => MidiMsgType::ProgramChange,
+        _ => return Err("Invalid msg_type: must be 'cc', 'note', or 'pc'".to_string()),
+    };
+    let binding = MidiBinding {
+        action,
+        channel,
+        msg_type: mt,
+        number,
+    };
+    let listener = midi.lock().unwrap();
+    listener.add_binding(binding);
+    // Persist bindings
+    persist_midi_bindings(&listener, &app_handle);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clear_midi_binding(
+    action: String,
+    midi: State<SharedMidi>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let listener = midi.lock().unwrap();
+    listener.remove_binding(&action);
+    persist_midi_bindings(&listener, &app_handle);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_midi_bindings(midi: State<SharedMidi>) -> Vec<MidiBinding> {
+    let listener = midi.lock().unwrap();
+    listener.get_bindings()
+}
+
+fn persist_midi_bindings(listener: &crate::midi::MidiListener, app_handle: &AppHandle) {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        let bindings = listener.get_bindings();
+        store.set("midiBindings", serde_json::json!(bindings));
+    }
 }

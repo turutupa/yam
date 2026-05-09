@@ -41,6 +41,18 @@ arguments:
 
 6. Push: `git push origin main`
 
+7. After CI creates the GitHub release, update its notes with a proper changelog:
+   ```
+   gh release edit v{VERSION} --repo turutupa/yames --notes '## {Title}
+
+   - {bullet point for each change}
+   ...'
+   ```
+   Use `## {Short Title}` as a heading (e.g. "## MIDI Controller Support").
+   List each meaningful change as a bullet point.
+   Derive notes from the commit body (step 5) — they should match.
+   Wait ~30 seconds after push for CI to create the release before editing.
+
 ## What CI does automatically
 
 No manual intervention needed after push:

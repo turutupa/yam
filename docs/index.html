@@ -321,6 +321,10 @@
           </p>
 
           <div class="links">
+            <button class="version-badge" id="version-badge" onclick="openChangelog()" title="View changelog">
+              v<span id="version-number">0.6.0</span>
+            </button>
+            <span class="separator">·</span>
             <a
               href="https://github.com/turutupa/yames"
               class="link-btn"
@@ -341,6 +345,22 @@
             </a>
             <span class="separator">·</span>
             <span class="note">Free & open-source</span>
+          </div>
+
+          <!-- Changelog modal -->
+          <div class="changelog-overlay" id="changelog-overlay" onclick="closeChangelog()">
+            <div class="changelog-modal" onclick="event.stopPropagation()">
+              <div class="changelog-header">
+                <h2>Changelog</h2>
+                <button class="changelog-close" onclick="closeChangelog()" aria-label="Close">&times;</button>
+              </div>
+              <div class="changelog-content">
+                <div class="changelog-body" id="changelog-body">
+                  <div class="changelog-loading">Loading releases…</div>
+                </div>
+              </div>
+              <div class="changelog-timeline" id="changelog-timeline"></div>
+            </div>
           </div>
 
         </div>
@@ -723,6 +743,16 @@
         updateWidget();
       }
 
+      // Preload all images for instant theme/tab switching
+      (function preloadImages() {
+        const allSrcs = new Set();
+        Object.values(images).forEach((tab) =>
+          Object.values(tab).forEach((src) => allSrcs.add(src))
+        );
+        Object.values(widgetImages).forEach((src) => allSrcs.add(src));
+        allSrcs.forEach((src) => { new Image().src = src; });
+      })();
+
       tabBtns.forEach((btn) => {
         btn.addEventListener("click", () => {
           tabBtns.forEach((b) => b.classList.remove("active"));
@@ -868,6 +898,185 @@
         _origSetAccent(theme);
         updateParticles(theme);
       };
+
+      // ─── Changelog modal ───
+      let changelogLoaded = false;
+      let clickedIdx = -1;
+      const RELEASES_URL = "https://api.github.com/repos/turutupa/yames/releases";
+      const INITIAL_SHOW = 5;
+
+      function openChangelog() {
+        const overlay = document.getElementById("changelog-overlay");
+        overlay.classList.add("open");
+        document.body.style.overflow = "hidden";
+        if (!changelogLoaded) loadChangelog();
+      }
+
+      function closeChangelog() {
+        const overlay = document.getElementById("changelog-overlay");
+        overlay.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeChangelog();
+      });
+
+      async function loadChangelog() {
+        const body = document.getElementById("changelog-body");
+        try {
+          const res = await fetch(RELEASES_URL + "?per_page=30");
+          if (!res.ok) throw new Error("API error");
+          const releases = await res.json();
+          if (!releases.length) {
+            body.innerHTML = '<div class="changelog-empty">No releases found.</div>';
+            return;
+          }
+          // Update version badge with latest
+          document.getElementById("version-number").textContent = releases[0].tag_name.replace(/^v/, "");
+
+          let html = "";
+          releases.forEach((rel, i) => {
+            const date = new Date(rel.published_at).toLocaleDateString("en-US", {
+              year: "numeric", month: "short", day: "numeric"
+            });
+            const isHidden = i >= INITIAL_SHOW;
+            const releaseBody = rel.body && rel.body !== "Download Yames for your platform below."
+              ? formatBody(rel.body)
+              : '<span class="changelog-no-notes">Release artifacts only.</span>';
+            html += '<div class="changelog-release' + (isHidden ? " changelog-hidden" : "") + '">'
+              + '<div class="changelog-release-header">'
+              + '<span class="changelog-version">' + escHtml(rel.tag_name) + '</span>'
+              + '<span class="changelog-date">' + date + '</span>'
+              + '</div>'
+              + '<div class="changelog-notes">' + releaseBody + '</div>'
+              + '</div>';
+          });
+          if (releases.length > INITIAL_SHOW) {
+            html += '<button class="changelog-load-more" onclick="showAllReleases(this)">'
+              + 'Show ' + (releases.length - INITIAL_SHOW) + ' older releases'
+              + '</button>';
+          }
+          body.innerHTML = html;
+          changelogLoaded = true;
+          requestAnimationFrame(() => buildTimeline(releases));
+        } catch (e) {
+          body.innerHTML = '<div class="changelog-empty">Could not load releases. <a href="https://github.com/turutupa/yames/releases" target="_blank" rel="noopener">View on GitHub →</a></div>';
+        }
+      }
+
+      function showAllReleases(btn) {
+        document.querySelectorAll(".changelog-hidden").forEach((el) => el.classList.remove("changelog-hidden"));
+        btn.remove();
+        requestAnimationFrame(rebuildTimelinePositions);
+      }
+
+      function formatBody(text) {
+        // Simple markdown-ish rendering
+        const lines = text.split("\n").filter((l) => l.trim());
+        let html = "";
+        let inList = false;
+        lines.forEach((line) => {
+          const trimmed = line.trim();
+          if (/^#{1,3}\s/.test(trimmed)) {
+            // Skip markdown headings — version header is already shown
+            return;
+          }
+          if (/^[-*]/.test(trimmed)) {
+            if (!inList) { html += "<ul>"; inList = true; }
+            html += "<li>" + escHtml(trimmed.replace(/^[-*]\s*/, "")) + "</li>";
+          } else {
+            if (inList) { html += "</ul>"; inList = false; }
+            html += "<p>" + escHtml(trimmed) + "</p>";
+          }
+        });
+        if (inList) html += "</ul>";
+        return html;
+      }
+
+      function escHtml(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      // ─── Timeline nav ───
+      let timelineReleases = [];
+
+      function buildTimeline(releases) {
+        timelineReleases = releases;
+        const timeline = document.getElementById("changelog-timeline");
+        const body = document.getElementById("changelog-body");
+        let html = "";
+        releases.forEach((rel, i) => {
+          const hidden = i >= INITIAL_SHOW ? " tl-hidden" : "";
+          // Count bullet points to size the tick
+          const bullets = (rel.body || "").split("\n").filter((l) => /^\s*[-*]/.test(l)).length;
+          const tw = Math.max(6, Math.min(20, 6 + bullets * 2));
+          html += '<div class="tl-tick' + hidden + '" data-index="' + i + '" style="--tw:' + tw + 'px">'
+            + '<div class="tl-tooltip">' + escHtml(rel.tag_name) + '</div>'
+            + '</div>';
+        });
+        timeline.innerHTML = html;
+        timeline.querySelectorAll(".tl-tick").forEach((tick) => {
+          tick.addEventListener("click", () => {
+            const idx = parseInt(tick.dataset.index);
+            clickedIdx = idx;
+            const els = body.querySelectorAll(".changelog-release");
+            if (els[idx]) els[idx].scrollIntoView({ behavior: "smooth", block: "start" });
+            updateTimelineTicks();
+          });
+        });
+        body.addEventListener("scroll", () => {
+          clickedIdx = -1;
+          updateTimelineTicks();
+        });
+        updateTimelineTicks();
+      }
+
+      function rebuildTimelinePositions() {
+        document.querySelectorAll(".tl-hidden").forEach((el) => el.classList.remove("tl-hidden"));
+        updateTimelineTicks();
+      }
+
+      function updateTimelineTicks() {
+        const body = document.getElementById("changelog-body");
+        const timeline = document.getElementById("changelog-timeline");
+        const ticks = timeline.querySelectorAll(".tl-tick");
+        const releases = body.querySelectorAll(".changelog-release");
+        const scrollTop = body.scrollTop;
+        const clientH = body.clientHeight;
+        const atBottom = scrollTop + clientH >= body.scrollHeight - 2;
+
+        // Find visible releases (in viewport)
+        const visibleSet = new Set();
+        releases.forEach((rel, i) => {
+          if (rel.classList.contains("changelog-hidden")) return;
+          const top = rel.offsetTop - scrollTop;
+          const bottom = top + rel.offsetHeight;
+          if (bottom > 0 && top < clientH) visibleSet.add(i);
+        });
+
+        // Active = clicked target, or topmost visible, or last if at bottom
+        let activeIdx = 0;
+        if (clickedIdx >= 0) {
+          activeIdx = clickedIdx;
+        } else if (atBottom) {
+          // At bottom: last visible release is active
+          for (let i = releases.length - 1; i >= 0; i--) {
+            if (visibleSet.has(i)) { activeIdx = i; break; }
+          }
+        } else {
+          releases.forEach((rel, i) => {
+            if (!rel.classList.contains("changelog-hidden") && rel.offsetTop <= scrollTop + clientH * 0.3) {
+              activeIdx = i;
+            }
+          });
+        }
+
+        ticks.forEach((tick, i) => {
+          tick.classList.toggle("tl-active", i === activeIdx);
+          tick.classList.toggle("tl-visible", i !== activeIdx && visibleSet.has(i));
+        });
+      }
     </script>
   </body>
 </html>

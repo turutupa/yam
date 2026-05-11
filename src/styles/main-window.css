@@ -265,7 +265,9 @@
   width: 0;
   min-width: 0;
   overflow: hidden;
-  transition: width 0.2s ease, min-width 0.2s ease;
+  transition:
+    width 0.2s ease,
+    min-width 0.2s ease;
   display: flex;
   flex-direction: column;
   border-right: 1px solid transparent;
@@ -276,7 +278,10 @@
 
 .preset-sidebar.open {
   width: 220px;
-  border-right-color: var(--sidebar-border, color-mix(in srgb, var(--border) 40%, transparent));
+  border-right-color: var(
+    --sidebar-border,
+    color-mix(in srgb, var(--border) 40%, transparent)
+  );
 }
 
 .preset-sidebar-header {
@@ -405,6 +410,48 @@
   color: var(--text-muted);
   text-align: center;
   opacity: 0.5;
+}
+
+.preset-search-wrap {
+  padding: 0 10px 8px;
+  flex-shrink: 0;
+}
+
+.preset-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.preset-search-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.preset-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px 5px 26px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.preset-search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.preset-search-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 /* Context menu */
@@ -718,8 +765,12 @@
 }
 
 @keyframes tap-pulse {
-  0% { transform: scale(1.08); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .bpm-slider {
@@ -815,7 +866,7 @@
   gap: 6px;
   width: 100%;
   max-width: 520px;
-  margin: 0 auto;
+  margin: 44px auto -14px;
   justify-content: center;
   overflow: visible;
 }
@@ -828,7 +879,10 @@
   border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -837,6 +891,11 @@
 .sub-row-btn:hover {
   background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   color: var(--text-primary);
+}
+
+.sub-row-btn svg {
+  /* Force own compositing layer so beat-dot repaints don't cause SVG anti-aliasing shimmer */
+  transform: translateZ(0);
 }
 
 .sub-row-btn.active {
@@ -865,7 +924,9 @@
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
   z-index: 100;
 }
 
@@ -1103,7 +1164,13 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   border: 2px solid rgba(255, 255, 255, 0.12);
-  transition: all 0.08s ease;
+  transition:
+    background 0.08s ease,
+    border-color 0.08s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+  /* Pre-promote to own GPU layer so scale animations don't repaint siblings */
+  will-change: transform;
 }
 
 .main-dot.active {
@@ -2925,12 +2992,16 @@
   font-size: 0.78rem;
   font-family: "SF Mono", "Fira Code", monospace;
   font-weight: 600;
-  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 100%);
-  border: 1px solid rgba(255,255,255,0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-bottom-width: 3px;
-  border-bottom-color: rgba(255,255,255,0.08);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   text-transform: none;
   line-height: 1;
 }
@@ -3010,7 +3081,9 @@ html[data-theme="velvet"] .floating-play-btn:active,
 html[data-theme="sand"] .floating-play-btn:active {
   transform: translateX(-50%) translateY(-1px);
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--accent) 50%, #000);
-  transition: transform 34ms, box-shadow 34ms;
+  transition:
+    transform 34ms,
+    box-shadow 34ms;
 }
 
 /* --- BPM +/- buttons --- */
@@ -3035,7 +3108,9 @@ html[data-theme="velvet"] .bpm-btn:active,
 html[data-theme="sand"] .bpm-btn:active {
   transform: translateY(0px);
   box-shadow: 0 0px 0 0 color-mix(in srgb, var(--accent) 40%, #000);
-  transition: transform 34ms, box-shadow 34ms;
+  transition:
+    transform 34ms,
+    box-shadow 34ms;
 }
 
 /* --- Subdivision buttons --- */
@@ -3060,7 +3135,9 @@ html[data-theme="velvet"] .sub-row-btn:active,
 html[data-theme="sand"] .sub-row-btn:active {
   transform: translateY(0px);
   box-shadow: 0 0px 0 0 color-mix(in srgb, var(--accent) 45%, #000);
-  transition: transform 34ms, box-shadow 34ms;
+  transition:
+    transform 34ms,
+    box-shadow 34ms;
 }
 
 /* --- Time signature buttons --- */
@@ -3085,7 +3162,9 @@ html[data-theme="velvet"] .time-sig-btn:active,
 html[data-theme="sand"] .time-sig-btn:active {
   transform: translateY(0px);
   box-shadow: 0 0px 0 0 color-mix(in srgb, var(--accent) 45%, #000);
-  transition: transform 34ms, box-shadow 34ms;
+  transition:
+    transform 34ms,
+    box-shadow 34ms;
 }
 
 /* --- Drill stepper +/- buttons --- */
@@ -3110,7 +3189,9 @@ html[data-theme="velvet"] .stepper-btn:active,
 html[data-theme="sand"] .stepper-btn:active {
   transform: translateY(0px);
   box-shadow: 0 0px 0 0 color-mix(in srgb, var(--accent) 40%, #000);
-  transition: transform 34ms, box-shadow 34ms;
+  transition:
+    transform 34ms,
+    box-shadow 34ms;
 }
 
 /* Cancel global scale(0.95) on :active for all 3D buttons */

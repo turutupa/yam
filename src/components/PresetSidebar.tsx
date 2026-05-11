@@ -94,6 +94,7 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
   const [activeId, setActiveId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [search, setSearch] = useState("");
   const [contextMenu, setContextMenu] = useState<{
     id: string;
     x: number;
@@ -103,6 +104,7 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
   const [renameValue, setRenameValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const renameRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const contextRef = useRef<HTMLDivElement>(null);
 
   // Load presets on mount
@@ -110,8 +112,18 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
     listPresets().then(setAllPresets);
   }, []);
 
-  // Filter presets for the current view
-  const presets = allPresets.filter((p) => p.view === view);
+  // Filter presets for the current view, then by search query
+  const viewPresets = allPresets
+    .filter((p) => p.view === view)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const presets = search.trim()
+    ? viewPresets.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    : viewPresets;
+
+  // Clear search when sidebar closes
+  useEffect(() => {
+    if (!isOpen) setSearch("");
+  }, [isOpen]);
 
   // Close context menu on outside click
   useEffect(() => {
@@ -208,7 +220,7 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
     [renameValue, allPresets],
   );
 
-  const activePreset = presets.find((p) => p.id === activeId);
+  const activePreset = viewPresets.find((p) => p.id === activeId);
   const dirty = activePreset ? isDirty(state, activePreset, view) : false;
 
   // Notify parent of active preset + dirty state changes
@@ -265,11 +277,16 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
       {/* Sidebar panel */}
       <div
         className={`preset-sidebar ${isOpen ? "open" : ""}`}
+        onMouseDown={(e) => {
+          if (searchRef.current && e.target !== searchRef.current) {
+            searchRef.current.blur();
+          }
+        }}
       >
         <div className="preset-sidebar-header">
           <span className="preset-sidebar-title">Presets</span>
           <div className="preset-sidebar-header-actions">
-            {presets.length < MAX_PRESETS && (
+            {viewPresets.length < MAX_PRESETS && (
               <button
                 className="preset-sidebar-add"
                 onClick={() => setAdding(true)}
@@ -285,6 +302,27 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
             >
               {toggleIcon}
             </button>
+          </div>
+        </div>
+
+        <div className="preset-search-wrap">
+          <div className="preset-search-field">
+            <svg className="preset-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              ref={searchRef}
+              className="preset-search-input"
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSearch("");
+                e.stopPropagation();
+              }}
+            />
           </div>
         </div>
 
@@ -346,7 +384,7 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
           ))}
           {presets.length === 0 && !adding && (
             <div className="preset-sidebar-empty">
-              No presets yet
+              {search.trim() ? "No results" : "No presets yet"}
             </div>
           )}
         </div>

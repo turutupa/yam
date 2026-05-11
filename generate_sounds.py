@@ -104,6 +104,47 @@ def gen_chime(direction: str = "up", sample_rate: int = 44100):
         out.extend([0.0] * n_gap)
     return out
 
+def gen_hihat(duration_ms: int = 60, sample_rate: int = 44100):
+    """Closed hi-hat / metallic accent layer for drum kit.
+    Inharmonic partials + broadband noise give a realistic metallic 'tsss'."""
+    n = int(sample_rate * duration_ms / 1000)
+    out = []
+    # Inharmonic metallic partials (simulates cymbal alloy resonances)
+    freqs = [7900, 9950, 12500, 15750, 19800]
+    for i in range(n):
+        t = i / sample_rate
+        # Very fast attack (0.5ms), ~14ms half-life decay
+        if t < 0.0005:
+            env = t / 0.0005
+        else:
+            env = math.exp(-t * 50)
+        noise = (random.random() * 2 - 1) * 0.6
+        metallic = sum(math.sin(2 * math.pi * f * t) for f in freqs) / len(freqs) * 0.5
+        s = (noise + metallic) * env
+        s = math.tanh(s * 1.2) * 0.8
+        out.append(s)
+    return out
+
+def gen_crash(duration_ms: int = 100, sample_rate: int = 44100):
+    """Crash cymbal splash — mid-freq metallic wash for drum accent third layer.
+    Lower, denser partials than the hi-hat give it a fuller cymbal quality."""
+    n = int(sample_rate * duration_ms / 1000)
+    out = []
+    # Inharmonic partials spread across mid-high range (crash character vs hi-hat's sizzle)
+    freqs = [2800, 3900, 5100, 6400, 8100, 10200, 12800]
+    for i in range(n):
+        t = i / sample_rate
+        if t < 0.0008:
+            env = t / 0.0008
+        else:
+            env = math.exp(-t * 18)  # Slower decay (~38ms half-life) vs hi-hat's 14ms
+        noise = (random.random() * 2 - 1) * 0.5
+        metallic = sum(math.sin(2 * math.pi * f * t) for f in freqs) / len(freqs) * 0.55
+        s = (noise + metallic) * env
+        s = math.tanh(s * 1.1) * 0.75
+        out.append(s)
+    return out
+
 def gen_drum(is_kick: bool, duration_ms: int = 50, sample_rate: int = 44100):
     """Drum kit sounds for metronome.
     Accent (is_kick=True): Kick drum — sub-bass pitch sweep, punchy thump.
@@ -111,36 +152,50 @@ def gen_drum(is_kick: bool, duration_ms: int = 50, sample_rate: int = 44100):
     out = []
     if is_kick:
         # === KICK DRUM ===
-        # The defining character of a kick is the pitch SWEEP — without it,
-        # a sine tone just sounds like a bell. Must use phase accumulation.
-        dur = 200  # ms
+        # Realism comes from three layers:
+        #   1. Sub-bass body (pitch sweep 150→52Hz, must be FAST — real kicks sweep in <10ms)
+        #   2. Knock/punch component (~130Hz, faster decay) — the "weight" of the hit
+        #   3. Beater click (2-6kHz tones + noise) — the most important for realism
+        dur = 180  # ms
         n = int(sample_rate * dur / 1000)
-        phase = 0.0
+        phase_sub = 0.0
+        phase_knock = 0.0
 
         for i in range(n):
             t = i / sample_rate
 
-            # Pitch sweep: 150Hz → 52Hz exponentially over ~60ms
-            freq = 52 + 98 * math.exp(-t * 38)
-            phase += 2 * math.pi * freq / sample_rate
+            # 1. Sub-bass: pitch sweep 150 → 52Hz, completes in ~10ms (rate 280)
+            freq_sub = 52 + 98 * math.exp(-t * 280)
+            phase_sub += 2 * math.pi * freq_sub / sample_rate
 
-            # Amplitude envelope: instant attack, ~160ms decay
-            if t < 0.002:
-                env = t / 0.002
+            # 2. Knock: resonant mid-bass 160 → 90Hz, faster decay
+            freq_knock = 90 + 70 * math.exp(-t * 200)
+            phase_knock += 2 * math.pi * freq_knock / sample_rate
+
+            # Amplitude envelope: instant attack, ~110ms decay for sub
+            if t < 0.001:
+                env_sub = t / 0.001
             else:
-                env = math.exp(-(t - 0.002) * 11)
+                env_sub = math.exp(-(t - 0.001) * 12)
 
-            # Fundamental tone + slight 2nd harmonic for warmth
-            tone = math.sin(phase) * 0.85 + math.sin(phase * 2) * 0.12
+            # Knock envelope: punchier, faster decay
+            env_knock = math.exp(-t * 40)
 
-            # Beater click — very short broadband noise transient
+            # 3. Beater/click: 3kHz + 5.5kHz tonal knock + broadband noise (first 8ms)
             beater = 0.0
-            if t < 0.007:
-                beater = (random.random() * 2 - 1) * ((1 - t / 0.007) ** 2) * 0.55
+            if t < 0.008:
+                click_env = (1 - t / 0.008) ** 1.8
+                beater = (
+                    math.sin(2 * math.pi * 3000 * t) * 0.45 +
+                    math.sin(2 * math.pi * 5500 * t) * 0.2 +
+                    (random.random() * 2 - 1) * 0.35
+                ) * click_env
 
-            s = (tone + beater) * env
-            # Soft clip for warmth, not harshness
-            s = math.tanh(s * 1.4) * 0.88
+            tone_sub = math.sin(phase_sub) * 0.8 + math.sin(phase_sub * 2) * 0.12
+            tone_knock = math.sin(phase_knock) * 0.5
+
+            s = tone_sub * env_sub + tone_knock * env_knock * 0.55 + beater * 0.85
+            s = math.tanh(s * 1.35) * 0.88
             out.append(s)
 
     else:
@@ -193,6 +248,8 @@ if __name__ == '__main__':
     random.seed(42)  # Reproducible noise
     write_wav(os.path.join(sounds_dir, 'drum_high.wav'), gen_drum(True, 150))
     write_wav(os.path.join(sounds_dir, 'drum_low.wav'), gen_drum(False, 80))
+    write_wav(os.path.join(sounds_dir, 'drum_metal.wav'), gen_hihat(60))
+    write_wav(os.path.join(sounds_dir, 'drum_crash.wav'), gen_crash(100))
 
     print("Generated all sound kits: click, wood, beep, drum")
 

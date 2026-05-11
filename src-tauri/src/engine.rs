@@ -16,6 +16,8 @@ const BEEP_HIGH: &[u8] = include_bytes!("../sounds/beep_high.wav");
 const BEEP_LOW: &[u8] = include_bytes!("../sounds/beep_low.wav");
 const DRUM_HIGH: &[u8] = include_bytes!("../sounds/drum_high.wav");
 const DRUM_LOW: &[u8] = include_bytes!("../sounds/drum_low.wav");
+const DRUM_METAL: &[u8] = include_bytes!("../sounds/drum_metal.wav");
+const DRUM_CRASH: &[u8] = include_bytes!("../sounds/drum_crash.wav");
 const CHIME_UP: &[u8] = include_bytes!("../sounds/chime_up.wav");
 const CHIME_DOWN: &[u8] = include_bytes!("../sounds/chime_down.wav");
 
@@ -276,19 +278,43 @@ impl MetronomeEngine {
                     s.speed_ramp.warmup_count + 1 >= s.speed_ramp.warmup_beats
                 };
 
-                let (sound_data, amp) = if ramp_warming_up && !is_last_warmup {
-                    // Warmup (not the last beat): beep sound for distinct count-in
-                    (BEEP_HIGH, 0.6_f32)
-                } else if use_accent {
-                    (high_sound, 1.0_f32)    // Accent: high sound, full volume
-                } else if is_downbeat {
-                    (low_sound, 0.75_f32)    // Regular beat: low sound, normal
+                // Duration cap: prevent sounds from overlapping at high tempos.
+                // Cap each sound to 90% of the tick interval.
+                let cap = tick_duration.mul_f64(0.9);
+
+                // Drum kit accent: play on a separate detached Sink so the kick
+                // plays fully (180ms) without being capped by the tick interval.
+                // A detached Sink runs independently and doesn't affect the timing
+                // of the main Sink that drives all other beats.
+                if use_accent && !ramp_warming_up && sound_type == "drum" {
+                    if let Ok(accent_sink) = Sink::try_new(&stream_handle) {
+                        if let (Ok(kick), Ok(hat), Ok(crash)) = (
+                            rodio::Decoder::new(Cursor::new(DRUM_HIGH)),
+                            rodio::Decoder::new(Cursor::new(DRUM_METAL)),
+                            rodio::Decoder::new(Cursor::new(DRUM_CRASH)),
+                        ) {
+                            accent_sink.set_volume(volume);
+                            accent_sink.append(
+                                kick.mix(hat.amplify(0.55_f32))
+                                    .mix(crash.amplify(0.35_f32))
+                                    .amplify(1.0_f32),
+                            );
+                            accent_sink.detach();
+                        }
+                    }
                 } else {
-                    (low_sound, 0.35_f32)    // Subdivision tick: low sound, quiet
-                };
-                let cursor = Cursor::new(sound_data);
-                if let Ok(source) = rodio::Decoder::new(cursor) {
-                    sink.append(source.amplify(amp));
+                    let (sound_data, amp) = if ramp_warming_up && !is_last_warmup {
+                        (BEEP_HIGH, 0.6_f32)
+                    } else if use_accent {
+                        (high_sound, 1.0_f32)
+                    } else if is_downbeat {
+                        (low_sound, 0.75_f32)
+                    } else {
+                        (low_sound, 0.35_f32)
+                    };
+                    if let Ok(source) = rodio::Decoder::new(Cursor::new(sound_data)) {
+                        sink.append(source.take_duration(cap).amplify(amp));
+                    }
                 }
 
                 // During warmup: count beats and either continue or fall through

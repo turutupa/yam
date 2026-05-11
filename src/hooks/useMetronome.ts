@@ -31,6 +31,8 @@ const DEFAULT_STATE: AppState = {
     direction: "up",
     barsInStep: 0,
     completed: false,
+    warmupBeats: 4,
+    warmupCount: 0,
   },
 };
 

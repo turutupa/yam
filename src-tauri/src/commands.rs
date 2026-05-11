@@ -244,6 +244,7 @@ pub fn configure_speed_ramp(
     beats_per_bar: u8,
     mode: String,
     cyclic: bool,
+    warmup_beats: u8,
     state: State<SharedState>,
     app_handle: AppHandle,
 ) {
@@ -260,6 +261,7 @@ pub fn configure_speed_ramp(
             _ => "linear".to_string(),
         };
         s.speed_ramp.cyclic = cyclic;
+        s.speed_ramp.warmup_beats = warmup_beats.clamp(0, 8);
     }
     let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
     persist_state(&state, &app_handle);
@@ -279,6 +281,7 @@ pub fn start_speed_ramp(
         s.speed_ramp.direction = "up".to_string();
         s.speed_ramp.bars_in_step = 0;
         s.speed_ramp.completed = false;
+        s.speed_ramp.warmup_count = 0;
         // Don't touch s.bpm — ramp uses its own current_bpm
         s.is_playing = true;
     }
@@ -306,6 +309,7 @@ pub fn start_speed_ramp_from(
         s.speed_ramp.direction = if bpm >= s.speed_ramp.target_bpm { "down".to_string() } else { "up".to_string() };
         s.speed_ramp.bars_in_step = bar;
         s.speed_ramp.completed = false;
+        s.speed_ramp.warmup_count = 0;
         // Don't touch s.bpm — ramp uses its own current_bpm
         s.is_playing = true;
     }

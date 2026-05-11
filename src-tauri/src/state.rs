@@ -25,6 +25,10 @@ pub struct SpeedRamp {
     #[serde(rename = "barsInStep")]
     pub bars_in_step: u8,
     pub completed: bool,
+    #[serde(rename = "warmupBeats")]
+    pub warmup_beats: u8,
+    #[serde(rename = "warmupCount")]
+    pub warmup_count: u8,
 }
 
 impl Default for SpeedRamp {
@@ -44,6 +48,8 @@ impl Default for SpeedRamp {
             direction: "up".to_string(),
             bars_in_step: 0,
             completed: false,
+            warmup_beats: 4,
+            warmup_count: 0,
         }
     }
 }

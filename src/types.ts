@@ -17,6 +17,8 @@ export type SpeedRamp = {
   direction: "up" | "down";
   barsInStep: number;
   completed: boolean;
+  warmupBeats: number;
+  warmupCount: number;
 };
 
 export type AppState = {

@@ -87,6 +87,17 @@
   letter-spacing: 0.3em;
 }
 
+.fs-warmup-label {
+  font-size: 1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+}
+
+.fs-warmup-number {
+  color: var(--accent);
+}
+
 /* Ramp info above BPM */
 .fs-ramp-info {
   display: flex;

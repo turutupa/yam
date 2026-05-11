@@ -16,6 +16,8 @@ const BEEP_HIGH: &[u8] = include_bytes!("../sounds/beep_high.wav");
 const BEEP_LOW: &[u8] = include_bytes!("../sounds/beep_low.wav");
 const DRUM_HIGH: &[u8] = include_bytes!("../sounds/drum_high.wav");
 const DRUM_LOW: &[u8] = include_bytes!("../sounds/drum_low.wav");
+const CHIME_UP: &[u8] = include_bytes!("../sounds/chime_up.wav");
+const CHIME_DOWN: &[u8] = include_bytes!("../sounds/chime_down.wav");
 
 fn get_sounds(sound_type: &str) -> (&'static [u8], &'static [u8]) {
     match sound_type {
@@ -146,11 +148,12 @@ impl MetronomeEngine {
                     continue;
                 }
 
-                let (bpm, subdivision, volume, sound_type, time_sig, ramp_active, ramp_beats_per_bar) = {
+                let (bpm, subdivision, volume, sound_type, time_sig, ramp_active, ramp_beats_per_bar, ramp_warming_up) = {
                     let s = state.lock().unwrap();
                     let effective_bpm = if s.speed_ramp.active { s.speed_ramp.current_bpm } else { s.bpm };
+                    let warming_up = s.speed_ramp.active && s.speed_ramp.warmup_count < s.speed_ramp.warmup_beats;
                     (effective_bpm, s.subdivision, s.volume, s.sound_type.clone(), s.time_signature,
-                     s.speed_ramp.active, s.speed_ramp.beats_per_bar)
+                     s.speed_ramp.active, s.speed_ramp.beats_per_bar, warming_up)
                 };
 
                 // When ramp is active: force quarter notes only (no subdivisions)
@@ -192,7 +195,8 @@ impl MetronomeEngine {
                 let is_downbeat = sub_count == 0;
 
                 // Process pending ramp advance at the START of the new bar's first beat
-                if is_downbeat && pending_ramp_advance {
+                // Skip during warmup — just play clicks without advancing
+                if is_downbeat && pending_ramp_advance && !ramp_warming_up {
                     pending_ramp_advance = false;
                     let should_advance = {
                         let s = state.lock().unwrap();
@@ -204,6 +208,7 @@ impl MetronomeEngine {
                         if s.speed_ramp.bars_in_step >= s.speed_ramp.bars_per_step {
                             s.speed_ramp.bars_in_step = 0;
                             // Try to advance to next step
+                            let prev_bpm = s.speed_ramp.current_bpm;
                             let (new_bpm, new_dir, done) = advance_ramp(
                                 s.speed_ramp.current_bpm,
                                 &s.speed_ramp.direction,
@@ -233,6 +238,12 @@ impl MetronomeEngine {
                                 let ramp_clone = s.speed_ramp.clone();
                                 let state_clone = s.clone();
                                 drop(s);
+                                // Play directional chime for step transition
+                                let chime = if new_bpm < prev_bpm { CHIME_DOWN } else { CHIME_UP };
+                                let chime_cursor = Cursor::new(chime);
+                                if let Ok(source) = rodio::Decoder::new(chime_cursor) {
+                                    sink.append(source.amplify(0.4_f32));
+                                }
                                 let _ = app_handle.emit("ramp-step", &ramp_clone);
                                 let _ = app_handle.emit("state-changed", &state_clone);
                             }
@@ -259,7 +270,16 @@ impl MetronomeEngine {
                     }
                 };
                 let (high_sound, low_sound) = get_sounds(&sound_type);
-                let (sound_data, amp) = if use_accent {
+                // Check if this is the last warmup beat (warmup will end this tick)
+                let is_last_warmup = ramp_warming_up && is_downbeat && {
+                    let s = state.lock().unwrap();
+                    s.speed_ramp.warmup_count + 1 >= s.speed_ramp.warmup_beats
+                };
+
+                let (sound_data, amp) = if ramp_warming_up && !is_last_warmup {
+                    // Warmup (not the last beat): beep sound for distinct count-in
+                    (BEEP_HIGH, 0.6_f32)
+                } else if use_accent {
                     (high_sound, 1.0_f32)    // Accent: high sound, full volume
                 } else if is_downbeat {
                     (low_sound, 0.75_f32)    // Regular beat: low sound, normal
@@ -269,6 +289,29 @@ impl MetronomeEngine {
                 let cursor = Cursor::new(sound_data);
                 if let Ok(source) = rodio::Decoder::new(cursor) {
                     sink.append(source.amplify(amp));
+                }
+
+                // During warmup: count beats and either continue or fall through
+                if ramp_warming_up && is_downbeat {
+                    let mut s = state.lock().unwrap();
+                    s.speed_ramp.warmup_count += 1;
+                    if s.speed_ramp.warmup_count >= s.speed_ramp.warmup_beats {
+                        // Warmup just finished — reset counters, fall through to emit beat 0
+                        beat_count = 0;
+                        sub_count = 0;
+                        measure_beat = 0;
+                        pending_ramp_advance = false;
+                        let state_clone = s.clone();
+                        drop(s);
+                        let _ = app_handle.emit("state-changed", &state_clone);
+                        // Fall through: beat 0 will be emitted below
+                    } else {
+                        let state_clone = s.clone();
+                        drop(s);
+                        let _ = app_handle.emit("state-changed", &state_clone);
+                        next_tick += tick_duration;
+                        continue;
+                    }
                 }
 
                 let event = BeatEvent {

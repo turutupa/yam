@@ -34,6 +34,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
   const [beatsPerBar, setBeatsPerBar] = useState(ramp.beatsPerBar);
   const [mode, setMode] = useState(ramp.mode);
   const [cyclic, setCyclic] = useState(ramp.cyclic);
+  const [countIn, setCountIn] = useState(ramp.warmupBeats > 0);
 
   // Ghost elements for smooth exit animations
   const prevStepsRef = useRef<number[]>([]);
@@ -57,8 +58,9 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
       setBeatsPerBar(ramp.beatsPerBar);
       setMode(ramp.mode);
       setCyclic(ramp.cyclic);
+      setCountIn(ramp.warmupBeats > 0);
     }
-  }, [ramp.startBpm, ramp.targetBpm, ramp.increment, ramp.decrement, ramp.barsPerStep, ramp.beatsPerBar, ramp.mode, ramp.cyclic, ramp.active]);
+  }, [ramp.startBpm, ramp.targetBpm, ramp.increment, ramp.decrement, ramp.barsPerStep, ramp.beatsPerBar, ramp.mode, ramp.cyclic, ramp.warmupBeats, ramp.active]);
 
   // Auto-collapse config when playing, auto-expand on stop
   useEffect(() => {
@@ -77,7 +79,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
-  const saveWith = (overrides: Partial<{ startBpm: number; targetBpm: number; increment: number; decrement: number; barsPerStep: number; beatsPerBar: number; mode: string; cyclic: boolean }>) => {
+  const saveWith = (overrides: Partial<{ startBpm: number; targetBpm: number; increment: number; decrement: number; barsPerStep: number; beatsPerBar: number; mode: string; cyclic: boolean; warmupBeats: number }>) => {
     configureSpeedRamp({
       startBpm: overrides.startBpm ?? startBpm,
       targetBpm: overrides.targetBpm ?? targetBpm,
@@ -87,6 +89,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
       beatsPerBar: overrides.beatsPerBar ?? beatsPerBar,
       mode: overrides.mode ?? mode,
       cyclic: overrides.cyclic ?? cyclic,
+      warmupBeats: overrides.warmupBeats ?? (countIn ? 4 : 0),
     });
   };
 
@@ -222,16 +225,27 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
 
   const activeBeat = currentBeat ? currentBeat.beat % beatsPerBar : -1;
   const isDownbeat = currentBeat?.isDownbeat ?? false;
+  const isWarmingUp = ramp.active && ramp.warmupCount < ramp.warmupBeats;
+  const warmupRemaining = ramp.warmupBeats - ramp.warmupCount;
 
   return (
     <div className="drill-view" data-highlight={!ramp.active ? highlightMode || undefined : undefined} data-animations={animations ? undefined : "off"} data-active={ramp.active ? "" : undefined}>
       <div className="drill-current view-stagger-item" style={{ animationDelay: '0ms' }}>
-        <span className="drill-current-bpm">{ramp.active ? ramp.currentBpm : startBpm}</span>
-        <span className="drill-current-label">BPM</span>
-        {/* Beat dots */}
-        <div className="drill-beat-dots">
+        {isWarmingUp ? (
+          <>
+            <span className="drill-warmup-label">Starting in</span>
+            <span className="drill-current-bpm drill-warmup-number">{warmupRemaining}</span>
+          </>
+        ) : (
+          <>
+            <span className="drill-current-bpm">{ramp.active ? ramp.currentBpm : startBpm}</span>
+            <span className="drill-current-label">BPM</span>
+          </>
+        )}
+        {/* Beat dots — hidden during warmup countdown */}
+        <div className="drill-beat-dots" style={{ visibility: isWarmingUp ? 'hidden' : 'visible' }}>
           {Array.from({ length: beatsPerBar }, (_, beatIdx) => {
-            const isBeatActive = ramp.active && activeBeat === beatIdx && isDownbeat;
+            const isBeatActive = ramp.active && !isWarmingUp && activeBeat === beatIdx && isDownbeat;
             const isAccent = beatIdx === 0;
             return (
               <div
@@ -244,7 +258,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
             <div key={`ghost-dot-${i}`} className="drill-dot exiting" />
           ))}
         </div>
-        <span className="drill-current-step" style={{ visibility: ramp.active || ramp.completed ? "visible" : "hidden" }}>
+        <span className="drill-current-step" style={{ visibility: (ramp.active && !isWarmingUp) || ramp.completed ? "visible" : "hidden" }}>
           {ramp.completed
             ? "Done!"
             : ramp.active
@@ -276,7 +290,16 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
           </svg>
         </button>
         <div className="drill-config-body">
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '40ms' }} onMouseEnter={() => setHighlightMode("startBpm")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '40ms' }}>
+            <label className="drill-label-tip">Countdown<span className="drill-tip">4-beat countdown before the drill starts. Helps you lock into the tempo.</span></label>
+            <button
+              className={`toggle-btn ${countIn ? "active" : ""}`}
+              onClick={() => { const next = !countIn; setCountIn(next); saveWith({ warmupBeats: next ? 4 : 0 }); }}
+            >
+              {countIn ? "On" : "Off"}
+            </button>
+          </div>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '70ms' }} onMouseEnter={() => setHighlightMode("startBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Start BPM<span className="drill-tip">{DRILL_DESCRIPTIONS.startBpm}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(20, startBpm - 5); setStartBpm(v); saveWith({ startBpm: v }); }}>−</button>
@@ -291,7 +314,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               <button className="stepper-btn" onClick={() => { const v = Math.min(300, startBpm + 5); setStartBpm(v); if (v > targetBpm) { setTargetBpm(v); saveWith({ startBpm: v, targetBpm: v }); } else { saveWith({ startBpm: v }); } }}>+</button>
             </div>
           </div>
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '70ms' }} onMouseEnter={() => setHighlightMode("targetBpm")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '100ms' }} onMouseEnter={() => setHighlightMode("targetBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Target BPM<span className="drill-tip">{DRILL_DESCRIPTIONS.targetBpm}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(startBpm, targetBpm - 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>−</button>
@@ -306,7 +329,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               <button className="stepper-btn" onClick={() => { const v = Math.min(300, targetBpm + 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>+</button>
             </div>
           </div>
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '100ms' }}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '130ms' }}>
             <label className="drill-label-tip">Speed Up<span className="drill-tip">{DRILL_DESCRIPTIONS.increment}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(1, increment - 1); setIncrement(v); saveWith({ increment: v }); }}>−</button>
@@ -322,7 +345,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
             </div>
           </div>
           {mode === "zigzag" && (
-            <div className="drill-row view-stagger-item" style={{ animationDelay: '130ms' }}>
+            <div className="drill-row view-stagger-item" style={{ animationDelay: '160ms' }}>
               <label className="drill-label-tip">Slow Down<span className="drill-tip">{DRILL_DESCRIPTIONS.decrement}</span></label>
               <div className="drill-stepper">
                 <button className="stepper-btn" onClick={() => { const v = Math.max(1, decrement - 1); setDecrement(v); saveWith({ decrement: v }); }}>−</button>
@@ -338,7 +361,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               </div>
             </div>
           )}
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '160ms' }} onMouseEnter={() => setHighlightMode("beats")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '190ms' }} onMouseEnter={() => setHighlightMode("beats")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Beats<span className="drill-tip">{DRILL_DESCRIPTIONS.beats}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(1, beatsPerBar - 1); setBeatsPerBar(v); saveWith({ beatsPerBar: v }); }}>−</button>
@@ -353,7 +376,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               <button className="stepper-btn" onClick={() => { const v = Math.min(12, beatsPerBar + 1); setBeatsPerBar(v); saveWith({ beatsPerBar: v }); }}>+</button>
             </div>
           </div>
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '190ms' }} onMouseEnter={() => setHighlightMode("repeats")} onMouseLeave={() => setHighlightMode(null)}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '220ms' }} onMouseEnter={() => setHighlightMode("repeats")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Repeats<span className="drill-tip">{DRILL_DESCRIPTIONS.repeat}</span></label>
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(1, barsPerStep - 1); setBarsPerStep(v); saveWith({ barsPerStep: v }); }}>−</button>
@@ -368,7 +391,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               <button className="stepper-btn" onClick={() => { const v = Math.min(32, barsPerStep + 1); setBarsPerStep(v); saveWith({ barsPerStep: v }); }}>+</button>
             </div>
           </div>
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '220ms' }}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '250ms' }}>
             <label className="drill-label-tip">Mode<span className="drill-tip">{DRILL_DESCRIPTIONS.mode}</span></label>
             <div className="toggle-group">
               <button className={`toggle-btn ${mode === "linear" ? "active" : ""}`} onClick={() => { setMode("linear"); saveWith({ mode: "linear" }); }}>
@@ -379,7 +402,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               </button>
             </div>
           </div>
-          <div className="drill-row view-stagger-item" style={{ animationDelay: '250ms' }}>
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '280ms' }}>
             <label className="drill-label-tip">Cyclic<span className="drill-tip">{DRILL_DESCRIPTIONS.cyclic}</span></label>
             <button
               className={`toggle-btn ${cyclic ? "active" : ""}`}
@@ -392,7 +415,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
         </div>
       </div>
 
-      <div className="drill-summary view-stagger-item" style={{ animationDelay: '280ms' }}>
+      <div className="drill-summary view-stagger-item" style={{ animationDelay: '310ms' }}>
         {beatsPerBar} beats · {steps.length} steps · {barsPerStep} repeats · {ramp.active ? `${formatTime(liveRemaining)} remaining` : formatTime(totalTimeSeconds)}
       </div>
 

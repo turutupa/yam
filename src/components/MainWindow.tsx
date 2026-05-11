@@ -42,6 +42,7 @@ import { DrillView } from "./DrillView";
 import { FullscreenView } from "./FullscreenView";
 import { ThemeEffects } from "./ThemeEffects";
 import { TrackView } from "./TrackView";
+import type { TrackViewHandle } from "./TrackView";
 import { ViewTransition } from "./ViewTransition";
 import { ZenTransition } from "./ZenTransition";
 
@@ -572,6 +573,7 @@ export function MainWindow() {
     type: "key" | "global";
   } | null>(null);
   const bindingsLoaded = useRef(false);
+  const trackViewRef = useRef<TrackViewHandle>(null);
 
   // Persist bindings whenever they change — but only after initial restore
   useEffect(() => {
@@ -967,9 +969,12 @@ export function MainWindow() {
                 beatsPerBar: state.speedRamp.beatsPerBar,
                 mode: state.speedRamp.mode,
                 cyclic: state.speedRamp.cyclic,
+                warmupBeats: state.speedRamp.warmupBeats,
               });
               setTimeout(() => startSpeedRamp(), 50);
             }
+          } else if (view === "track") {
+            trackViewRef.current?.spaceAction();
           } else {
             togglePlayback();
           }
@@ -1054,6 +1059,7 @@ export function MainWindow() {
       state.subdivision,
       state.timeSignature,
       state.speedRamp?.active,
+      state.speedRamp?.warmupBeats,
       isFullscreen,
       setView,
       state.alwaysOnTop,
@@ -1732,7 +1738,7 @@ export function MainWindow() {
             animations={viewTransitions !== "off"}
           />
         ) : view === "track" ? (
-          <TrackView state={state} currentBeat={currentBeat} />
+          <TrackView ref={trackViewRef} state={state} currentBeat={currentBeat} />
         ) : (
           <>
             {/* Update banner — shown at top of settings when update available */}

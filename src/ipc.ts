@@ -97,6 +97,7 @@ export async function configureSpeedRamp(config: {
   beatsPerBar: number;
   mode: string;
   cyclic: boolean;
+  warmupBeats?: number;
 }): Promise<void> {
   return invoke("configure_speed_ramp", {
     startBpm: config.startBpm,
@@ -107,6 +108,7 @@ export async function configureSpeedRamp(config: {
     beatsPerBar: config.beatsPerBar,
     mode: config.mode,
     cyclic: config.cyclic,
+    warmupBeats: config.warmupBeats ?? 4,
   });
 }
 

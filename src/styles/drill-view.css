@@ -34,6 +34,17 @@
   letter-spacing: 0.1em;
 }
 
+.drill-warmup-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.drill-warmup-number {
+  color: var(--accent);
+}
+
 .drill-beat-dots {
   display: flex;
   gap: 12px;
@@ -100,6 +111,7 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
   margin-top: 4px;
+  margin-bottom: 12px;
 }
 
 .drill-completed {
@@ -332,6 +344,7 @@
   width: 100%;
   align-self: center;
   overflow: hidden;
+  margin-bottom: 12px;
 }
 
 .drill-config-toggle {

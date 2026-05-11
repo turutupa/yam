@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getCalibrationOffset,
@@ -133,7 +133,11 @@ function getRandomPhrase(rating: Rating): string {
   return phrases[Math.floor(Math.random() * phrases.length)];
 }
 
-export function TrackView({ state }: TrackViewProps) {
+export interface TrackViewHandle {
+  spaceAction: () => void;
+}
+
+export const TrackView = forwardRef<TrackViewHandle, TrackViewProps>(function TrackView({ state }, ref) {
   const [session, setSession] = useState<SessionState>("idle");
   const [taps, setTaps] = useState<TapResult[]>([]);
   const [beatCount, setBeatCount] = useState(0);
@@ -324,8 +328,16 @@ export function TrackView({ state }: TrackViewProps) {
     });
   };
 
-  // Spacebar → start session when idle, results, or history
-  // (handled by MainWindow's unified dispatcher via "play" hotkey)
+  // Spacebar → start session when idle/results/history, stop when playing/calibrating
+  useImperativeHandle(ref, () => ({
+    spaceAction() {
+      if (session === "idle" || session === "results" || session === "history" || session === "calibration-done") {
+        startSession();
+      } else if (session === "playing" || session === "calibrating") {
+        stopSession();
+      }
+    },
+  }), [session]);
 
   // Apply saved calibration to scored taps
   const offset = savedOffset ?? 0;
@@ -1108,4 +1120,4 @@ export function TrackView({ state }: TrackViewProps) {
       </button>
     </div>
   );
-}
+});

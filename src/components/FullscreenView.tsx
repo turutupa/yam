@@ -39,6 +39,7 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
   const isDownbeat = currentBeat?.isDownbeat ?? false;
 
   const exitFullscreen = () => onExit();
+  const isWarmingUp = activeTab === "drill" && ramp.active && ramp.warmupCount < ramp.warmupBeats;
 
   const [zenStyle, setZenStyle] = useState<ZenStyle>("focus");
   const [themeOpen, setThemeOpen] = useState(false);
@@ -113,6 +114,7 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
         beatsPerBar: ramp.beatsPerBar,
         mode: ramp.mode,
         cyclic: ramp.cyclic,
+        warmupBeats: ramp.warmupBeats,
       });
       setTimeout(() => startSpeedRamp(), 50);
     }
@@ -164,19 +166,28 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
         {/* BPM display */}
         <div className="fs-center">
           {activeTab === "drill" && (
-            <div className="fs-ramp-info" style={{ visibility: ramp.active ? "visible" : "hidden" }}>
+            <div className="fs-ramp-info" style={{ visibility: ramp.active && !(ramp.warmupCount < ramp.warmupBeats) ? "visible" : "hidden" }}>
               <span className="fs-ramp-step">Step {ramp.currentStep + 1}</span>
               <span className="fs-ramp-target">→ {ramp.targetBpm}</span>
             </div>
           )}
-          <div className="fs-bpm">{activeTab === "drill" ? (ramp.active ? ramp.currentBpm : ramp.startBpm) : state.bpm}</div>
-          <div className="fs-bpm-label">BPM</div>
+          {activeTab === "drill" && ramp.active && ramp.warmupCount < ramp.warmupBeats ? (
+            <>
+              <div className="fs-warmup-label">Starting in</div>
+              <div className="fs-bpm fs-warmup-number">{ramp.warmupBeats - ramp.warmupCount}</div>
+            </>
+          ) : (
+            <>
+              <div className="fs-bpm">{activeTab === "drill" ? (ramp.active ? ramp.currentBpm : ramp.startBpm) : state.bpm}</div>
+              <div className="fs-bpm-label">BPM</div>
+            </>
+          )}
         </div>
 
         {/* Beat visualization */}
-        <div className="fs-beats">
+        <div className="fs-beats" style={{ visibility: isWarmingUp ? 'hidden' : 'visible' }}>
           {Array.from({ length: beatsPerMeasure }, (_, beatIdx) => {
-            const isBeatActive = activeBeat === beatIdx && isDownbeat;
+            const isBeatActive = !isWarmingUp && activeBeat === beatIdx && isDownbeat;
             const isAccent = activeTab === "drill"
               ? beatIdx === 0
               : (state.timeSignature === 1 || (beatIdx === 0 && state.timeSignature >= 2));

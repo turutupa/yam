@@ -75,6 +75,35 @@ def gen_beep(freq: float, duration_ms: int = 40, sample_rate: int = 44100):
         out.append(s)
     return out
 
+def gen_chime(direction: str = "up", sample_rate: int = 44100):
+    """Two-tone chime for drill step transitions.
+    'up' = ascending (C5→E5), 'down' = descending (E5→C5)."""
+    freq1, freq2 = (523.25, 659.25) if direction == "up" else (659.25, 523.25)
+    tone_ms = 60      # Each tone duration
+    gap_ms = 20       # Gap between tones
+    n_tone = int(sample_rate * tone_ms / 1000)
+    n_gap = int(sample_rate * gap_ms / 1000)
+    out = []
+    for freq in [freq1, freq2]:
+        attack = int(sample_rate * 0.002)
+        release = int(sample_rate * 0.015)
+        for i in range(n_tone):
+            t = i / sample_rate
+            if i < attack:
+                env = i / attack
+            elif i > n_tone - release:
+                env = (n_tone - i) / release
+            else:
+                env = math.exp(-t * 20)
+            s = math.sin(2 * math.pi * freq * t) * env
+            # Add a soft harmonic for a bell-like quality
+            s += math.sin(2 * math.pi * freq * 2 * t) * env * 0.15
+            s += math.sin(2 * math.pi * freq * 3 * t) * env * 0.05
+            out.append(s * 0.7)
+        # Add gap between tones
+        out.extend([0.0] * n_gap)
+    return out
+
 def gen_drum(is_kick: bool, duration_ms: int = 50, sample_rate: int = 44100):
     """Drum kit — acoustic rock kit. Think John Bonham / Chad Smith."""
     out = []
@@ -206,3 +235,8 @@ if __name__ == '__main__':
     write_wav(os.path.join(sounds_dir, 'drum_low.wav'), gen_drum(False, 80))
 
     print("Generated all sound kits: click, wood, beep, drum")
+
+    # Chime sounds for drill step transitions
+    write_wav(os.path.join(sounds_dir, 'chime_up.wav'), gen_chime("up"))
+    write_wav(os.path.join(sounds_dir, 'chime_down.wav'), gen_chime("down"))
+    print("Generated chime sounds: chime_up, chime_down")

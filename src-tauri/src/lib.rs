@@ -9,6 +9,7 @@ use commands::{
     set_widget_always_on_top, show_floating, show_main, toggle_playback, configure_speed_ramp, start_speed_ramp,
     start_speed_ramp_from, stop_speed_ramp,
     list_midi_devices, connect_midi_device, disconnect_midi_device, set_midi_binding, clear_midi_binding, get_midi_bindings,
+    list_presets, save_preset, delete_preset, reorder_presets,
     EngineState,
 };
 use engine::MetronomeEngine;
@@ -240,6 +241,10 @@ pub fn run() {
             set_midi_binding,
             clear_midi_binding,
             get_midi_bindings,
+            list_presets,
+            save_preset,
+            delete_preset,
+            reorder_presets,
         ])
         .on_window_event(|window, event| {
             match event {

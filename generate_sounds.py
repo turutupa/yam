@@ -105,111 +105,71 @@ def gen_chime(direction: str = "up", sample_rate: int = 44100):
     return out
 
 def gen_drum(is_kick: bool, duration_ms: int = 50, sample_rate: int = 44100):
-    """Drum kit — acoustic rock kit. Think John Bonham / Chad Smith."""
+    """Drum kit sounds for metronome.
+    Accent (is_kick=True): Kick drum — sub-bass pitch sweep, punchy thump.
+    Regular (is_kick=False): Snare hit — noise-heavy crack with fast decay."""
     out = []
     if is_kick:
-        # === ROCK KICK DRUM ===
-        # Acoustic 22" kick: beater attack + resonant shell + natural low end
-        # Kept short so it doesn't bleed at high BPMs
-        dur = max(duration_ms, 150)
+        # === KICK DRUM ===
+        # The defining character of a kick is the pitch SWEEP — without it,
+        # a sine tone just sounds like a bell. Must use phase accumulation.
+        dur = 200  # ms
         n = int(sample_rate * dur / 1000)
-
-        phase_acc = 0.0
-        dt = 1.0 / sample_rate
+        phase = 0.0
 
         for i in range(n):
             t = i / sample_rate
 
-            # --- Beater slap (felt beater hitting the head) ---
-            attack = 0.0
-            if t < 0.006:
-                att_env = (1 - t / 0.006) ** 1.5
-                attack += math.sin(2 * math.pi * 1200 * t) * att_env * 0.5
-                attack += math.sin(2 * math.pi * 2200 * t) * att_env * 0.3
-                attack += (random.random() * 2 - 1) * att_env * 0.45
+            # Pitch sweep: 150Hz → 52Hz exponentially over ~60ms
+            freq = 52 + 98 * math.exp(-t * 38)
+            phase += 2 * math.pi * freq / sample_rate
 
-            # --- Shell resonance ---
-            freq_body = 78 + 40 * math.exp(-t * 30)
-            phase_acc += 2 * math.pi * freq_body * dt
-
-            if t < 0.004:
-                body_env = t / 0.004
-            elif t < 0.020:
-                body_env = 1.0 - (t - 0.004) * 3.0
-                body_env = max(body_env, 0.7)
+            # Amplitude envelope: instant attack, ~160ms decay
+            if t < 0.002:
+                env = t / 0.002
             else:
-                body_env = 0.7 * math.exp(-(t - 0.020) * 22)  # Faster decay
+                env = math.exp(-(t - 0.002) * 11)
 
-            body = math.sin(phase_acc) * body_env * 0.85
-            body += math.sin(phase_acc * 2.0) * body_env * 0.25 * math.exp(-t * 30)
-            body += math.sin(phase_acc * 3.0) * body_env * 0.08 * math.exp(-t * 45)
+            # Fundamental tone + slight 2nd harmonic for warmth
+            tone = math.sin(phase) * 0.85 + math.sin(phase * 2) * 0.12
 
-            # --- Low-end resonance ---
-            low_env = 0.0
-            if t < 0.008:
-                low_env = t / 0.008
-            else:
-                low_env = math.exp(-(t - 0.008) * 14)  # Tighter tail
-            low = math.sin(2 * math.pi * 55 * t) * low_env * 0.4
+            # Beater click — very short broadband noise transient
+            beater = 0.0
+            if t < 0.007:
+                beater = (random.random() * 2 - 1) * ((1 - t / 0.007) ** 2) * 0.55
 
-            # --- Shell rattle ---
-            rattle = 0.0
-            if t < 0.04:
-                r_env = math.exp(-t * 70)
-                rattle = math.sin(2 * math.pi * 320 * t) * r_env * 0.08
-                rattle += math.sin(2 * math.pi * 480 * t) * r_env * 0.05
-
-            s = attack + body + low + rattle
-            s = math.tanh(s * 1.4) * 0.9
+            s = (tone + beater) * env
+            # Soft clip for warmth, not harshness
+            s = math.tanh(s * 1.4) * 0.88
             out.append(s)
 
     else:
-        # === CLOSED HI-HAT (acoustic) ===
-        # Bright, tight — real stick on a 14" hi-hat
-        dur = max(duration_ms, 80)
+        # === SNARE DRUM ===
+        # Snare = mostly noise. Sine tones make it sound like a bell.
+        # The "crack" is a broadband noise burst; the wire rattle is decaying noise.
+        dur = 130  # ms
         n = int(sample_rate * dur / 1000)
-        prev_hp1 = 0.0
-        prev_hp2 = 0.0
 
         for i in range(n):
             t = i / sample_rate
 
-            # Envelope: real stick hit — instant, fast decay with tiny ring
-            if t < 0.0003:
-                env = t / 0.0003
-            elif t < 0.008:
-                env = 1.0 - (t - 0.0003) * 50  # fast drop
-                env = max(env, 0.4)
-            elif t < 0.025:
-                env = 0.4 * math.exp(-(t - 0.008) * 80)
-            else:
-                env = 0.08 * math.exp(-(t - 0.025) * 40)  # sizzle tail
+            # Initial crack transient (first 4ms — very dense noise)
+            crack = 0.0
+            if t < 0.004:
+                crack_env = (1 - t / 0.004) ** 1.5
+                crack = (random.random() * 2 - 1) * crack_env * 0.9
 
-            # Noise — two-pole HP for that crispy metallic wash
-            noise = (random.random() * 2 - 1)
-            hp1 = noise - prev_hp1
-            prev_hp1 = noise * 0.1
-            hp2 = hp1 - prev_hp2
-            prev_hp2 = hp1 * 0.1
+            # Snare body noise (wire rattle + head) — decays over ~80ms
+            body_env = math.exp(-t * 28)
+            body_noise = (random.random() * 2 - 1) * body_env * 0.65
 
-            # Metallic partials — asymmetric like real cymbals
-            metal = 0.0
-            metal += math.sin(2 * math.pi * 3200 * t + 0.3) * 0.14
-            metal += math.sin(2 * math.pi * 4700 * t + 1.1) * 0.18
-            metal += math.sin(2 * math.pi * 6100 * t + 0.7) * 0.16
-            metal += math.sin(2 * math.pi * 7900 * t + 2.0) * 0.12
-            metal += math.sin(2 * math.pi * 10300 * t + 1.5) * 0.08
-            metal += math.sin(2 * math.pi * 13100 * t + 0.4) * 0.04
+            # Low-frequency head thump — kept very short and quiet
+            # (just enough to feel like something was hit, not a bell tone)
+            head_env = math.exp(-t * 60)
+            head = math.sin(2 * math.pi * 185 * t) * head_env * 0.18
 
-            # Stick click (wood on metal)
-            stick = 0.0
-            if t < 0.003:
-                stick_env = (1 - t / 0.003) ** 2
-                stick = (random.random() * 2 - 1) * stick_env * 0.35
-                stick += math.sin(2 * math.pi * 8000 * t) * stick_env * 0.15
-
-            s = (hp2 * 0.5 + metal + stick) * env
-            s = math.tanh(s * 1.6) * 0.7
+            s = crack + body_noise + head
+            s = math.tanh(s * 1.3) * 0.78
             out.append(s)
     return out
 

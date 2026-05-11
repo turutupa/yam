@@ -361,4 +361,5 @@ export function applyTheme(theme: Theme) {
   }
   // Set a data attribute for light/dark specific CSS overrides
   root.dataset.themeGroup = theme.group;
+  root.dataset.theme = theme.id;
 }

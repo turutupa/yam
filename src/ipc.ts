@@ -230,3 +230,24 @@ export function onMidiActivity(callback: (activity: MidiActivity) => void) {
 export function onMidiDevicesChanged(callback: (devices: MidiDeviceInfo[]) => void) {
   return listen<MidiDeviceInfo[]>("midi-devices-changed", (e) => callback(e.payload));
 }
+
+// ---------------------------------------------------------------------------
+// Presets
+// ---------------------------------------------------------------------------
+import type { Preset } from "./types";
+
+export async function listPresets(): Promise<Preset[]> {
+  return invoke<Preset[]>("list_presets");
+}
+
+export async function savePreset(preset: Preset): Promise<void> {
+  return invoke("save_preset", { preset });
+}
+
+export async function deletePreset(id: string): Promise<void> {
+  return invoke("delete_preset", { id });
+}
+
+export async function reorderPresets(ids: string[]): Promise<void> {
+  return invoke("reorder_presets", { ids });
+}

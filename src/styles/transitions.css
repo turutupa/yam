@@ -5,6 +5,7 @@
   flex: 1;
   min-height: 0;
   gap: inherit;
+  position: relative;
 }
 
 /* Beat view: center content */
@@ -315,7 +316,7 @@
   --zen-enter-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --zen-exit-animation: fade-scale-out;
   --zen-exit-duration: 380ms;
-  --zen-exit-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --zen-exit-easing: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Velvet */
@@ -325,7 +326,7 @@
   --zen-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
   --zen-exit-animation: fade-scale-out;
   --zen-exit-duration: 400ms;
-  --zen-exit-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --zen-exit-easing: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Neon */
@@ -335,7 +336,7 @@
   --zen-enter-easing: cubic-bezier(0.16, 1, 0.3, 1);
   --zen-exit-animation: fade-slide-left-out;
   --zen-exit-duration: 300ms;
-  --zen-exit-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  --zen-exit-easing: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Aurora */
@@ -345,7 +346,7 @@
   --zen-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
   --zen-exit-animation: fade-reveal-out;
   --zen-exit-duration: 450ms;
-  --zen-exit-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --zen-exit-easing: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Ivory */
@@ -365,7 +366,7 @@
   --zen-enter-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --zen-exit-animation: fade-out;
   --zen-exit-duration: 320ms;
-  --zen-exit-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --zen-exit-easing: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Sand */
@@ -385,7 +386,7 @@
   --zen-enter-easing: cubic-bezier(0.4, 0, 0.2, 1);
   --zen-exit-animation: fade-blur-out;
   --zen-exit-duration: 400ms;
-  --zen-exit-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --zen-exit-easing: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Prism */

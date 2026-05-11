@@ -476,3 +476,74 @@ fn persist_midi_bindings(listener: &crate::midi::MidiListener, app_handle: &AppH
         store.set("midiBindings", serde_json::json!(bindings));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Preset Commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn list_presets(app_handle: AppHandle) -> Vec<serde_json::Value> {
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        if let Some(val) = store.get("presets") {
+            if let Some(arr) = val.as_array() {
+                return arr.clone();
+            }
+        }
+    }
+    Vec::new()
+}
+
+#[tauri::command]
+pub fn save_preset(preset: serde_json::Value, app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").map_err(|e| e.to_string())?;
+    let id = preset.get("id").and_then(|v| v.as_str()).ok_or("preset must have an id")?;
+    let mut presets: Vec<serde_json::Value> = store
+        .get("presets")
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    // Update existing or append new
+    if let Some(pos) = presets.iter().position(|p| p.get("id").and_then(|v| v.as_str()) == Some(id)) {
+        presets[pos] = preset;
+    } else {
+        presets.push(preset);
+    }
+
+    store.set("presets", serde_json::json!(presets));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_preset(id: String, app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").map_err(|e| e.to_string())?;
+    let mut presets: Vec<serde_json::Value> = store
+        .get("presets")
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    presets.retain(|p| p.get("id").and_then(|v| v.as_str()) != Some(&id));
+    store.set("presets", serde_json::json!(presets));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn reorder_presets(ids: Vec<String>, app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").map_err(|e| e.to_string())?;
+    let presets: Vec<serde_json::Value> = store
+        .get("presets")
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    let mut reordered: Vec<serde_json::Value> = Vec::with_capacity(ids.len());
+    for id in &ids {
+        if let Some(p) = presets.iter().find(|p| p.get("id").and_then(|v| v.as_str()) == Some(id)) {
+            reordered.push(p.clone());
+        }
+    }
+    store.set("presets", serde_json::json!(reordered));
+    Ok(())
+}

@@ -74,6 +74,8 @@ kbd {
 [data-theme-group="light"] .tab-btn.active { background: var(--accent); color: var(--accent-text); }
 [data-theme-group="light"] .play-btn { background: var(--accent); color: var(--accent-text); box-shadow: none; }
 [data-theme-group="light"] .play-btn:hover { filter: brightness(1.1); }
+[data-theme-group="light"] .floating-play-btn { background: var(--accent); color: var(--accent-text); box-shadow: 0 4px 16px var(--accent-glow); }
+[data-theme-group="light"] .floating-play-btn.playing { background: var(--accent); color: var(--accent-text); }
 [data-theme-group="light"] .main-sub-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: var(--text-primary); }
 [data-theme-group="light"] .main-sub-btn:hover { background: rgba(0,0,0,0.08); color: var(--text-primary) !important; }
 [data-theme-group="light"] .sub-dropdown-menu { background: var(--bg-primary); border-color: var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
@@ -119,3 +121,7 @@ kbd {
 [data-theme-group="light"] .drill-config { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
 [data-theme-group="light"] .stepper-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); color: var(--text-primary); }
 [data-theme-group="light"] .stepper-btn:hover { background: rgba(0,0,0,0.08); }
+[data-theme-group="light"] .sub-row-btn[data-tooltip]::after { background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+[data-theme-group="light"] .preset-save-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: var(--text-muted); }
+[data-theme-group="light"] .preset-save-btn:hover { background: rgba(0,0,0,0.07); color: var(--text-primary); }
+[data-theme-group="light"] .preset-active-name { color: var(--text-muted); }

@@ -1,18 +1,17 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDrag } from "../hooks/useDrag";
 import {
   formatGamepadButton,
   isGamepadBinding,
   useGamepad,
 } from "../hooks/useGamepad";
-import { useMidi } from "../hooks/useMidi";
 import { useMetronome } from "../hooks/useMetronome";
+import { useTapTempo } from "../hooks/useTapTempo";
 import {
   checkForUpdate,
   configureSpeedRamp,
-  downloadAndInstallUpdate,
   getActiveTab,
   onFullscreenChanged,
   openUrl,
@@ -37,12 +36,13 @@ import {
 import "../styles/main-window.css";
 import "../styles/transitions.css";
 import { THEMES } from "../themes";
-import type { Subdivision, WidgetMode } from "../types";
+import type { Preset, Subdivision, WidgetMode } from "../types";
 import { DrillView } from "./DrillView";
 import { FullscreenView } from "./FullscreenView";
+import { PresetSidebar } from "./PresetSidebar";
+import type { PresetSidebarHandle } from "./PresetSidebar";
 import { ThemeEffects } from "./ThemeEffects";
 import { TrackView } from "./TrackView";
-import type { TrackViewHandle } from "./TrackView";
 import { ViewTransition } from "./ViewTransition";
 import { ZenTransition } from "./ZenTransition";
 
@@ -130,14 +130,75 @@ function getTempoMarking(bpm: number): string {
   return TEMPO_MARKINGS[0][1];
 }
 
-const SUBDIVISION_LABELS: Record<Subdivision, string> = {
-  1: "♩",
-  2: "♫",
-  3: "♪³",
-  4: "♬",
-  5: "♪⁵",
-  6: "♬⁶",
-};
+// SVG subdivision icons — clean musical note representations
+function SubdivisionIcon({ sub, size = 20 }: { sub: Subdivision; size?: number }) {
+  const h = size;
+  const w = Math.round(size * 0.9);
+  const noteColor = "currentColor";
+  switch (sub) {
+    case 1: // Quarter note — single stem + filled head
+      return (
+        <svg width={w} height={h} viewBox="0 0 18 24" fill={noteColor}>
+          <ellipse cx="7" cy="20" rx="5" ry="3.5" transform="rotate(-15 7 20)" />
+          <rect x="11" y="2" width="1.8" height="18" rx="0.9" />
+        </svg>
+      );
+    case 2: // Eighth notes — two beamed
+      return (
+        <svg width={w} height={h} viewBox="0 0 22 24" fill={noteColor}>
+          <ellipse cx="5" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 5 20)" />
+          <ellipse cx="17" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 17 20)" />
+          <rect x="8.5" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="20" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="8.5" y="3" width="13.3" height="2.5" rx="1" />
+        </svg>
+      );
+    case 3: // Triplet — three beamed
+      return (
+        <svg width={Math.round(size * 1.1)} height={h} viewBox="0 0 30 24" fill={noteColor}>
+          <ellipse cx="4" cy="20" rx="3.8" ry="3" transform="rotate(-15 4 20)" />
+          <ellipse cx="14" cy="20" rx="3.8" ry="3" transform="rotate(-15 14 20)" />
+          <ellipse cx="24" cy="20" rx="3.8" ry="3" transform="rotate(-15 24 20)" />
+          <rect x="7" y="4" width="1.6" height="16" rx="0.8" />
+          <rect x="17" y="4" width="1.6" height="16" rx="0.8" />
+          <rect x="27" y="4" width="1.6" height="16" rx="0.8" />
+          <rect x="7" y="4" width="21.6" height="2.2" rx="1" />
+        </svg>
+      );
+    case 4: // 16th notes — two stems with double beam
+      return (
+        <svg width={w} height={h} viewBox="0 0 22 24" fill={noteColor}>
+          <ellipse cx="5" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 5 20)" />
+          <ellipse cx="17" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 17 20)" />
+          <rect x="8.5" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="20" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="8.5" y="3" width="13.3" height="2.2" rx="1" />
+          <rect x="8.5" y="7.5" width="13.3" height="2.2" rx="1" />
+        </svg>
+      );
+    case 5: // Quintuplet — beamed pair
+      return (
+        <svg width={w} height={h} viewBox="0 0 22 24" fill={noteColor}>
+          <ellipse cx="5" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 5 20)" />
+          <ellipse cx="17" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 17 20)" />
+          <rect x="8.5" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="20" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="8.5" y="3" width="13.3" height="2.2" rx="1" />
+        </svg>
+      );
+    case 6: // Sextuplet — double beam
+      return (
+        <svg width={w} height={h} viewBox="0 0 22 24" fill={noteColor}>
+          <ellipse cx="5" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 5 20)" />
+          <ellipse cx="17" cy="20" rx="4.5" ry="3.2" transform="rotate(-15 17 20)" />
+          <rect x="8.5" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="20" y="3" width="1.8" height="17" rx="0.9" />
+          <rect x="8.5" y="3" width="13.3" height="2.2" rx="1" />
+          <rect x="8.5" y="7.5" width="13.3" height="2.2" rx="1" />
+        </svg>
+      );
+  }
+}
 
 const SUBDIVISION_NAMES: Record<Subdivision, string> = {
   1: "Quarter",
@@ -161,6 +222,7 @@ type HotkeyAction =
   | "fullscreen"
   | "os-fullscreen"
   | "toggle-widget"
+  | "toggle-sidebar"
   | "tab-1"
   | "tab-2"
   | "tab-3"
@@ -222,24 +284,6 @@ function eventToCombo(e: KeyboardEvent): string {
       break;
   }
   return parts.join("");
-}
-
-/** Split a combo string like "⌘⇧Space" into individual key parts: ["⌘", "⇧", "Space"] */
-function splitCombo(combo: string): string[] {
-  const parts: string[] = [];
-  let i = 0;
-  const modifiers = new Set(["⌘", "⌃", "⌥", "⇧", "↑", "↓", "←", "→"]);
-  while (i < combo.length) {
-    if (modifiers.has(combo[i])) {
-      parts.push(combo[i]);
-      i++;
-    } else {
-      // Rest of the string is the key name (e.g. "Space", "Tab", "F1", or single char)
-      parts.push(combo.slice(i));
-      break;
-    }
-  }
-  return parts;
 }
 
 const HOTKEYS: HotkeyEntry[] = [
@@ -367,6 +411,13 @@ const HOTKEYS: HotkeyEntry[] = [
     desc: "Open or close settings",
     group: "navigation",
   },
+  {
+    id: "toggle-sidebar",
+    action: "Toggle Presets",
+    key: "B",
+    desc: "Open or close the presets sidebar",
+    group: "navigation",
+  },
 ];
 
 const HOTKEY_GROUPS: { key: string; label: string }[] = [
@@ -374,107 +425,6 @@ const HOTKEY_GROUPS: { key: string; label: string }[] = [
   { key: "view", label: "View" },
   { key: "navigation", label: "Navigation" },
 ];
-
-// Custom themed dropdown for MIDI device selection
-function MidiDeviceDropdown({
-  devices,
-  value,
-  onChange,
-}: {
-  devices: { id: number; name: string }[];
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  const options = useMemo(
-    () => [
-      { value: "", label: "None" },
-      ...devices.map((d) => ({ value: d.name, label: d.name })),
-    ],
-    [devices],
-  );
-
-  const selected = options.find((o) => o.value === value) || options[0];
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  return (
-    <div className={`midi-dropdown ${open ? "open" : ""}`} ref={ref}>
-      <button
-        className="midi-dropdown-trigger"
-        onClick={() => setOpen((v) => !v)}
-        type="button"
-      >
-        <span className="midi-dropdown-value">
-          {value ? (
-            <>
-              <span className="midi-dropdown-dot connected" />
-              {selected.label}
-            </>
-          ) : (
-            selected.label
-          )}
-        </span>
-        <svg
-          className="midi-dropdown-chevron"
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      {open && (
-        <div className="midi-dropdown-menu">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              className={`midi-dropdown-item ${opt.value === value ? "selected" : ""}`}
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              type="button"
-            >
-              {opt.value === value && (
-                <svg
-                  className="midi-dropdown-check"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Delay for macOS fullscreen exit animation to complete before restoring window state
 const FULLSCREEN_EXIT_DELAY = 600;
@@ -553,8 +503,37 @@ export function MainWindow() {
       }
     });
   }, []);
-  const [subOpen, setSubOpen] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef<PresetSidebarHandle>(null);
+  const [activePreset, setActivePreset] = useState<Preset | null>(null);
+  const [presetDirty, setPresetDirty] = useState(false);
+  const [updateFeedback, setUpdateFeedback] = useState(false);
+  const updateFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleActivePresetChange = useCallback((preset: Preset | null, dirty: boolean) => {
+    setActivePreset(preset);
+    setPresetDirty(dirty);
+  }, []);
+
+  const handlePresetSave = useCallback(() => {
+    setSidebarOpen(true);
+    // Small delay so the sidebar slide-in finishes before the input appears
+    setTimeout(() => sidebarRef.current?.triggerAdd(), 150);
+  }, []);
+
+  const handlePresetUpdate = useCallback(() => {
+    sidebarRef.current?.triggerUpdate();
+    if (updateFeedbackTimer.current) clearTimeout(updateFeedbackTimer.current);
+    setUpdateFeedback(true);
+    updateFeedbackTimer.current = setTimeout(() => setUpdateFeedback(false), 1800);
+  }, []);
+
+  // Sidebar is not relevant on the settings page — close it automatically
+  useEffect(() => {
+    if (view === "settings") setSidebarOpen(false);
+  }, [view]);
+
   const [keyBindings, setKeyBindings] = useState<Record<string, string>>(() =>
     Object.fromEntries(HOTKEYS.map((hk) => [hk.id, hk.key])),
   );
@@ -570,10 +549,9 @@ export function MainWindow() {
   );
   const [bindingFor, setBindingFor] = useState<{
     id: string;
-    type: "key" | "global";
+    type: "key" | "global" | "foot";
   } | null>(null);
   const bindingsLoaded = useRef(false);
-  const trackViewRef = useRef<TrackViewHandle>(null);
 
   // Persist bindings whenever they change — but only after initial restore
   useEffect(() => {
@@ -614,7 +592,7 @@ export function MainWindow() {
   const [animationStyle, setAnimationStyle] = useState<"fade" | "scale" | "blur" | "slide" | "reveal">("scale");
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
   const [updateStatus, setUpdateStatus] = useState<
-    "idle" | "checking" | "available" | "up-to-date" | "downloading"
+    "idle" | "checking" | "available" | "up-to-date"
   >("idle");
   const [latestVersion, setLatestVersion] = useState("");
   const [appVersion, setAppVersion] = useState("0.0.0");
@@ -676,8 +654,6 @@ export function MainWindow() {
   const [editingBpm, setEditingBpm] = useState(false);
   const [bpmEditValue, setBpmEditValue] = useState("");
   const bpmInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   // Tab switching and settings are handled by the unified dispatcher via keyBindings
   const soundDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -702,6 +678,42 @@ export function MainWindow() {
     setBpm(clamped);
   };
 
+  const { tap: tapTempo, tapCount, isActive: tapActive } = useTapTempo(handleBpmChange);
+
+  const [tapPulse, setTapPulse] = useState(false);
+  const tapPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTap = useCallback(() => {
+    tapTempo();
+    setTapPulse(false);
+    requestAnimationFrame(() => {
+      setTapPulse(true);
+      if (tapPulseTimer.current) clearTimeout(tapPulseTimer.current);
+      tapPulseTimer.current = setTimeout(() => setTapPulse(false), 300);
+    });
+  }, [tapTempo]);
+
+  const handleLoadPreset = useCallback(async (preset: Preset) => {
+    await setBpm(preset.bpm);
+    await setSubdivision(preset.subdivision as Subdivision);
+    await setTimeSignature(preset.timeSignature);
+    await setSoundType(preset.soundType);
+    await setVolume(preset.volume);
+    if (preset.view === "drill" && preset.speedRamp) {
+      await configureSpeedRamp({
+        startBpm: preset.speedRamp.startBpm,
+        targetBpm: preset.speedRamp.targetBpm,
+        increment: preset.speedRamp.increment,
+        decrement: preset.speedRamp.decrement,
+        barsPerStep: preset.speedRamp.barsPerStep,
+        beatsPerBar: preset.speedRamp.beatsPerBar,
+        mode: preset.speedRamp.mode,
+        cyclic: preset.speedRamp.cyclic,
+        warmupBeats: preset.speedRamp.warmupBeats,
+      });
+    }
+    if (preset.view === "drill" || preset.view === "beat") setView(preset.view);
+  }, [setView]);
+
   const startBpmEdit = () => {
     setBpmEditValue(String(state.bpm));
     setEditingBpm(true);
@@ -715,20 +727,6 @@ export function MainWindow() {
   };
 
   // Close dropdown on outside click
-  useEffect(() => {
-    if (!subOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setSubOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [subOpen]);
-
   useEffect(() => {
     if (!soundOpen) return;
     const handler = (e: MouseEvent) => {
@@ -778,27 +776,6 @@ export function MainWindow() {
   const [pendingKeys, setPendingKeys] = useState<string>("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-
-  // Unified input tester
-  const [inputTestMode, setInputTestMode] = useState(false);
-  const [inputTestLog, setInputTestLog] = useState<Array<{
-    source: "keyboard" | "midi" | "gamepad";
-    label: string;
-    detail?: string;
-    action?: string;
-  }>>([]);
-  const inputTestLogRef = useRef<HTMLDivElement>(null);
-
-  // Keyboard conflict confirmation state
-  const [pendingKeyConflict, setPendingKeyConflict] = useState<{
-    combo: string;
-    conflictAction: string;
-    conflictActionLabel: string;
-    targetAction: string;
-    targetActionLabel: string;
-    type: "key" | "global";
-  } | null>(null);
-
   const resetAllBindings = useCallback(() => {
     setKeyBindings(Object.fromEntries(HOTKEYS.map((hk) => [hk.id, hk.key])));
     setGlobalBindings(
@@ -828,35 +805,18 @@ export function MainWindow() {
         setPendingKeys(combo);
       }
       if (combo && !["Meta", "Control", "Alt", "Shift"].includes(e.key)) {
-        // Check for conflict
-        const source = bindingFor.type === "key" ? keyBindings : globalBindings;
-        const conflictEntry = Object.entries(source).find(
-          ([action, bound]) => bound === combo && action !== bindingFor.id,
-        );
-        if (conflictEntry) {
-          const conflictHk = HOTKEYS.find((h) => h.id === conflictEntry[0]);
-          const targetHk = HOTKEYS.find((h) => h.id === bindingFor.id);
-          setPendingKeyConflict({
-            combo,
-            conflictAction: conflictEntry[0],
-            conflictActionLabel: conflictHk?.action ?? conflictEntry[0],
-            targetAction: bindingFor.id,
-            targetActionLabel: targetHk?.action ?? bindingFor.id,
-            type: bindingFor.type,
-          });
-          return; // Don't apply yet — wait for confirmation
-        }
-        // No conflict — apply immediately
         if (bindingFor.type === "key") {
           setKeyBindings((prev) => ({ ...prev, [bindingFor.id]: combo }));
         } else if (bindingFor.type === "global") {
           setGlobalBindings((prev) => ({ ...prev, [bindingFor.id]: combo }));
+        } else {
+          setFootBindings((prev) => ({ ...prev, [bindingFor.id]: combo }));
         }
         setBindingFor(null);
         setPendingKeys("");
       }
     },
-    [bindingFor, keyBindings, globalBindings],
+    [bindingFor],
   );
 
   const handleResetBinding = useCallback(() => {
@@ -869,6 +829,8 @@ export function MainWindow() {
         ...prev,
         [bindingFor.id]: hk?.globalKey || hk?.key || "",
       }));
+    } else {
+      setFootBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
     }
     setBindingFor(null);
     setPendingKeys("");
@@ -880,42 +842,18 @@ export function MainWindow() {
       setKeyBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
     } else if (bindingFor.type === "global") {
       setGlobalBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
+    } else {
+      setFootBindings((prev) => ({ ...prev, [bindingFor.id]: "" }));
     }
     setBindingFor(null);
     setPendingKeys("");
   }, [bindingFor]);
 
-  const acceptKeyConflict = useCallback(() => {
-    if (!pendingKeyConflict) return;
-    const { combo, conflictAction, targetAction, type } = pendingKeyConflict;
-    if (type === "key") {
-      setKeyBindings((prev) => ({
-        ...prev,
-        [conflictAction]: "",
-        [targetAction]: combo,
-      }));
-    } else {
-      setGlobalBindings((prev) => ({
-        ...prev,
-        [conflictAction]: "",
-        [targetAction]: combo,
-      }));
-    }
-    setPendingKeyConflict(null);
-    setBindingFor(null);
-    setPendingKeys("");
-  }, [pendingKeyConflict]);
-
-  const rejectKeyConflict = useCallback(() => {
-    setPendingKeyConflict(null);
-    setPendingKeys("");
-  }, []);
-
   useEffect(() => {
-    if (!bindingFor || pendingKeyConflict) return;
+    if (!bindingFor) return;
     document.addEventListener("keydown", handleBinding);
     return () => document.removeEventListener("keydown", handleBinding);
-  }, [bindingFor, handleBinding, pendingKeyConflict]);
+  }, [bindingFor, handleBinding]);
 
   // Shared action dispatcher — called by keyboard handler and gamepad hook
   const dispatchAction = useCallback(
@@ -926,7 +864,8 @@ export function MainWindow() {
         actionId === "tab-2" ||
         actionId === "tab-3" ||
         actionId === "settings" ||
-        actionId === "toggle-widget"
+        actionId === "toggle-widget" ||
+        actionId === "toggle-sidebar"
       ) {
         switch (actionId) {
           case "tab-1":
@@ -948,6 +887,9 @@ export function MainWindow() {
           case "toggle-widget":
             showFloating();
             break;
+          case "toggle-sidebar":
+            if (view === "beat" || view === "drill") setSidebarOpen((o) => !o);
+            break;
         }
         return;
       }
@@ -960,22 +902,9 @@ export function MainWindow() {
             if (state.speedRamp?.active) {
               stopSpeedRamp();
             } else {
-              configureSpeedRamp({
-                startBpm: state.speedRamp.startBpm,
-                targetBpm: state.speedRamp.targetBpm,
-                increment: state.speedRamp.increment,
-                decrement: state.speedRamp.decrement,
-                barsPerStep: state.speedRamp.barsPerStep,
-                beatsPerBar: state.speedRamp.beatsPerBar,
-                mode: state.speedRamp.mode,
-                cyclic: state.speedRamp.cyclic,
-                warmupBeats: state.speedRamp.warmupBeats,
-              });
-              setTimeout(() => startSpeedRamp(), 50);
+              startSpeedRamp();
             }
-          } else if (view === "track") {
-            trackViewRef.current?.spaceAction();
-          } else {
+          } else if (view === "beat") {
             togglePlayback();
           }
           break;
@@ -1059,7 +988,6 @@ export function MainWindow() {
       state.subdivision,
       state.timeSignature,
       state.speedRamp?.active,
-      state.speedRamp?.warmupBeats,
       isFullscreen,
       setView,
       state.alwaysOnTop,
@@ -1072,12 +1000,8 @@ export function MainWindow() {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      // Escape: exit zen > exit settings, or close tester
+      // Escape: exit zen > exit settings (hardcoded — only Escape is hardcoded)
       if (e.key === "Escape") {
-        if (inputTestMode) {
-          setInputTestMode(false);
-          return;
-        }
         if (isFullscreen) {
           e.preventDefault();
           setIsFullscreen(false);
@@ -1094,96 +1018,27 @@ export function MainWindow() {
       const actionId = Object.entries(keyBindings).find(
         ([_, key]) => key === combo,
       )?.[0] as HotkeyAction | undefined;
-      // Feed tester if open
-      if (inputTestMode) {
-        // Skip lone modifier keys — they're not valid bindings
-        if (["Meta", "Control", "Alt", "Shift"].includes(e.key)) return;
-        e.preventDefault();
-        const hk = actionId ? HOTKEYS.find((h) => h.id === actionId) : null;
-        setInputTestLog((prev) => [...prev.slice(-99), {
-          source: "keyboard" as const,
-          label: combo,
-          action: hk?.action,
-        }]);
-        requestAnimationFrame(() => {
-          const el = inputTestLogRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
-        });
-        return;
-      }
       if (!actionId) return;
       e.preventDefault();
       dispatchAction(actionId);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [view, keyBindings, isFullscreen, bindingFor, setView, dispatchAction, inputTestMode]);
+  }, [view, keyBindings, isFullscreen, bindingFor, setView, dispatchAction]);
 
-  // MIDI controller support
-  const [midiAutoAccept, setMidiAutoAccept] = useState(false);
-  const inputTestModeRef = useRef(false);
-  useEffect(() => { inputTestModeRef.current = inputTestMode; }, [inputTestMode]);
-
-  const midi = useMidi((action) => {
-    if (inputTestModeRef.current) return;
-    dispatchAction(action as HotkeyAction);
-  }, midiAutoAccept, inputTestMode);
-
-  // Accumulate MIDI activity into test log when test mode is on
-  useEffect(() => {
-    if (!midi.lastActivity) return;
-    // Feed unified input tester
-    if (inputTestMode) {
-      const activity = midi.lastActivity;
-      const bound = midi.bindings.find(
-        (b) => b.msgType === activity.type && b.number === activity.number && b.channel === activity.channel,
-      );
-      const hk = bound ? HOTKEYS.find((h) => h.id === bound.action) : null;
-      setInputTestLog((prev) => [...prev.slice(-99), {
-        source: "midi" as const,
-        label: `${activity.type.toUpperCase()} #${activity.number}`,
-        detail: `Ch${activity.channel + 1} Val${activity.value}`,
-        action: hk?.action,
-      }]);
-      requestAnimationFrame(() => {
-        const el = inputTestLogRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
-      });
-    }
-  }, [inputTestMode, midi.lastActivity]);
-
-  // Clear unified tester log when closed
-  useEffect(() => {
-    if (!inputTestMode) setInputTestLog([]);
-  }, [inputTestMode]);
-
-  // Gamepad / footswitch support (merged into MIDI column)
+  // Gamepad / footswitch support
   useGamepad({
     enabled: true,
     onButtonPress:
-      midi.learnMode
+      bindingFor?.type === "foot"
         ? (id) => {
-            setFootBindings((prev) => ({ ...prev, [midi.learnMode!]: id }));
-            midi.cancelLearn();
-          }
-        : inputTestMode
-        ? (id) => {
-            // Feed tester with gamepad input
-            const actionId = Object.entries(footBindings).find(([_, b]) => b === id)?.[0];
-            const hk = actionId ? HOTKEYS.find((h) => h.id === actionId) : null;
-            setInputTestLog((prev) => [...prev.slice(-99), {
-              source: "gamepad" as const,
-              label: formatGamepadButton(id),
-              action: hk?.action,
-            }]);
-            requestAnimationFrame(() => {
-              const el = inputTestLogRef.current;
-              if (el) el.scrollTop = el.scrollHeight;
-            });
+            setFootBindings((prev) => ({ ...prev, [bindingFor.id]: id }));
+            setBindingFor(null);
+            setPendingKeys("");
           }
         : undefined,
-    bindings: !midi.learnMode && !inputTestMode ? footBindings : undefined,
-    onAction: !midi.learnMode && !inputTestMode
+    bindings: !bindingFor ? footBindings : undefined,
+    onAction: !bindingFor
       ? (id) => dispatchAction(id as HotkeyAction)
       : undefined,
   });
@@ -1242,7 +1097,7 @@ export function MainWindow() {
       data-playing={state.isPlaying}
       data-border={activeBorder}
     >
-      {!isFullscreen && <ThemeEffects themeId={state.theme} currentBeat={currentBeat} isPlaying={state.isPlaying} />}
+      <ThemeEffects themeId={state.theme} currentBeat={currentBeat} isPlaying={state.isPlaying} />
       <header className="main-header">
         {view !== "settings" && (
           <nav className="tab-bar">
@@ -1288,6 +1143,34 @@ export function MainWindow() {
                 <path d="M4.5 10c2.5 1 5 1 7.5 0s5-1 7.5 0" />
               </svg>
             </button>
+          )}
+          {view !== "track" && (
+            <div className="header-sound-wrap" ref={soundDropdownRef}>
+              <button
+                className="header-btn"
+                onClick={() => setSoundOpen(!soundOpen)}
+                data-tooltip={SOUND_TYPES.find((s) => s.id === state.soundType)?.name ?? "Click"}
+              >
+                <span className="header-sound-icon">{SOUND_TYPES.find((s) => s.id === state.soundType)?.icon ?? "○"}</span>
+              </button>
+              {soundOpen && (
+                <div className="header-sound-menu">
+                  {SOUND_TYPES.map((st) => (
+                    <button
+                      key={st.id}
+                      className={`sub-dropdown-item ${state.soundType === st.id ? "active" : ""}`}
+                      onClick={() => {
+                        setSoundType(st.id);
+                        setSoundOpen(false);
+                      }}
+                    >
+                      <span className="sub-dropdown-icon">{st.icon}</span>
+                      <span>{st.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           <div className="header-volume-wrap">
             <button className="header-btn header-volume-btn">
@@ -1493,6 +1376,19 @@ export function MainWindow() {
           );
         })()}
 
+      <div className="main-body">
+        {view !== "settings" && (
+          <PresetSidebar
+            ref={sidebarRef}
+            state={state}
+            view={view === "beat" || view === "drill" ? view : "beat"}
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen((o) => !o)}
+            onLoadPreset={handleLoadPreset}
+            onActiveChange={handleActivePresetChange}
+            shortcut={platformKey(keyBindings["toggle-sidebar"] || "")}
+          />
+        )}
       <div
         ref={contentRef}
         className="main-content"
@@ -1509,9 +1405,71 @@ export function MainWindow() {
         }}
       >
         <ViewTransition viewKey={view} themeId={state.theme} disabled={viewTransitions === "off"} level={viewTransitions} animStyle={animationStyle}>
+        {(view === "beat" || view === "drill") && (
+          <div className="preset-save-area">
+            {activePreset && (
+              <button
+                className="preset-active-name"
+                onClick={() => {
+                  setSidebarOpen(true);
+                  setTimeout(() => sidebarRef.current?.triggerRename(activePreset.id), 150);
+                }}
+                title="Rename preset"
+              >
+                {activePreset.name}{presetDirty ? " •" : ""}
+              </button>
+            )}
+            {activePreset ? (
+              <button
+                className={`preset-save-btn preset-save-btn--update ${updateFeedback ? "preset-save-btn--feedback" : ""}`}
+                onClick={handlePresetUpdate}
+                title="Update preset"
+              >
+                {updateFeedback ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span className="preset-save-btn-label">Updated!</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 3v13M7 8l5-5 5 5" />
+                      <path d="M5 20h14" />
+                    </svg>
+                    <span className="preset-save-btn-label">Update</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                className="preset-save-btn preset-save-btn--save"
+                onClick={handlePresetSave}
+                title="Save preset"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                <span className="preset-save-btn-label">Save preset</span>
+              </button>
+            )}
+          </div>
+        )}
         {view === "beat" ? (
           <>
             <section className="bpm-section">
+              <button
+                className={`tap-btn ${tapActive ? "active" : ""} ${tapPulse ? "pulse" : ""}`}
+                onClick={handleTap}
+              >
+                TAP
+                {tapActive && tapCount >= 2 && (
+                  <span className="tap-count">{tapCount} taps</span>
+                )}
+              </button>
               <div className="bpm-display view-stagger-item" style={{ animationDelay: '0ms' }}>
                 <button
                   className="bpm-btn"
@@ -1608,114 +1566,19 @@ export function MainWindow() {
               </div>
             </section>
 
-            <section className="control-section">
-              <div className="sub-dropdown-wrapper view-stagger-item" ref={dropdownRef} style={{ animationDelay: '100ms' }}>
+            <div className="sub-row">
+              {([1, 2, 3, 4, 5, 6] as Subdivision[]).map((sub, i) => (
                 <button
-                  className="main-sub-btn"
-                  onClick={() => setSubOpen(!subOpen)}
+                  key={sub}
+                  className={`sub-row-btn view-stagger-item ${state.subdivision === sub ? "active" : ""}`}
+                  style={{ animationDelay: `${100 + i * 25}ms` }}
+                  onClick={() => setSubdivision(sub)}
+                  data-tooltip={SUBDIVISION_NAMES[sub]}
                 >
-                  <span className="main-sub-icon">
-                    {SUBDIVISION_LABELS[state.subdivision]}
-                  </span>
-                  <span className="main-sub-name">
-                    {SUBDIVISION_NAMES[state.subdivision]}
-                  </span>
-                  <span className="main-sub-arrow">
-                    {subOpen ? (
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <path d="M3 10l5-6 5 6z" />
-                      </svg>
-                    ) : (
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <path d="M3 6l5 6 5-6z" />
-                      </svg>
-                    )}
-                  </span>
+                  <SubdivisionIcon sub={sub} size={18} />
                 </button>
-                {subOpen && (
-                  <div className="sub-dropdown-menu">
-                    {([1, 2, 3, 4, 5, 6] as Subdivision[]).map((sub) => (
-                      <button
-                        key={sub}
-                        className={`sub-dropdown-item ${state.subdivision === sub ? "active" : ""}`}
-                        onClick={() => {
-                          setSubdivision(sub);
-                          setSubOpen(false);
-                        }}
-                      >
-                        <span className="sub-dropdown-icon">
-                          {SUBDIVISION_LABELS[sub]}
-                        </span>
-                        <span>{SUBDIVISION_NAMES[sub]}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="sub-dropdown-wrapper view-stagger-item" ref={soundDropdownRef} style={{ animationDelay: '130ms' }}>
-                <button
-                  className="main-sub-btn"
-                  onClick={() => setSoundOpen(!soundOpen)}
-                >
-                  <span className="main-sub-icon">
-                    {SOUND_TYPES.find((s) => s.id === state.soundType)?.icon ??
-                      "🔔"}
-                  </span>
-                  <span className="main-sub-name">
-                    {SOUND_TYPES.find((s) => s.id === state.soundType)?.name ??
-                      "Click"}
-                  </span>
-                  <span className="main-sub-arrow">
-                    {soundOpen ? (
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <path d="M3 10l5-6 5 6z" />
-                      </svg>
-                    ) : (
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <path d="M3 6l5 6 5-6z" />
-                      </svg>
-                    )}
-                  </span>
-                </button>
-                {soundOpen && (
-                  <div className="sub-dropdown-menu">
-                    {SOUND_TYPES.map((st) => (
-                      <button
-                        key={st.id}
-                        className={`sub-dropdown-item ${state.soundType === st.id ? "active" : ""}`}
-                        onClick={() => {
-                          setSoundType(st.id);
-                          setSoundOpen(false);
-                        }}
-                      >
-                        <span className="sub-dropdown-icon">{st.icon}</span>
-                        <span>{st.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
+              ))}
+            </div>
 
             <div className="time-sig-row">
               {TIME_SIGNATURES.map((ts, i) => (
@@ -1738,19 +1601,14 @@ export function MainWindow() {
             animations={viewTransitions !== "off"}
           />
         ) : view === "track" ? (
-          <TrackView ref={trackViewRef} state={state} currentBeat={currentBeat} />
+          <TrackView state={state} currentBeat={currentBeat} />
         ) : (
           <>
             {/* Update banner — shown at top of settings when update available */}
             {updateStatus === "available" && (
               <div
                 className="update-banner"
-                onClick={() => {
-                  setUpdateStatus("downloading");
-                  downloadAndInstallUpdate().catch(() => {
-                    setUpdateStatus("available");
-                  });
-                }}
+                onClick={() => openUrl("https://turutupa.github.io/yames/")}
               >
                 <svg
                   width="16"
@@ -1767,25 +1625,7 @@ export function MainWindow() {
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
                 <span>Yames v{latestVersion || "0.6.0"} is available</span>
-                <span className="update-banner-action">Install &amp; Restart →</span>
-              </div>
-            )}
-            {updateStatus === "downloading" && (
-              <div className="update-banner update-banner-downloading">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="spinning"
-                >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-                <span>Updating Yames…</span>
+                <span className="update-banner-action">Download →</span>
               </div>
             )}
             <section className="settings-section">
@@ -1822,10 +1662,6 @@ export function MainWindow() {
                   {state.alwaysOnTop ? "On" : "Off"}
                 </button>
               </div>
-            </section>
-
-            <section className="settings-section">
-              <h2>Appearance</h2>
               <div className="setting-row">
                 <div className="setting-label">
                   <label>Button flash</label>
@@ -1858,6 +1694,24 @@ export function MainWindow() {
                   }}
                 >
                   {activeBorder ? "On" : "Off"}
+                </button>
+              </div>
+              <div className="setting-row">
+                <div className="setting-label">
+                  <label>Drill auto-collapse</label>
+                  <span className="setting-hint">
+                    Collapse drill config while playing
+                  </span>
+                </div>
+                <button
+                  className={`toggle-btn ${drillAutoCollapse ? "active" : ""}`}
+                  onClick={() => {
+                    const next = !drillAutoCollapse;
+                    setDrillAutoCollapse(next);
+                    storeSave("drillAutoCollapse", next);
+                  }}
+                >
+                  {drillAutoCollapse ? "On" : "Off"}
                 </button>
               </div>
               <div className="setting-row">
@@ -1906,28 +1760,6 @@ export function MainWindow() {
                   </div>
                 </div>
               )}
-            </section>
-
-            <section className="settings-section">
-              <h2>Drill</h2>
-              <div className="setting-row">
-                <div className="setting-label">
-                  <label>Auto-collapse</label>
-                  <span className="setting-hint">
-                    Collapse drill config while playing
-                  </span>
-                </div>
-                <button
-                  className={`toggle-btn ${drillAutoCollapse ? "active" : ""}`}
-                  onClick={() => {
-                    const next = !drillAutoCollapse;
-                    setDrillAutoCollapse(next);
-                    storeSave("drillAutoCollapse", next);
-                  }}
-                >
-                  {drillAutoCollapse ? "On" : "Off"}
-                </button>
-              </div>
             </section>
 
             <section className="settings-section">
@@ -1991,59 +1823,7 @@ export function MainWindow() {
             </section>
 
             <section className="hotkeys-section">
-              <h2>MIDI</h2>
-              <div className="midi-device-section">
-                <div className="midi-device-row">
-                  <label className="midi-label">Device</label>
-                  <MidiDeviceDropdown
-                    devices={midi.devices}
-                    value={midi.connectedDevice || ""}
-                    onChange={(val) => {
-                      if (val) {
-                        midi.connect(val);
-                      } else {
-                        midi.disconnect();
-                      }
-                    }}
-                  />
-                  <button
-                    className="midi-refresh-btn"
-                    onClick={() => midi.refreshDevices()}
-                    title="Refresh MIDI devices"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="23 4 23 10 17 10" />
-                      <polyline points="1 20 1 14 7 14" />
-                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                    </svg>
-                  </button>
-                </div>
-                {midi.connectedDevice && (
-                  <div className="midi-status">
-                    <span className="midi-status-dot connected" />
-                    Connected
-                  </div>
-                )}
-                {!midi.connectedDevice && midi.devices.length === 0 && (
-                  <div className="midi-status">
-                    <span className="midi-status-dot" />
-                    No MIDI devices detected
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="hotkeys-section">
-              <div className="hotkeys-section-header">
-                <h2>Hotkeys</h2>
-                <button
-                  className={`input-test-btn ${inputTestMode ? "active" : ""}`}
-                  onClick={() => setInputTestMode((v) => !v)}
-                  title="Test all input bindings (keyboard, MIDI, gamepad)"
-                >
-                  {inputTestMode ? "Stop test" : "Test inputs"}
-                </button>
-              </div>
+              <h2>Hotkeys</h2>
               {HOTKEY_GROUPS.map((group) => {
                 const items = HOTKEYS.filter((hk) => hk.group === group.key);
                 if (items.length === 0) return null;
@@ -2087,7 +1867,7 @@ export function MainWindow() {
                           Global
                           <span className="hotkey-soon-badge">soon</span>
                         </span>
-                        <span data-tooltip="Bind a MIDI controller or USB foot pedal">
+                        <span data-tooltip="Bind a USB foot pedal or gamepad controller">
                           <svg
                             width="14"
                             height="14"
@@ -2098,11 +1878,11 @@ export function MainWindow() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <path d="M9 18V5l12-2v13" />
-                            <circle cx="6" cy="18" r="3" />
-                            <circle cx="18" cy="16" r="3" />
+                            <rect x="4" y="14" width="16" height="6" rx="2" />
+                            <path d="M8 14V10a4 4 0 0 1 8 0v4" />
                           </svg>
-                          MIDI
+                          Foot
+                          <span className="hotkey-soon-badge">midi soon</span>
                         </span>
                       </div>
                       {items.map((hk) => (
@@ -2128,42 +1908,17 @@ export function MainWindow() {
                               : "—"}
                           </button>
                           <button
-                            className={`hotkey-bind-btn ${midi.learnMode === hk.id ? "listening" : ""}`}
+                            className={`hotkey-bind-btn ${bindingFor?.id === hk.id && bindingFor.type === "foot" ? "listening" : ""}`}
                             onClick={() => {
-                              if (midi.learnMode === hk.id) {
-                                midi.cancelLearn();
-                              } else {
-                                midi.startLearn(hk.id);
-                              }
+                              setBindingFor({ id: hk.id, type: "foot" });
+                              setPendingKeys("");
                             }}
-                            title={
-                              midi.learnMode === hk.id
-                                ? "Listening… press a MIDI button or foot pedal"
-                                : (() => {
-                                    const midiBinding = midi.bindings.find((b) => b.action === hk.id);
-                                    if (midiBinding) {
-                                      const prefix = midiBinding.msgType === "cc" ? "CC" : midiBinding.msgType === "note" ? "Note" : "PC";
-                                      return `Bound to ${prefix}#${midiBinding.number}. Click to re-learn.`;
-                                    }
-                                    return "Click to learn MIDI / pedal binding";
-                                  })()
-                            }
                           >
-                            {(() => {
-                              const midiBinding = midi.bindings.find((b) => b.action === hk.id);
-                              const gamepadBound = footBindings[hk.id];
-                              if (midi.learnMode === hk.id) return "…";
-                              if (midiBinding) {
-                                const prefix = midiBinding.msgType === "cc" ? "CC" : midiBinding.msgType === "note" ? "N" : "PC";
-                                return `${prefix}#${midiBinding.number}`;
-                              }
-                              if (gamepadBound) {
-                                return isGamepadBinding(gamepadBound)
-                                  ? formatGamepadButton(gamepadBound)
-                                  : platformKey(gamepadBound);
-                              }
-                              return "—";
-                            })()}
+                            {footBindings[hk.id]
+                              ? isGamepadBinding(footBindings[hk.id])
+                                ? formatGamepadButton(footBindings[hk.id])
+                                : platformKey(footBindings[hk.id])
+                              : "—"}
                           </button>
                         </div>
                       ))}
@@ -2331,18 +2086,14 @@ export function MainWindow() {
                     {updateStatus === "available" && (
                       <button
                         className="update-available-btn"
-                        onClick={() => {
-                          setUpdateStatus("downloading");
-                          downloadAndInstallUpdate().catch(() => {
-                            setUpdateStatus("available");
-                          });
-                        }}
+                        onClick={() =>
+                          openUrl(
+                            "https://github.com/turutupa/yames/releases/latest",
+                          )
+                        }
                       >
-                        v{latestVersion} available — Install
+                        v{latestVersion} available — Download
                       </button>
-                    )}
-                    {updateStatus === "downloading" && (
-                      <span className="update-status">Updating…</span>
                     )}
                     {updateStatus === "up-to-date" && (
                       <span className="update-status up-to-date">
@@ -2379,9 +2130,38 @@ export function MainWindow() {
           </>
         )}
         </ViewTransition>
+        {/* Floating play button for Metronome and Drill */}
+        {(view === "beat" || view === "drill") && (
+          <button
+            className={`floating-play-btn ${state.isPlaying || state.speedRamp?.active ? "playing" : ""} ${isPulsing ? "pulse" : ""}`}
+            onClick={() => {
+              if (view === "drill") {
+                if (state.speedRamp?.active) stopSpeedRamp();
+                else startSpeedRamp();
+              } else {
+                togglePlayback();
+              }
+            }}
+          >
+            {(view === "drill" ? state.speedRamp?.active : state.isPlaying) ? (
+              <>
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+                  <rect x="2" y="2" width="12" height="12" rx="1.5" />
+                </svg>{" "}
+                Stop
+              </>
+            ) : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z" />
+                </svg>{" "}
+                Play
+              </>
+            )}
+          </button>
+        )}
       </div>
-
-      {/* Reset keybindings confirmation */}
+      </div>{/* main-body */}
       {showResetConfirm && (
         <div
           className="keybinding-overlay"
@@ -2417,229 +2197,53 @@ export function MainWindow() {
         </div>
       )}
 
-      {/* Floating play button for Metronome and Drill */}
-      {(view === "beat" || view === "drill") && (
-        <button
-          className={`floating-play-btn ${state.isPlaying || state.speedRamp?.active ? "playing" : ""} ${isPulsing ? "pulse" : ""}`}
-          onClick={() => {
-            if (view === "drill") {
-              if (state.speedRamp?.active) stopSpeedRamp();
-              else startSpeedRamp();
-            } else {
-              togglePlayback();
-            }
-          }}
-        >
-          {(view === "drill" ? state.speedRamp?.active : state.isPlaying) ? (
-            <>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-              >
-                <rect x="2" y="2" width="12" height="12" rx="1.5" />
-              </svg>{" "}
-              Stop
-            </>
-          ) : (
-            <>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-              >
-                <path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5z" />
-              </svg>{" "}
-              Play
-            </>
-          )}
-        </button>
-      )}
-
-      {/* MIDI binding conflict confirmation dialog */}
-      {midi.pendingConflict && (
-        <div className="keybinding-overlay" onClick={() => midi.rejectConflict()}>
-          <div className="keybinding-capture" onClick={(e) => e.stopPropagation()}>
-            <span className="keybinding-capture-title">MIDI Conflict</span>
-            <div className="conflict-body">
-              <div className="conflict-signal">
-                <span className="conflict-signal-badge">
-                  {midi.pendingConflict.activity.type.toUpperCase()} #{midi.pendingConflict.activity.number}
-                </span>
-                <span className="conflict-signal-detail">
-                  Ch{midi.pendingConflict.activity.channel}
-                </span>
-              </div>
-              <p className="conflict-message">
-                is already bound to{" "}
-                <strong>
-                  {HOTKEYS.find((h) => h.id === midi.pendingConflict!.existingBinding.action)?.action
-                    ?? midi.pendingConflict.existingBinding.action}
-                </strong>.
-                <br />
-                Overwrite and assign to{" "}
-                <strong>
-                  {HOTKEYS.find((h) => h.id === midi.pendingConflict!.targetAction)?.action
-                    ?? midi.pendingConflict.targetAction}
-                </strong>?
-              </p>
-            </div>
-            <div className="keybinding-capture-actions">
-              <button className="keybinding-btn-reset" onClick={() => midi.rejectConflict()}>
-                Cancel
-              </button>
-              <button
-                className="conflict-accept-btn"
-                onClick={() => midi.acceptConflict()}
-              >
-                Overwrite
-              </button>
-            </div>
-            <label className="conflict-dont-ask">
-              <input
-                type="checkbox"
-                checked={midiAutoAccept}
-                onChange={(e) => setMidiAutoAccept(e.target.checked)}
-              />
-              Don't ask again
-            </label>
-          </div>
-        </div>
-      )}
-
       {bindingFor && (
         <div
           className="keybinding-overlay"
           onClick={() => {
             setBindingFor(null);
             setPendingKeys("");
-            setPendingKeyConflict(null);
           }}
         >
           <div
             className="keybinding-capture"
             onClick={(e) => e.stopPropagation()}
           >
-            {pendingKeyConflict ? (
-              <>
-                <span className="keybinding-capture-title">Hotkey Conflict</span>
-                <div className="conflict-body">
-                  <div className="conflict-signal">
-                    <span className="conflict-signal-badge">{pendingKeyConflict.combo}</span>
-                  </div>
-                  <p className="conflict-message">
-                    is already bound to{" "}
-                    <strong>{pendingKeyConflict.conflictActionLabel}</strong>.
-                    <br />
-                    Overwrite and assign to{" "}
-                    <strong>{pendingKeyConflict.targetActionLabel}</strong>?
-                  </p>
-                </div>
-                <div className="keybinding-capture-actions">
-                  <button className="keybinding-btn-reset" onClick={rejectKeyConflict}>
-                    Cancel
-                  </button>
-                  <button className="conflict-accept-btn" onClick={acceptKeyConflict}>
-                    Overwrite
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="keybinding-capture-title">
-                  {HOTKEYS.find((hk) => hk.id === bindingFor.id)?.action} —{" "}
-                  {bindingFor.type === "key"
-                    ? "Keyboard"
-                    : "Global"}
-                </span>
-                <div className="keybinding-capture-display">
-                  {pendingKeys ? (
-                    <span className="keybinding-capture-keys">{pendingKeys}</span>
-                  ) : (
-                    <span className="keybinding-capture-waiting">
-                      Press desired key combination…
-                    </span>
-                  )}
-                </div>
-                <div className="keybinding-capture-actions">
-                  <button
-                    className="keybinding-btn-reset"
-                    onClick={handleResetBinding}
-                  >
-                    Reset to default
-                  </button>
-                  <button
-                    className="keybinding-btn-remove"
-                    onClick={handleRemoveBinding}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <span className="keybinding-capture-hint">
-                  Press Escape to cancel
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Unified input tester modal */}
-      {inputTestMode && (
-        <div className="keybinding-overlay" onClick={() => setInputTestMode(false)}>
-          <div className="input-tester-modal" onClick={(e) => e.stopPropagation()}>
-            <span className="keybinding-capture-title">Input Tester</span>
-            <div className="input-tester-hint">
-              Press keys, MIDI buttons, or gamepad buttons to see what they map to.
-            </div>
-            <div className="input-tester-log" ref={inputTestLogRef}>
-              {inputTestLog.length === 0 ? (
-                <div className="midi-tester-empty">Waiting for input…</div>
+            <span className="keybinding-capture-title">
+              {HOTKEYS.find((hk) => hk.id === bindingFor.id)?.action} —{" "}
+              {bindingFor.type === "key"
+                ? "Keyboard"
+                : bindingFor.type === "global"
+                  ? "Global"
+                  : "Footswitch"}
+            </span>
+            <div className="keybinding-capture-display">
+              {pendingKeys ? (
+                <span className="keybinding-capture-keys">{pendingKeys}</span>
               ) : (
-                inputTestLog.map((entry, i) => (
-                  <div className={`input-tester-row ${i === inputTestLog.length - 1 ? "latest" : ""}`} key={i}>
-                    <span className={`input-tester-source input-tester-source--${entry.source}`}>
-                      {entry.source === "keyboard" ? "KEY" : entry.source === "midi" ? "MIDI" : "PAD"}
-                    </span>
-                    <span className="input-tester-keys">
-                      {entry.source === "keyboard" ? (
-                        splitCombo(entry.label).map((k, j) => (
-                          <kbd key={j} className="input-tester-kbd">{k}</kbd>
-                        ))
-                      ) : entry.source === "midi" ? (
-                        <>
-                          <span className="input-tester-pill midi">{entry.label}</span>
-                          {entry.detail && entry.detail.split(/\s+/).map((d, j) => (
-                            <span key={j} className="input-tester-pill midi-subtle">{d}</span>
-                          ))}
-                        </>
-                      ) : (
-                        <span className="input-tester-pill gamepad">{entry.label}</span>
-                      )}
-                    </span>
-                    <span className="input-tester-action">
-                      {entry.action ? (
-                        <span className="midi-tester-mapped">{entry.action}</span>
-                      ) : (
-                        <span className="midi-tester-unmapped">—</span>
-                      )}
-                    </span>
-                  </div>
-                ))
+                <span className="keybinding-capture-waiting">
+                  {bindingFor.type === "foot"
+                    ? "Press a button on your foot pedal or gamepad…"
+                    : "Press desired key combination…"}
+                </span>
               )}
             </div>
             <div className="keybinding-capture-actions">
-              <button className="keybinding-btn-reset" onClick={() => setInputTestLog([])}>
-                Clear
+              <button
+                className="keybinding-btn-reset"
+                onClick={handleResetBinding}
+              >
+                Reset to default
               </button>
-              <button className="keybinding-btn-remove" onClick={() => setInputTestMode(false)}>
-                Close
+              <button
+                className="keybinding-btn-remove"
+                onClick={handleRemoveBinding}
+              >
+                Remove
               </button>
             </div>
             <span className="keybinding-capture-hint">
-              Press Escape to close
+              Press Escape to cancel
             </span>
           </div>
         </div>

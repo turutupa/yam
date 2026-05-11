@@ -68,3 +68,30 @@ export type MidiBinding = {
   msgType: MidiMsgType;
   number: number;
 };
+
+// ---------------------------------------------------------------------------
+// Presets
+// ---------------------------------------------------------------------------
+
+export type Preset = {
+  id: string;
+  name: string;
+  createdAt: number;
+  bpm: number;
+  subdivision: number;
+  timeSignature: number;
+  soundType: string;
+  volume: number;
+  view: "beat" | "drill";
+  speedRamp?: {
+    startBpm: number;
+    targetBpm: number;
+    increment: number;
+    decrement: number;
+    barsPerStep: number;
+    beatsPerBar: number;
+    mode: string;
+    cyclic: boolean;
+    warmupBeats: number;
+  };
+};

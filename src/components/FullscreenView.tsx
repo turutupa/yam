@@ -244,28 +244,55 @@ export function FullscreenView({ state, currentBeat, activeTab, onExit }: Fullsc
               }
               return (
                 <div className="fs-ramp-grid">
-                  {steps.map((stepBpm, stepIdx) => {
-                    const isDone = stepIdx < ramp.currentStep;
-                    const isCurrent = stepIdx === ramp.currentStep && ramp.active;
-                    const pct = steps.length > 1 ? stepIdx / (steps.length - 1) : 0;
-                    const rowOpacity = 0.15 + pct * 0.85;
+                  {(() => {
+                    const FULL_ROWS = 5;
+                    const focusStep = ramp.active ? ramp.currentStep : 0;
+                    // Select which rows show at full height
+                    let fullStart = Math.max(0, focusStep - Math.floor(FULL_ROWS / 2));
+                    let fullEnd = fullStart + FULL_ROWS;
+                    if (fullEnd > steps.length) {
+                      fullEnd = steps.length;
+                      fullStart = Math.max(0, fullEnd - FULL_ROWS);
+                    }
+                    const hasAbove = fullStart > 0;
+                    const hasBelow = fullEnd < steps.length;
+
+                    const renderRow = (stepIdx: number, peekClass?: string) => {
+                      const stepBpm = steps[stepIdx];
+                      const isDone = stepIdx < ramp.currentStep;
+                      const isCurrent = stepIdx === ramp.currentStep && ramp.active;
+                      const pct = steps.length > 1 ? stepIdx / (steps.length - 1) : 0;
+                      const rowOpacity = 0.15 + pct * 0.85;
+                      return (
+                        <div key={`${peekClass || "row"}-${stepIdx}`} className={`fs-ramp-grid-row${peekClass ? ` ${peekClass}` : ""}`}>
+                          {Array.from({ length: ramp.barsPerStep }, (_, barIdx) => {
+                            const barDone = isDone || (isCurrent && barIdx < ramp.barsInStep);
+                            const barActive = isCurrent && barIdx === ramp.barsInStep;
+                            return (
+                              <div
+                                key={barIdx}
+                                className={`fs-ramp-grid-cell ${barDone ? "done" : ""} ${barActive ? "current" : ""}`}
+                                style={{ cursor: "pointer", opacity: barDone || barActive ? undefined : rowOpacity * 0.3 }}
+                                onClick={() => startSpeedRampFrom(stepIdx, stepBpm, barIdx)}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    };
+
                     return (
-                      <div key={stepIdx} className="fs-ramp-grid-row">
-                        {Array.from({ length: ramp.barsPerStep }, (_, barIdx) => {
-                          const barDone = isDone || (isCurrent && barIdx < ramp.barsInStep);
-                          const barActive = isCurrent && barIdx === ramp.barsInStep;
-                          return (
-                            <div
-                              key={barIdx}
-                              className={`fs-ramp-grid-cell ${barDone ? "done" : ""} ${barActive ? "current" : ""}`}
-                              style={{ cursor: "pointer", opacity: barDone || barActive ? undefined : rowOpacity * 0.3 }}
-                              onClick={() => startSpeedRampFrom(stepIdx, stepBpm, barIdx)}
-                            />
-                          );
-                        })}
-                      </div>
+                      <>
+                        {hasAbove
+                          ? renderRow(fullStart - 1, "peek-top")
+                          : <div className="fs-ramp-grid-row peek-placeholder" />}
+                        {steps.slice(fullStart, fullEnd).map((_, i) => renderRow(fullStart + i))}
+                        {hasBelow
+                          ? renderRow(fullEnd, "peek-bottom")
+                          : <div className="fs-ramp-grid-row peek-placeholder" />}
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
               );
             })()}

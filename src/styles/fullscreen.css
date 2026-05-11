@@ -208,6 +208,35 @@
   box-shadow: 0 0 6px var(--accent-glow);
 }
 
+.fs-ramp-grid-row.peek-top,
+.fs-ramp-grid-row.peek-bottom {
+  height: 20px;
+  max-height: 20px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.fs-ramp-grid-row.peek-top .fs-ramp-grid-cell,
+.fs-ramp-grid-row.peek-bottom .fs-ramp-grid-cell {
+  opacity: 0.25 !important;
+}
+
+.fs-ramp-grid-row.peek-placeholder {
+  height: 20px;
+  flex-shrink: 0;
+  visibility: hidden;
+}
+
+.fs-ramp-grid-row.peek-top {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.8) 100%);
+}
+
+.fs-ramp-grid-row.peek-bottom {
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.8) 100%);
+  mask-image: linear-gradient(to top, transparent 0%, rgba(0,0,0,0.8) 100%);
+}
+
 /* Controls bar */
 .fs-controls {
   position: absolute;

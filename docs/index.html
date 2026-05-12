@@ -972,24 +972,29 @@
       }
 
       function formatBody(text) {
-        // Simple markdown-ish rendering
-        const lines = text.split("\n").filter((l) => l.trim());
+        // Naive inline markdown: bold, italic, strikethrough, code
+        function inline(raw) {
+          return escHtml(raw)
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\*(.+?)\*/g,     "<em>$1</em>")
+            .replace(/~~(.+?)~~/g,     "<del>$1</del>")
+            .replace(/`(.+?)`/g,       "<code>$1</code>");
+        }
+        const lines = text.split("\n");
         let html = "";
         let inList = false;
         lines.forEach((line) => {
           const trimmed = line.trim();
-          if (/^#{1,3}\s/.test(trimmed)) {
-            // Skip markdown headings — version header is already shown
-            return;
-          }
-          if (/^[-*]/.test(trimmed)) {
+          if (!trimmed) return;
+          // Skip ## headings — version header already shown
+          if (/^#{1,3}\s/.test(trimmed)) return;
+          // Bullet: must be "- text" or "* text" (space required — avoids matching **bold**)
+          if (/^[-*] /.test(trimmed)) {
             if (!inList) { html += "<ul>"; inList = true; }
-            html += "<li>" + escHtml(trimmed.replace(/^[-*]\s*/, "")) + "</li>";
+            html += "<li>" + inline(trimmed.replace(/^[-*] /, "")) + "</li>";
           } else {
             if (inList) { html += "</ul>"; inList = false; }
-            // Render **bold** markers
-            const escaped = escHtml(trimmed).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-            html += "<p>" + escaped + "</p>";
+            html += "<p>" + inline(trimmed) + "</p>";
           }
         });
         if (inList) html += "</ul>";

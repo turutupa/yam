@@ -2974,6 +2974,21 @@
   flex-direction: column;
   gap: 2px;
   padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+.input-tester-log::-webkit-scrollbar {
+  width: 4px;
+}
+
+.input-tester-log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.input-tester-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
 }
 
 .input-tester-row {

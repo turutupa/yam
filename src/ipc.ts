@@ -253,6 +253,19 @@ export async function reorderPresets(ids: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Audio Output Device
+// ---------------------------------------------------------------------------
+import type { AudioOutputDevice } from "./types";
+
+export async function listAudioOutputDevices(): Promise<AudioOutputDevice[]> {
+  return invoke<AudioOutputDevice[]>("list_audio_output_devices");
+}
+
+export async function setAudioOutputDevice(deviceName: string | null): Promise<void> {
+  return invoke("set_audio_output_device", { deviceName });
+}
+
+// ---------------------------------------------------------------------------
 // Audio Input / Evaluation
 // ---------------------------------------------------------------------------
 import type { AudioInputDevice, AudioSpectrum, BeatFeedback, SessionReport } from "./types";

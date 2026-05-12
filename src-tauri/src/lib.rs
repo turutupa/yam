@@ -18,6 +18,7 @@ use commands::{
     list_presets, save_preset, delete_preset, reorder_presets,
     list_audio_input_devices, start_evaluation, stop_evaluation, get_evaluation_state,
     get_session_report, clear_session,
+    list_audio_output_devices, set_audio_output_device,
     EngineState,
 };
 use onset::create_shared_onset_detector;
@@ -111,7 +112,17 @@ pub fn run() {
 
             app.manage(shared_state);
             let beat_log = create_beat_log();
-            app.manage(EngineState(Mutex::new(MetronomeEngine::new(beat_log.clone()))));
+            let mut engine = MetronomeEngine::new(beat_log.clone());
+
+            // Restore saved audio output device
+            {
+                let store = app.store("settings.json")?;
+                if let Some(device_name) = store.get("audioOutputDevice").and_then(|v| v.as_str().map(String::from)) {
+                    engine.set_device_name(Some(device_name));
+                }
+            }
+
+            app.manage(EngineState(Mutex::new(engine)));
             app.manage(create_shared_audio_input());
             app.manage(create_shared_onset_detector());
             app.manage(Arc::new(Mutex::new(TimingAnalyzer::new(beat_log))));
@@ -267,6 +278,8 @@ pub fn run() {
             get_evaluation_state,
             get_session_report,
             clear_session,
+            list_audio_output_devices,
+            set_audio_output_device,
         ])
         .on_window_event(|window, event| {
             match event {

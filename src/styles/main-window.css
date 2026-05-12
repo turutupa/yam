@@ -1973,7 +1973,14 @@
 
 /* =================== MIDI Section =================== */
 .midi-device-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px 0;
+}
+
+.midi-device-section + .midi-device-section {
+  margin-top: 32px;
 }
 
 .midi-device-row {
@@ -2152,6 +2159,59 @@
 .midi-status-dot.connected {
   background: #22c55e;
   box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+}
+
+/* Audio output Bluetooth warning */
+.audio-output-bt-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: rgb(234, 179, 8);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.audio-output-bt-warning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  stroke: rgb(234, 179, 8);
+}
+
+.audio-output-bt-badge {
+  margin-left: auto;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(234, 179, 8, 0.15);
+  color: rgb(234, 179, 8);
+  letter-spacing: 0.5px;
+}
+
+.midi-dropdown-dot.bluetooth {
+  flex-shrink: 0;
+  margin-right: 2px;
+  stroke: var(--accent);
+}
+
+.devices-subsection-label.devices-subsection-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  min-width: unset;
+}
+
+.devices-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+  opacity: 0.5;
 }
 
 .midi-activity-indicator {
@@ -2943,6 +3003,34 @@
   }
 }
 
+/* Preserve 3D shadow during pulse on velvet/sand themes */
+@keyframes floating-pulse-3d {
+  0% {
+    filter: brightness(1);
+    box-shadow:
+      0 4px 0 0 color-mix(in srgb, var(--accent) 50%, #000),
+      0 4px 16px var(--accent-glow);
+  }
+  50% {
+    filter: brightness(1.4);
+    box-shadow:
+      0 4px 0 0 color-mix(in srgb, var(--accent) 50%, #000),
+      0 4px 24px var(--accent-glow),
+      0 0 16px var(--accent-glow);
+  }
+  100% {
+    filter: brightness(1);
+    box-shadow:
+      0 4px 0 0 color-mix(in srgb, var(--accent) 50%, #000),
+      0 4px 16px var(--accent-glow);
+  }
+}
+
+html[data-theme="velvet"] .floating-play-btn.pulse,
+html[data-theme="sand"] .floating-play-btn.pulse {
+  animation: floating-pulse-3d 0.15s ease-out;
+}
+
 /* ── Unified Input Tester ── */
 
 .input-tester-modal {
@@ -2964,31 +3052,61 @@
   line-height: 1.4;
 }
 
-.input-tester-log {
+.input-tester-log-wrapper {
   height: 340px;
-  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg-secondary);
+  position: relative;
+  overflow: hidden;
+}
+
+.input-tester-log {
+  height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  padding-right: 14px;
+  scrollbar-width: none;
 }
 
 .input-tester-log::-webkit-scrollbar {
-  width: 4px;
+  display: none;
 }
 
-.input-tester-log::-webkit-scrollbar-track {
-  background: transparent;
+.input-tester-scrollbar {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  bottom: 4px;
+  width: 5px;
+  border-radius: 3px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-.input-tester-log::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 2px;
+.input-tester-log-wrapper:hover .input-tester-scrollbar,
+.input-tester-scrollbar.visible {
+  opacity: 1;
+}
+
+.input-tester-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--accent);
+  border-radius: 3px;
+  min-height: 24px;
+  transition: background 0.15s;
+}
+
+.input-tester-log-wrapper:hover .input-tester-scrollbar-thumb {
+  background: var(--accent);
+  filter: brightness(1.15);
 }
 
 .input-tester-row {

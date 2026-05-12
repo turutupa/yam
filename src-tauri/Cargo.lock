@@ -5713,8 +5713,10 @@ checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 
 [[package]]
 name = "yames"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
+ "core-foundation-sys",
+ "coreaudio-sys",
  "cpal",
  "midir",
  "rodio",

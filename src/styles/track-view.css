@@ -312,12 +312,15 @@
 .track-floating-cta {
   position: fixed;
   bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 24px;
+  right: 24px;
   max-width: 400px;
-  width: calc(100% - 48px);
+  margin: 0 auto;
   z-index: 20;
   transition: none;
+  animation: none !important;
+  transform: none !important;
+  translate: none !important;
 }
 
 .track-results {

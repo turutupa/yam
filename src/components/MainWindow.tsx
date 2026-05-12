@@ -34,12 +34,14 @@ import {
   storeLoad,
   storeSave,
   togglePlayback,
+  listAudioOutputDevices,
+  setAudioOutputDevice,
 } from "../ipc";
 import "../styles/main-window.css";
 import "../styles/transitions.css";
 import "../styles/evaluation.css";
 import { THEMES } from "../themes";
-import type { Preset, Subdivision, WidgetMode } from "../types";
+import type { AudioOutputDevice, Preset, Subdivision, WidgetMode } from "../types";
 import { DrillView } from "./DrillView";
 import { FullscreenView } from "./FullscreenView";
 import { PresetSidebar } from "./PresetSidebar";
@@ -555,6 +557,117 @@ function MidiDeviceDropdown({
   );
 }
 
+// Custom themed dropdown for audio output device selection
+function AudioOutputDropdown({
+  devices,
+  value,
+  onChange,
+}: {
+  devices: AudioOutputDevice[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const options = useMemo(
+    () => [
+      { value: "", label: "System default", isBluetooth: false },
+      ...devices.map((d) => ({
+        value: d.name,
+        label: d.name + (d.isDefault ? " (default)" : ""),
+        isBluetooth: d.isBluetooth,
+      })),
+    ],
+    [devices],
+  );
+
+  const selected = options.find((o) => o.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className={`midi-dropdown ${open ? "open" : ""}`} ref={ref}>
+      <button
+        className="midi-dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
+        <span className="midi-dropdown-value">
+          {selected.isBluetooth && (
+            <svg className="midi-dropdown-dot bluetooth" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6.5 6.5 17.5 17.5" />
+              <polyline points="17.5 6.5 6.5 17.5" />
+              <path d="M6.5 17.5l5.5-5.5 5.5-5.5-5.5-5.5v22l5.5-5.5" />
+            </svg>
+          )}
+          {!selected.isBluetooth && value && (
+            <span className="midi-dropdown-dot connected" />
+          )}
+          {selected.label}
+        </span>
+        <svg
+          className="midi-dropdown-chevron"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="midi-dropdown-menu">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              className={`midi-dropdown-item ${opt.value === value ? "selected" : ""}`}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {opt.value === value && (
+                <svg
+                  className="midi-dropdown-check"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              <span>{opt.label}</span>
+              {opt.isBluetooth && (
+                <span className="audio-output-bt-badge">BT</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MainWindow() {
   useDrag();
   const { state, currentBeat } = useMetronome();
@@ -665,9 +778,9 @@ export function MainWindow() {
     updateFeedbackTimer.current = setTimeout(() => setUpdateFeedback(false), 1800);
   }, []);
 
-  // Sidebar is not relevant on the settings page — close it automatically
+  // Sidebar is not relevant on settings or pocket check — close it automatically
   useEffect(() => {
-    if (view === "settings") setSidebarOpen(false);
+    if (view === "settings" || view === "track") setSidebarOpen(false);
   }, [view]);
 
   const [keyBindings, setKeyBindings] = useState<Record<string, string>>(() =>
@@ -747,6 +860,8 @@ export function MainWindow() {
   const [viewTransitions, setViewTransitions] = useState<"off" | "subtle" | "smooth" | "expressive">("off");
   const [animationStyle, setAnimationStyle] = useState<"fade" | "scale" | "blur" | "slide" | "reveal">("scale");
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<AudioOutputDevice[]>([]);
+  const [selectedOutputDevice, setSelectedOutputDevice] = useState<string>("");
   const [updateStatus, setUpdateStatus] = useState<
     "idle" | "checking" | "available" | "up-to-date" | "downloading"
   >("idle");
@@ -793,6 +908,12 @@ export function MainWindow() {
       }
       const acu = await storeLoad<boolean>("autoCheckUpdates");
       if (acu !== undefined) setAutoCheckUpdates(acu);
+
+      // Load audio output devices and saved selection
+      const devices = await listAudioOutputDevices();
+      setAudioOutputDevices(devices);
+      const savedDevice = await storeLoad<string>("audioOutputDevice");
+      if (savedDevice) setSelectedOutputDevice(savedDevice);
 
       // Get app version and auto-check for updates
       const ver = await getVersion();
@@ -1642,7 +1763,7 @@ export function MainWindow() {
         })()}
 
       <div className="main-body">
-        {view !== "settings" && (
+        {view !== "settings" && view !== "track" && (
           <PresetSidebar
             ref={sidebarRef}
             state={state}
@@ -2072,6 +2193,86 @@ export function MainWindow() {
               )}
             </section>
 
+            <section className="hotkeys-section">
+              <h2>Devices</h2>
+              <div className="midi-device-section">
+                <label className="midi-label devices-subsection-label">Audio Output</label>
+                <div className="midi-device-row">
+                  <AudioOutputDropdown
+                    devices={audioOutputDevices}
+                    value={selectedOutputDevice}
+                    onChange={(val) => {
+                      setSelectedOutputDevice(val);
+                      setAudioOutputDevice(val || null);
+                    }}
+                  />
+                  <button
+                    className="midi-refresh-btn"
+                    onClick={async () => {
+                      const devices = await listAudioOutputDevices();
+                      setAudioOutputDevices(devices);
+                    }}
+                    title="Refresh audio devices"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 4 23 10 17 10" />
+                      <polyline points="1 20 1 14 7 14" />
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                  </button>
+                </div>
+                {selectedOutputDevice && audioOutputDevices.find(d => d.name === selectedOutputDevice)?.isBluetooth && (
+                  <div className="audio-output-bt-warning">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span>Bluetooth audio adds significant latency. Visual cues and sound may not sync perfectly.</span>
+                  </div>
+                )}
+              </div>
+              <div className="midi-device-section" style={{ marginTop: 28 }}>
+                <label className="midi-label devices-subsection-label">MIDI</label>
+                <div className="midi-device-row">
+                  <MidiDeviceDropdown
+                    devices={midi.devices}
+                    value={midi.connectedDevice || ""}
+                    onChange={(val) => {
+                      if (val) {
+                        midi.connect(val);
+                      } else {
+                        midi.disconnect();
+                      }
+                    }}
+                  />
+                  <button
+                    className="midi-refresh-btn"
+                    onClick={() => midi.refreshDevices()}
+                    title="Refresh MIDI devices"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 4 23 10 17 10" />
+                      <polyline points="1 20 1 14 7 14" />
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                  </button>
+                </div>
+                {midi.connectedDevice && (
+                  <div className="midi-status">
+                    <span className="midi-status-dot connected" />
+                    Connected
+                  </div>
+                )}
+                {!midi.connectedDevice && midi.devices.length === 0 && (
+                  <div className="midi-status">
+                    <span className="midi-status-dot" />
+                    No MIDI devices detected
+                  </div>
+                )}
+              </div>
+            </section>
+
             <section className="settings-section">
               <h2>Widget</h2>
               <div className="setting-row">
@@ -2132,53 +2333,10 @@ export function MainWindow() {
               </div>
             </section>
 
-            <section className="hotkeys-section">
-              <h2>MIDI</h2>
-              <div className="midi-device-section">
-                <div className="midi-device-row">
-                  <label className="midi-label">Device</label>
-                  <MidiDeviceDropdown
-                    devices={midi.devices}
-                    value={midi.connectedDevice || ""}
-                    onChange={(val) => {
-                      if (val) {
-                        midi.connect(val);
-                      } else {
-                        midi.disconnect();
-                      }
-                    }}
-                  />
-                  <button
-                    className="midi-refresh-btn"
-                    onClick={() => midi.refreshDevices()}
-                    title="Refresh MIDI devices"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="23 4 23 10 17 10" />
-                      <polyline points="1 20 1 14 7 14" />
-                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                    </svg>
-                  </button>
-                </div>
-                {midi.connectedDevice && (
-                  <div className="midi-status">
-                    <span className="midi-status-dot connected" />
-                    Connected
-                  </div>
-                )}
-                {!midi.connectedDevice && midi.devices.length === 0 && (
-                  <div className="midi-status">
-                    <span className="midi-status-dot" />
-                    No MIDI devices detected
-                  </div>
-                )}
-              </div>
-            </section>
-
             <section className="settings-section">
-              <h2>Evaluation <span className="hotkey-soon-badge">coming soon</span></h2>
+              <h2>Practice Coach <span className="hotkey-soon-badge">coming soon</span></h2>
               <div className="setting-hint setting-privacy-note">
-                Play along with the metronome and get real-time feedback on your timing accuracy. All analysis runs locally on-device.
+                Play along with the metronome and get real-time feedback on your timing, dynamics, and consistency. All analysis runs locally on-device.
               </div>
             </section>
 
@@ -2731,7 +2889,23 @@ export function MainWindow() {
             <div className="input-tester-hint">
               Press keys, MIDI buttons, or gamepad buttons to see what they map to.
             </div>
-            <div className="input-tester-log" ref={inputTestLogRef}>
+            <div className="input-tester-log-wrapper">
+              <div
+                className="input-tester-log"
+                ref={inputTestLogRef}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  const thumb = el.parentElement?.querySelector(".input-tester-scrollbar-thumb") as HTMLElement | null;
+                  const track = el.parentElement?.querySelector(".input-tester-scrollbar") as HTMLElement | null;
+                  if (!thumb || !track) return;
+                  const scrollRatio = el.scrollTop / (el.scrollHeight - el.clientHeight);
+                  const trackH = track.clientHeight;
+                  const thumbH = Math.max(24, (el.clientHeight / el.scrollHeight) * trackH);
+                  thumb.style.height = `${thumbH}px`;
+                  thumb.style.top = `${scrollRatio * (trackH - thumbH)}px`;
+                  track.classList.toggle("visible", el.scrollHeight > el.clientHeight);
+                }}
+              >
               {inputTestLog.length === 0 ? (
                 <div className="midi-tester-empty">Waiting for input…</div>
               ) : (
@@ -2766,6 +2940,10 @@ export function MainWindow() {
                   </div>
                 ))
               )}
+              </div>
+              <div className="input-tester-scrollbar">
+                <div className="input-tester-scrollbar-thumb" />
+              </div>
             </div>
             <div className="keybinding-capture-actions">
               <button className="keybinding-btn-reset" onClick={() => setInputTestLog([])}>

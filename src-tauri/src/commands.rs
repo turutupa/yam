@@ -663,3 +663,34 @@ pub fn get_session_report(session_acc: State<SharedSessionAccumulator>) -> Optio
 pub fn clear_session(session_acc: State<SharedSessionAccumulator>) {
     session_acc.lock().unwrap().clear();
 }
+
+// ---------------------------------------------------------------------------
+// Audio Output Device Commands
+// ---------------------------------------------------------------------------
+
+use crate::engine::AudioOutputDevice;
+
+#[tauri::command]
+pub fn list_audio_output_devices() -> Vec<AudioOutputDevice> {
+    crate::engine::list_output_devices()
+}
+
+#[tauri::command]
+pub fn set_audio_output_device(
+    device_name: Option<String>,
+    state: State<SharedState>,
+    engine_state: State<EngineState>,
+    app_handle: AppHandle,
+) {
+    // Persist the choice
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app_handle.store("settings.json") {
+        match &device_name {
+            Some(name) => store.set("audioOutputDevice", serde_json::json!(name)),
+            None => store.set("audioOutputDevice", serde_json::Value::Null),
+        }
+    }
+
+    let mut engine = engine_state.0.lock().unwrap();
+    engine.set_device(device_name, state.inner().clone(), app_handle);
+}

@@ -887,6 +887,7 @@ body {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.2s ease, visibility 0.2s ease;
+  overscroll-behavior: contain;
 }
 
 .changelog-overlay.open {
@@ -952,6 +953,7 @@ body {
 
 .changelog-body {
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 24px 20px 24px;
   margin-right: 18px;
   flex: 1;

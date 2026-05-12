@@ -1009,6 +1009,7 @@
       let _tlObserver = null;
       let _tlVisibleSet = new Set();
       let _tlActiveIdx = 0;
+      let _tlRafPending = false;
 
       function buildTimeline(releases) {
         timelineReleases = releases;
@@ -1050,7 +1051,14 @@
           if (_tlVisibleSet.size > 0) {
             _tlActiveIdx = Math.min(..._tlVisibleSet);
           }
-          _applyTimelineTicks();
+          // Coalesce rapid observer callbacks into a single paint
+          if (!_tlRafPending) {
+            _tlRafPending = true;
+            requestAnimationFrame(() => {
+              _tlRafPending = false;
+              _applyTimelineTicks();
+            });
+          }
         }, { root: body, threshold: 0.1 });
 
         body.querySelectorAll(".changelog-release").forEach((el, i) => {

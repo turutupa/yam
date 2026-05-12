@@ -1567,6 +1567,7 @@ export function MainWindow() {
             </section>
 
             <div className="sub-row">
+              <span className="row-side-label">Subdiv</span>
               {([1, 2, 3, 4, 5, 6] as Subdivision[]).map((sub, i) => (
                 <button
                   key={sub}
@@ -1581,6 +1582,7 @@ export function MainWindow() {
             </div>
 
             <div className="time-sig-row">
+              <span className="row-side-label">Meter</span>
               {TIME_SIGNATURES.map((ts, i) => (
                 <button
                   key={ts.beats}

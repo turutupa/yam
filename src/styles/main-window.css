@@ -869,6 +869,21 @@
   margin: 44px auto -14px;
   justify-content: center;
   overflow: visible;
+  position: relative;
+}
+
+.row-side-label {
+  position: absolute;
+  left: -52px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+  opacity: 0.35;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .sub-row-btn {
@@ -1513,6 +1528,7 @@
   max-width: 520px;
   margin: 0 auto;
   justify-content: center;
+  position: relative;
 }
 
 .time-sig-btn {

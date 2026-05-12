@@ -74,7 +74,7 @@
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock"
       },
-      "softwareVersion": "0.6.0",
+      "softwareVersion": "0.7.0",
       "datePublished": "2024-01-01",
       "author": {
         "@type": "Person",
@@ -1079,6 +1079,17 @@
           tick.classList.toggle("tl-visible", i !== activeIdx && visibleSet.has(i));
         });
       }
+
+      // Eagerly update version badge from latest GitHub release
+      fetch(RELEASES_URL + "?per_page=1")
+        .then(r => r.json())
+        .then(releases => {
+          if (releases && releases[0]) {
+            document.getElementById("version-number").textContent =
+              releases[0].tag_name.replace(/^v/, "");
+          }
+        })
+        .catch(() => {});
     </script>
   </body>
 </html>

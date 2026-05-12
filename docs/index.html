@@ -987,7 +987,9 @@
             html += "<li>" + escHtml(trimmed.replace(/^[-*]\s*/, "")) + "</li>";
           } else {
             if (inList) { html += "</ul>"; inList = false; }
-            html += "<p>" + escHtml(trimmed) + "</p>";
+            // Render **bold** markers
+            const escaped = escHtml(trimmed).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+            html += "<p>" + escaped + "</p>";
           }
         });
         if (inList) html += "</ul>";

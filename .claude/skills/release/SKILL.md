@@ -41,17 +41,34 @@ arguments:
 
 6. Push: `git push origin main`
 
-7. After CI creates the GitHub release, update its notes with a proper changelog:
-   ```
-   gh release edit v{VERSION} --repo turutupa/yames --notes '## {Title}
-
-   - {bullet point for each change}
-   ...'
-   ```
-   Use `## {Short Title}` as a heading (e.g. "## MIDI Controller Support").
-   List each meaningful change as a bullet point.
-   Derive notes from the commit body (step 5) — they should match.
+7. After CI creates the GitHub release, update its notes with a proper changelog.
    Wait ~30 seconds after push for CI to create the release before editing.
+
+   **Format rules:**
+   - Order items biggest → smallest impact. Bug fixes and polish go last.
+   - Use `**New**`, `**Improved**`, `**Fixed**` as section labels (plain text, bold via `**`).
+   - Only include sections that apply. A pure bug-fix release just has `**Fixed**`.
+   - No `##` headings — they are stripped by the changelog renderer.
+
+   ```
+   gh release edit v{VERSION} --repo turutupa/yames --notes "$(cat <<'EOF'
+   **New**
+
+   - {biggest new feature}
+   - {next feature}
+
+   **Improved**
+
+   - {improvement}
+
+   **Fixed**
+
+   - {bug fix}
+   EOF
+   )"
+   ```
+
+   Derive notes from the commit body (step 5) — they should match.
 
 ## What CI does automatically
 

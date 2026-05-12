@@ -12,17 +12,24 @@
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1 — Audio Capture | Not started | |
-| Phase 2 — Onset Detection | Not started | |
-| Phase 3 — Auto-Calibration & Timing | Not started | |
-| Phase 4 — Real-Time UI Feedback + Pocket Check | Not started | |
-| Phase 5 — Session Report Panel | Not started | |
-| Phase 6 — MIDI Onset Input | Not started | |
-| Phase 7 — Quality Metrics | Not started | |
-| Phase 8 — Advanced Insights | Not started | |
+| Phase 1 — Audio Capture | Done | `audio_input.rs`, ring buffer, spectrum analyzer |
+| Phase 2 — Onset Detection | Done | `onset.rs`, spectral flux, Goertzel algorithm |
+| Phase 3 — Auto-Calibration & Timing | Done | `timing.rs`, `clock.rs`, running median calibration |
+| Phase 4 — Real-Time UI Feedback | Done | Beat dot coloring, DriftMeter, FAB toggle |
+| Phase 5 — Session Report Panel | Done | `session.rs`, EvaluationPanel with grade/stats/histogram |
+| Phase 6 — MIDI Onset Input | Done | MIDI NoteOn forwarding via onset callback |
+| Phase 7 — Quality Metrics | Done | Dynamics, tempo stability, longest streak |
+| Phase 8 — Advanced Insights | Deferred | History UI deferred per user request |
 
-**Partial work / known issues:**
-- (none yet)
+**Additional completed work:**
+- Settings page: Evaluation section with device picker, test button, privacy note
+- Pocket Check rename (formerly "Tap It") with instrument input support
+- Spectrum analyzer DC offset fix (skip bin 0)
+- FAB toggle moved from header to bottom-right corner
+- Spectrum analyzer shows to the left of FAB
+
+**Remaining (deferred):**
+- Session history persistence / review UI
 
 ---
 

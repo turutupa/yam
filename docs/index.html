@@ -901,7 +901,6 @@
 
       // ─── Changelog modal ───
       let changelogLoaded = false;
-      let clickedIdx = -1;
       const RELEASES_URL = "https://api.github.com/repos/turutupa/yames/releases";
       const INITIAL_SHOW = 5;
 
@@ -1007,6 +1006,9 @@
 
       // ─── Timeline nav ───
       let timelineReleases = [];
+      let _tlObserver = null;
+      let _tlVisibleSet = new Set();
+      let _tlActiveIdx = 0;
 
       function buildTimeline(releases) {
         timelineReleases = releases;
@@ -1015,7 +1017,6 @@
         let html = "";
         releases.forEach((rel, i) => {
           const hidden = i >= INITIAL_SHOW ? " tl-hidden" : "";
-          // Count bullet points to size the tick
           const bullets = (rel.body || "").split("\n").filter((l) => /^\s*[-*]/.test(l)).length;
           const tw = Math.max(6, Math.min(20, 6 + bullets * 2));
           html += '<div class="tl-tick' + hidden + '" data-index="' + i + '" style="--tw:' + tw + 'px">'
@@ -1026,79 +1027,59 @@
         timeline.querySelectorAll(".tl-tick").forEach((tick) => {
           tick.addEventListener("click", () => {
             const idx = parseInt(tick.dataset.index);
-            clickedIdx = idx;
+            _tlActiveIdx = idx;
             const els = body.querySelectorAll(".changelog-release");
             if (els[idx]) els[idx].scrollIntoView({ behavior: "smooth", block: "start" });
-            updateTimelineTicks();
+            _applyTimelineTicks();
           });
         });
-        body.addEventListener("scroll", () => {
-          clickedIdx = -1;
-          scheduleTimelineUpdate();
+
+        // Use IntersectionObserver — no scroll listeners, no layout reads
+        if (_tlObserver) _tlObserver.disconnect();
+        _tlVisibleSet = new Set();
+        _tlObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            const idx = parseInt(entry.target.dataset.tlIndex);
+            if (entry.isIntersecting) {
+              _tlVisibleSet.add(idx);
+            } else {
+              _tlVisibleSet.delete(idx);
+            }
+          });
+          // Active = topmost visible
+          if (_tlVisibleSet.size > 0) {
+            _tlActiveIdx = Math.min(..._tlVisibleSet);
+          }
+          _applyTimelineTicks();
+        }, { root: body, threshold: 0.1 });
+
+        body.querySelectorAll(".changelog-release").forEach((el, i) => {
+          el.dataset.tlIndex = i;
+          if (!el.classList.contains("changelog-hidden")) _tlObserver.observe(el);
         });
-        updateTimelineTicks();
+
+        _applyTimelineTicks();
       }
 
-      let _tlRafPending = false;
-      function scheduleTimelineUpdate() {
-        if (_tlRafPending) return;
-        _tlRafPending = true;
-        requestAnimationFrame(() => {
-          _tlRafPending = false;
-          updateTimelineTicks();
+      function _applyTimelineTicks() {
+        const ticks = document.querySelectorAll(".tl-tick");
+        ticks.forEach((tick, i) => {
+          tick.classList.toggle("tl-active", i === _tlActiveIdx);
+          tick.classList.toggle("tl-visible", i !== _tlActiveIdx && _tlVisibleSet.has(i));
         });
       }
 
       function rebuildTimelinePositions() {
-        document.querySelectorAll(".tl-hidden").forEach((el) => el.classList.remove("tl-hidden"));
-        updateTimelineTicks();
-      }
-
-      function updateTimelineTicks() {
         const body = document.getElementById("changelog-body");
-        const timeline = document.getElementById("changelog-timeline");
-        const ticks = timeline.querySelectorAll(".tl-tick");
-        const releases = body.querySelectorAll(".changelog-release");
-        const scrollTop = body.scrollTop;
-        const clientH = body.clientHeight;
-        const atBottom = scrollTop + clientH >= body.scrollHeight - 2;
-
-        // Batch all layout reads first to avoid thrashing
-        const releaseMetrics = Array.from(releases).map((rel) => ({
-          hidden: rel.classList.contains("changelog-hidden"),
-          offsetTop: rel.offsetTop,
-          offsetHeight: rel.offsetHeight,
-        }));
-
-        // Find visible releases (in viewport)
-        const visibleSet = new Set();
-        releaseMetrics.forEach(({ hidden, offsetTop, offsetHeight }, i) => {
-          if (hidden) return;
-          const top = offsetTop - scrollTop;
-          const bottom = top + offsetHeight;
-          if (bottom > 0 && top < clientH) visibleSet.add(i);
-        });
-
-        // Active = clicked target, or topmost visible, or last if at bottom
-        let activeIdx = 0;
-        if (clickedIdx >= 0) {
-          activeIdx = clickedIdx;
-        } else if (atBottom) {
-          for (let i = releases.length - 1; i >= 0; i--) {
-            if (visibleSet.has(i)) { activeIdx = i; break; }
-          }
-        } else {
-          releaseMetrics.forEach(({ hidden, offsetTop }, i) => {
-            if (!hidden && offsetTop <= scrollTop + clientH * 0.3) {
-              activeIdx = i;
-            }
+        document.querySelectorAll(".tl-hidden").forEach((el) => el.classList.remove("tl-hidden"));
+        // Re-observe any newly visible releases
+        if (_tlObserver) {
+          body.querySelectorAll(".changelog-release").forEach((el, i) => {
+            el.dataset.tlIndex = i;
+            _tlObserver.observe(el);
           });
         }
-
-        ticks.forEach((tick, i) => {
-          tick.classList.toggle("tl-active", i === activeIdx);
-          tick.classList.toggle("tl-visible", i !== activeIdx && visibleSet.has(i));
-        });
+        _applyTimelineTicks();
       }
 
       // Eagerly update version badge from latest GitHub release

@@ -1086,6 +1086,10 @@ body {
   margin: 4px 0;
 }
 
+.changelog-notes ul + p {
+  margin-top: 10px;
+}
+
 .changelog-no-notes {
   font-style: italic;
   color: var(--text-dim);

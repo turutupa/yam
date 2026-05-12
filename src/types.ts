@@ -95,3 +95,54 @@ export type Preset = {
     warmupBeats: number;
   };
 };
+
+// ---------------------------------------------------------------------------
+// Audio Input / Evaluation types
+// ---------------------------------------------------------------------------
+
+export type AudioInputDevice = {
+  name: string;
+  isDefault: boolean;
+  isInterface: boolean;
+};
+
+export type AudioSpectrum = {
+  bands: number[];
+  rms: number;
+};
+
+export type BeatFeedback = {
+  beatIndex: number;
+  /** Deviation from expected beat time in ms (negative = early, positive = late) */
+  deviationMs: number;
+  /** Error in interval between this onset and previous (ms) */
+  intervalErrorMs: number;
+  /** "perfect" | "good" | "ok" | "miss" */
+  classification: "perfect" | "good" | "ok" | "miss";
+  /** Amplitude of matched onset (0.0 for miss) */
+  amplitude: number;
+  /** Current calibration offset in ms */
+  calibrationOffsetMs: number;
+  /** Confidence in calibration (0.0–1.0) */
+  calibrationConfidence: number;
+};
+
+export type SessionReport = {
+  totalBeats: number;
+  hitsCount: number;
+  missCount: number;
+  perfectCount: number;
+  goodCount: number;
+  okCount: number;
+  meanDeviationMs: number;
+  stdDeviationMs: number;
+  meanAbsDeviationMs: number;
+  meanIntervalErrorMs: number;
+  grade: string;
+  score: number;
+  deviations: number[];
+  dynamicsStd: number;
+  meanAmplitude: number;
+  tempoStabilityMs: number;
+  longestStreak: number;
+};

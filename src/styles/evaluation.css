@@ -1,0 +1,155 @@
+/* ─── Evaluation FAB container (bottom-right fixed) ─── */
+.eval-fab-container {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* ─── Spectrum Analyzer (to the left of FAB) ─── */
+.spectrum-analyzer {
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.spectrum-analyzer.has-signal {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.spectrum-canvas {
+  display: block;
+  border-radius: 4px;
+}
+
+/* ─── Evaluation FAB button ─── */
+.eval-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.eval-fab:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.eval-fab.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.eval-fab.active:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Subtle pulse animation when active and receiving signal */
+.eval-fab.active.has-signal {
+  animation: eval-pulse 2s ease-in-out infinite;
+}
+
+@keyframes eval-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 25%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+
+/* ─── Beat dot feedback colors (when evaluation active) ─── */
+.main-dot.feedback-perfect {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5), 0 0 24px rgba(16, 185, 129, 0.2) !important;
+}
+
+.main-dot.feedback-good {
+  background: #06b6d4 !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.5), 0 0 24px rgba(6, 182, 212, 0.2) !important;
+}
+
+.main-dot.feedback-ok {
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5), 0 0 24px rgba(245, 158, 11, 0.2) !important;
+}
+
+.main-dot.feedback-miss {
+  background: transparent !important;
+  border-color: #6b7280 !important;
+  box-shadow: none !important;
+}
+
+/* ─── Drift Meter ─── */
+.drift-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.drift-meter.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.drift-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  user-select: none;
+  width: 28px;
+  text-align: center;
+}
+
+.drift-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  border-radius: 2px;
+  max-width: 160px;
+}
+
+.drift-center {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 1px;
+  height: 8px;
+  background: color-mix(in srgb, var(--text-primary) 20%, transparent);
+  transform: translateX(-50%);
+}
+
+.drift-needle {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 8px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  transition: transform 0.15s ease-out, background-color 0.2s ease;
+}

@@ -1651,6 +1651,35 @@
   opacity: 0.6;
 }
 
+.setting-select {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 6px 8px;
+  min-width: 160px;
+  cursor: pointer;
+  outline: none;
+}
+
+.setting-select:focus {
+  border-color: var(--accent);
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-privacy-note {
+  padding: 8px 0 0;
+  font-size: 11px;
+  opacity: 0.5;
+  font-style: italic;
+}
+
 .toggle-group {
   display: flex;
   gap: 4px;

@@ -1,4 +1,5 @@
 use crate::state::SharedState;
+use crate::timing::{BeatLog, BeatTick};
 use rodio::{OutputStream, Sink, Source};
 use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -100,14 +101,16 @@ pub struct MetronomeEngine {
     alive: Arc<AtomicBool>,
     playing: Arc<AtomicBool>,
     thread_handle: Option<thread::JoinHandle<()>>,
+    beat_log: BeatLog,
 }
 
 impl MetronomeEngine {
-    pub fn new() -> Self {
+    pub fn new(beat_log: BeatLog) -> Self {
         Self {
             alive: Arc::new(AtomicBool::new(false)),
             playing: Arc::new(AtomicBool::new(false)),
             thread_handle: None,
+            beat_log,
         }
     }
 
@@ -120,6 +123,7 @@ impl MetronomeEngine {
         self.alive.store(true, Ordering::SeqCst);
         let alive = self.alive.clone();
         let playing = self.playing.clone();
+        let beat_log = self.beat_log.clone();
 
         let handle = thread::spawn(move || {
             let (_stream, stream_handle) = match OutputStream::try_default() {
@@ -346,6 +350,23 @@ impl MetronomeEngine {
                     is_downbeat,
                 };
                 let _ = app_handle.emit("beat", &event);
+
+                // Log beat tick for timing analyzer (only on downbeats —
+                // subdivisions are not evaluated for timing)
+                if is_downbeat {
+                    let tick = BeatTick {
+                        ts_ns: crate::clock::now_ns(),
+                        beat_index: beat_count,
+                        is_downbeat,
+                        expected_interval_ms: beat_duration_ms,
+                    };
+                    if let Ok(mut log) = beat_log.lock() {
+                        log.push_back(tick);
+                        while log.len() > 64 {
+                            log.pop_front();
+                        }
+                    }
+                }
 
                 sub_count += 1;
                 if sub_count >= subdivision as u32 {

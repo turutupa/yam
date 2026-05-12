@@ -1,8 +1,14 @@
+mod audio_input;
+mod clock;
 mod commands;
 mod engine;
 mod midi;
+mod onset;
+mod session;
 mod state;
+mod timing;
 
+use audio_input::create_shared_audio_input;
 use commands::{
     get_state, get_active_tab, get_calibration_offset, open_url, save_window_position, set_active_tab, set_always_on_top, set_bpm, set_calibration_offset,
     set_playing, set_sound_type, set_subdivision, set_theme, set_time_signature, set_volume, set_widget_mode,
@@ -10,12 +16,17 @@ use commands::{
     start_speed_ramp_from, stop_speed_ramp,
     list_midi_devices, connect_midi_device, disconnect_midi_device, set_midi_binding, clear_midi_binding, get_midi_bindings,
     list_presets, save_preset, delete_preset, reorder_presets,
+    list_audio_input_devices, start_evaluation, stop_evaluation, get_evaluation_state,
+    get_session_report, clear_session,
     EngineState,
 };
+use onset::create_shared_onset_detector;
 use engine::MetronomeEngine;
 use midi::create_shared_midi;
+use session::create_shared_session_accumulator;
 use state::{create_shared_state, SharedState};
-use std::sync::Mutex;
+use timing::{create_beat_log, TimingAnalyzer};
+use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -99,7 +110,12 @@ pub fn run() {
             }
 
             app.manage(shared_state);
-            app.manage(EngineState(Mutex::new(MetronomeEngine::new())));
+            let beat_log = create_beat_log();
+            app.manage(EngineState(Mutex::new(MetronomeEngine::new(beat_log.clone()))));
+            app.manage(create_shared_audio_input());
+            app.manage(create_shared_onset_detector());
+            app.manage(Arc::new(Mutex::new(TimingAnalyzer::new(beat_log))));
+            app.manage(create_shared_session_accumulator());
 
             // Set up MIDI listener
             let shared_midi = create_shared_midi();
@@ -245,6 +261,12 @@ pub fn run() {
             save_preset,
             delete_preset,
             reorder_presets,
+            list_audio_input_devices,
+            start_evaluation,
+            stop_evaluation,
+            get_evaluation_state,
+            get_session_report,
+            clear_session,
         ])
         .on_window_event(|window, event| {
             match event {

@@ -9,12 +9,14 @@ import {
   storeSave,
   storeLoad,
 } from "../ipc";
+import { listen } from "@tauri-apps/api/event";
 import "../styles/track-view.css";
 import type { AppState, BeatEvent } from "../types";
 
 interface TrackViewProps {
   state: AppState;
   currentBeat: BeatEvent | null;
+  evaluationEnabled?: boolean;
 }
 
 type TapResult = {
@@ -137,7 +139,7 @@ export interface TrackViewHandle {
   spaceAction: () => void;
 }
 
-export const TrackView = forwardRef<TrackViewHandle, TrackViewProps>(function TrackView({ state }, ref) {
+export const TrackView = forwardRef<TrackViewHandle, TrackViewProps>(function TrackView({ state, evaluationEnabled }, ref) {
   const [session, setSession] = useState<SessionState>("idle");
   const [taps, setTaps] = useState<TapResult[]>([]);
   const [beatCount, setBeatCount] = useState(0);
@@ -286,6 +288,25 @@ export const TrackView = forwardRef<TrackViewHandle, TrackViewProps>(function Tr
       { offsetMs: minOffset, timestamp: now, rating },
     ]);
   }, [session, state.bpm]);
+
+  // When evaluation is enabled, listen for instrument onset events as taps
+  useEffect(() => {
+    if (!evaluationEnabled) return;
+    if (session !== "playing" && session !== "calibrating") return;
+
+    let cancelled = false;
+    const promise = listen<{ tsNs: number; amplitude: number; centroid: number }>(
+      "onset-detected",
+      () => {
+        if (!cancelled) handleTap();
+      },
+    );
+
+    return () => {
+      cancelled = true;
+      promise.then((unlisten) => unlisten());
+    };
+  }, [evaluationEnabled, session, handleTap]);
 
   const catchPhraseRef = useRef("");
 
@@ -474,10 +495,11 @@ export const TrackView = forwardRef<TrackViewHandle, TrackViewProps>(function Tr
       <div className="track-view">
         <div className="track-intro view-stagger-item" style={{ animationDelay: '0ms' }}>
           <div className="track-intro-icon">🎯</div>
-          <h3>Rhythm Accuracy</h3>
+          <h3>Pocket Check</h3>
           <p>
-            Tap along with the metronome for {scoredBeats} beats. Click{" "}
-            the target to log each beat.
+            {evaluationEnabled
+              ? `Play along with the metronome for ${scoredBeats} beats. Your instrument input is detected automatically.`
+              : `Tap along with the metronome for ${scoredBeats} beats. Click the target to log each beat.`}
           </p>
           {savedOffset !== null ? (
             <p className="track-config-hint">
@@ -1103,7 +1125,7 @@ export const TrackView = forwardRef<TrackViewHandle, TrackViewProps>(function Tr
       </div>
 
       <div className="track-live-hint">
-        Click the target to tap along
+        {evaluationEnabled ? "Play your instrument along with the beat" : "Click the target to tap along"}
       </div>
 
       <button

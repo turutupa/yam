@@ -1,0 +1,234 @@
+/* ─── Evaluation Panel (right sidebar) ─── */
+.eval-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  background: var(--bg-primary);
+  border-left: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.eval-panel.open {
+  transform: translateX(0);
+}
+
+.eval-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.eval-panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.eval-panel-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+}
+
+.eval-panel-close:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.eval-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Grade */
+.eval-grade-section {
+  text-align: center;
+}
+
+.eval-grade {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.eval-grade.grade-s { color: #10b981; }
+.eval-grade.grade-a { color: #06b6d4; }
+.eval-grade.grade-b { color: #3b82f6; }
+.eval-grade.grade-c { color: #f59e0b; }
+.eval-grade.grade-d { color: #f97316; }
+.eval-grade.grade-f { color: #ef4444; }
+
+.eval-score {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Stats */
+.eval-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eval-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.eval-stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.eval-stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Breakdown */
+.eval-breakdown-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.eval-breakdown-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eval-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eval-bar-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.eval-bar-track {
+  flex: 1;
+  height: 6px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.eval-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.eval-bar-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 24px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Histogram */
+.eval-hist {
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+}
+
+.eval-hist-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.eval-hist-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.eval-hist-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: height 0.4s ease;
+}
+
+.eval-hist-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+/* Clear button */
+.eval-clear-btn {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.eval-clear-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+}
+
+/* Empty state */
+.eval-panel-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  gap: 4px;
+}
+
+.eval-panel-empty p {
+  margin: 0;
+}

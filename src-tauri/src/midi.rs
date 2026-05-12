@@ -60,6 +60,9 @@ pub struct MidiListener {
     connection: Arc<Mutex<Option<MidiInputConnection<()>>>>,
     connected_device: Arc<Mutex<Option<String>>>,
     alive: Arc<AtomicBool>,
+    /// Optional callback for forwarding NoteOn as evaluation onsets.
+    /// Set when evaluation is active, cleared when stopped.
+    onset_callback: Arc<Mutex<Option<Arc<dyn Fn(u8) + Send + Sync>>>>,
 }
 
 impl MidiListener {
@@ -69,6 +72,7 @@ impl MidiListener {
             connection: Arc::new(Mutex::new(None)),
             connected_device: Arc::new(Mutex::new(None)),
             alive: Arc::new(AtomicBool::new(true)),
+            onset_callback: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -114,6 +118,7 @@ impl MidiListener {
 
         let bindings = self.bindings.clone();
         let app = app_handle.clone();
+        let onset_cb = self.onset_callback.clone();
 
         let conn = midi_in
             .connect(
@@ -133,6 +138,15 @@ impl MidiListener {
                             value,
                         };
                         let _ = app.emit("midi-activity", &activity);
+
+                        // Forward NoteOn as onset for evaluation (if callback set)
+                        if msg_type == MidiMsgType::NoteOn && value > 0 {
+                            if let Ok(cb) = onset_cb.lock() {
+                                if let Some(ref f) = *cb {
+                                    f(value);
+                                }
+                            }
+                        }
 
                         // Check bindings
                         let binds = bindings.lock().unwrap();
@@ -208,6 +222,20 @@ impl MidiListener {
     pub fn remove_binding(&self, action: &str) {
         let mut bindings = self.bindings.lock().unwrap();
         bindings.retain(|b| b.action != action);
+    }
+
+    /// Set a callback for forwarding MIDI NoteOn as evaluation onsets.
+    /// Called with velocity (0–127).
+    pub fn set_onset_callback<F>(&self, f: F)
+    where
+        F: Fn(u8) + Send + Sync + 'static,
+    {
+        *self.onset_callback.lock().unwrap() = Some(Arc::new(f));
+    }
+
+    /// Clear the onset callback (when evaluation stops).
+    pub fn clear_onset_callback(&self) {
+        *self.onset_callback.lock().unwrap() = None;
     }
 
     /// Start device polling thread that emits "midi-devices-changed" when ports change

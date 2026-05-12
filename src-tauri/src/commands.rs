@@ -1,6 +1,10 @@
+use crate::audio_input::{AudioDevice, SharedAudioInput};
 use crate::engine::MetronomeEngine;
 use crate::midi::{MidiBinding, MidiDeviceInfo, MidiMsgType, SharedMidi};
+use crate::onset::SharedOnsetDetector;
+use crate::session::{SessionReport, SharedSessionAccumulator};
 use crate::state::{AppState, SharedState};
+use crate::timing::SharedTimingAnalyzer;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -546,4 +550,116 @@ pub fn reorder_presets(ids: Vec<String>, app_handle: AppHandle) -> Result<(), St
     }
     store.set("presets", serde_json::json!(reordered));
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Audio Input / Evaluation Commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn list_audio_input_devices() -> Vec<AudioDevice> {
+    crate::audio_input::AudioInput::list_devices()
+}
+
+#[tauri::command]
+pub fn start_evaluation(
+    device_name: Option<String>,
+    audio_input: State<SharedAudioInput>,
+    onset_detector: State<SharedOnsetDetector>,
+    timing_analyzer: State<SharedTimingAnalyzer>,
+    session_acc: State<SharedSessionAccumulator>,
+    midi: State<SharedMidi>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let mut ai = audio_input.lock().unwrap();
+    ai.start(device_name.as_deref(), app_handle.clone())?;
+
+    // Clear previous session data
+    session_acc.lock().unwrap().clear();
+
+    // Start timing analyzer — emits beat-feedback events and accumulates session data
+    let app_for_timing = app_handle.clone();
+    let session_for_timing = session_acc.inner().clone();
+    let mut ta = timing_analyzer.lock().unwrap();
+    ta.start(move |feedback| {
+        let _ = app_for_timing.emit("beat-feedback", &feedback);
+        // Accumulate for session report
+        if let Ok(mut acc) = session_for_timing.lock() {
+            acc.push(feedback);
+        }
+    });
+
+    // Start onset detection, forwarding onsets to both Tauri events AND timing analyzer
+    let ai_shared = audio_input.inner().clone();
+    let app_for_onset = app_handle.clone();
+    let ta_shared = timing_analyzer.inner().clone();
+    let mut od = onset_detector.lock().unwrap();
+    od.start(ai_shared, move |onset| {
+        let _ = app_for_onset.emit("onset-detected", &onset);
+        // Feed into timing analyzer for beat matching
+        if let Ok(ta) = ta_shared.lock() {
+            ta.log_onset(onset);
+        }
+    });
+
+    // Set MIDI onset callback — forward NoteOn events as onsets for timing
+    let ta_for_midi = timing_analyzer.inner().clone();
+    let app_for_midi = app_handle.clone();
+    {
+        let listener = midi.lock().unwrap();
+        listener.set_onset_callback(move |velocity| {
+            let onset = crate::onset::Onset {
+                ts_ns: crate::clock::now_ns(),
+                amplitude: velocity as f32 / 127.0,
+                centroid: 0.0, // no spectral info from MIDI
+            };
+            let _ = app_for_midi.emit("onset-detected", &onset);
+            if let Ok(ta) = ta_for_midi.lock() {
+                ta.log_onset(onset);
+            }
+        });
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_evaluation(
+    audio_input: State<SharedAudioInput>,
+    onset_detector: State<SharedOnsetDetector>,
+    timing_analyzer: State<SharedTimingAnalyzer>,
+    midi: State<SharedMidi>,
+) {
+    // Clear MIDI onset callback
+    {
+        let listener = midi.lock().unwrap();
+        listener.clear_onset_callback();
+    }
+    let mut ta = timing_analyzer.lock().unwrap();
+    ta.stop();
+    let mut od = onset_detector.lock().unwrap();
+    od.stop();
+    let mut ai = audio_input.lock().unwrap();
+    ai.stop();
+}
+
+#[tauri::command]
+pub fn get_evaluation_state(audio_input: State<SharedAudioInput>) -> bool {
+    let ai = audio_input.lock().unwrap();
+    ai.is_active()
+}
+
+#[tauri::command]
+pub fn get_session_report(session_acc: State<SharedSessionAccumulator>) -> Option<SessionReport> {
+    let acc = session_acc.lock().unwrap();
+    if acc.is_empty() {
+        None
+    } else {
+        Some(acc.report())
+    }
+}
+
+#[tauri::command]
+pub fn clear_session(session_acc: State<SharedSessionAccumulator>) {
+    session_acc.lock().unwrap().clear();
 }

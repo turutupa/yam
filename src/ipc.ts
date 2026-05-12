@@ -251,3 +251,40 @@ export async function deletePreset(id: string): Promise<void> {
 export async function reorderPresets(ids: string[]): Promise<void> {
   return invoke("reorder_presets", { ids });
 }
+
+// ---------------------------------------------------------------------------
+// Audio Input / Evaluation
+// ---------------------------------------------------------------------------
+import type { AudioInputDevice, AudioSpectrum, BeatFeedback, SessionReport } from "./types";
+
+export async function listAudioInputDevices(): Promise<AudioInputDevice[]> {
+  return invoke<AudioInputDevice[]>("list_audio_input_devices");
+}
+
+export async function startEvaluation(deviceName?: string): Promise<void> {
+  return invoke("start_evaluation", { deviceName: deviceName ?? null });
+}
+
+export async function stopEvaluation(): Promise<void> {
+  return invoke("stop_evaluation");
+}
+
+export async function getEvaluationState(): Promise<boolean> {
+  return invoke<boolean>("get_evaluation_state");
+}
+
+export function onAudioSpectrum(callback: (spectrum: AudioSpectrum) => void) {
+  return listen<AudioSpectrum>("audio-spectrum", (e) => callback(e.payload));
+}
+
+export function onBeatFeedback(callback: (feedback: BeatFeedback) => void) {
+  return listen<BeatFeedback>("beat-feedback", (e) => callback(e.payload));
+}
+
+export async function getSessionReport(): Promise<SessionReport | null> {
+  return invoke<SessionReport | null>("get_session_report");
+}
+
+export async function clearSession(): Promise<void> {
+  return invoke("clear_session");
+}

@@ -538,18 +538,52 @@ pub fn list_output_devices() -> Vec<AudioOutputDevice> {
     devices
 }
 
+/// Get the number of audio output devices cheaply via CoreAudio (no cpal, no stream interference).
+#[cfg(target_os = "macos")]
+fn poll_device_count() -> usize {
+    use coreaudio_sys::*;
+    use std::mem;
+    unsafe {
+        let prop = AudioObjectPropertyAddress {
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain,
+        };
+        let mut size: u32 = 0;
+        let status = AudioObjectGetPropertyDataSize(
+            kAudioObjectSystemObject,
+            &prop,
+            0,
+            std::ptr::null(),
+            &mut size,
+        );
+        if status != 0 { return 0; }
+        (size as usize) / mem::size_of::<AudioDeviceID>()
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn poll_device_count() -> usize {
+    let host = cpal::default_host();
+    host.output_devices().map(|d| d.count()).unwrap_or(0)
+}
+
 /// Start a background thread that polls for audio output device changes
 /// and emits "audio-devices-changed" when the list changes.
+/// Uses a lightweight name-only check; only does the full enumeration
+/// (with BT detection) when the device list actually changes.
 pub fn start_audio_device_polling(app_handle: AppHandle) {
     thread::spawn(move || {
-        let mut last_names: Vec<String> = Vec::new();
+        let mut last_count = poll_device_count();
         loop {
-            thread::sleep(Duration::from_secs(3));
-            let devices = list_output_devices();
-            let current_names: Vec<String> = devices.iter().map(|d| d.name.clone()).collect();
-            if current_names != last_names {
+            thread::sleep(Duration::from_secs(5));
+            let current_count = poll_device_count();
+            if current_count != last_count {
+                // Device count changed — do the full enumeration with BT detection
+                // (only hits cpal when devices actually change, not every poll)
+                let devices = list_output_devices();
                 let _ = app_handle.emit("audio-devices-changed", &devices);
-                last_names = current_names;
+                last_count = current_count;
             }
         }
     });

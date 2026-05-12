@@ -48,10 +48,11 @@ import { ThemeEffects } from "./ThemeEffects";
 import { TrackView } from "./TrackView";
 import { ViewTransition } from "./ViewTransition";
 import { ZenTransition } from "./ZenTransition";
-import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
+// Evaluation — commented out until feature is ready
+// import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { useEvaluation } from "../hooks/useEvaluation";
-import DriftMeter from "./DriftMeter";
-import EvaluationPanel from "./EvaluationPanel";
+// import DriftMeter from "./DriftMeter";
+// import EvaluationPanel from "./EvaluationPanel";
 
 // Force the webview to reclaim keyboard focus after macOS fullscreen exit.
 // The hidden-input trick is the only reliable way — body.focus()/click() don't work.
@@ -558,16 +559,15 @@ export function MainWindow() {
   useDrag();
   const { state, currentBeat } = useMetronome();
   const evaluation = useEvaluation();
-  const [evalPanelOpen, setEvalPanelOpen] = useState(false);
-  const wasPlayingRef = useRef(false);
-
-  // Auto-open evaluation panel when playback stops (if eval enabled + has data)
-  useEffect(() => {
-    if (wasPlayingRef.current && !state.isPlaying && evaluation.enabled && evaluation.lastFeedback) {
-      setEvalPanelOpen(true);
-    }
-    wasPlayingRef.current = state.isPlaying;
-  }, [state.isPlaying, evaluation.enabled, evaluation.lastFeedback]);
+  // Evaluation panel — commented out until feature is ready
+  // const [evalPanelOpen, setEvalPanelOpen] = useState(false);
+  // const wasPlayingRef = useRef(false);
+  // useEffect(() => {
+  //   if (wasPlayingRef.current && !state.isPlaying && evaluation.enabled && evaluation.lastFeedback) {
+  //     setEvalPanelOpen(true);
+  //   }
+  //   wasPlayingRef.current = state.isPlaying;
+  // }, [state.isPlaying, evaluation.enabled, evaluation.lastFeedback]);
   const [view, setViewRaw] = useState<"beat" | "drill" | "track" | "settings">(
     "beat",
   );
@@ -1839,6 +1839,7 @@ export function MainWindow() {
                   );
                 })}
               </div>
+              {/* DriftMeter — commented out until evaluation feature is ready
               {evaluation.enabled && state.isPlaying && (
                 <DriftMeter
                   lastFeedback={evaluation.lastFeedback}
@@ -1846,6 +1847,7 @@ export function MainWindow() {
                   visible={evaluation.enabled && state.isPlaying}
                 />
               )}
+              */}
             </section>
 
             <div className="sub-row">
@@ -2174,48 +2176,9 @@ export function MainWindow() {
             </section>
 
             <section className="settings-section">
-              <h2>Evaluation</h2>
-              <div className="setting-row">
-                <div className="setting-label">
-                  <label>Audio input device</label>
-                  <span className="setting-hint">
-                    Microphone, audio interface, or loopback
-                  </span>
-                </div>
-                <div className="setting-control">
-                  <select
-                    className="setting-select"
-                    value={evaluation.selectedDevice || ""}
-                    onChange={(e) => evaluation.selectDevice(e.target.value)}
-                    onFocus={() => evaluation.refreshDevices()}
-                  >
-                    <option value="">System default</option>
-                    {evaluation.devices.map((d) => (
-                      <option key={d.name} value={d.name}>
-                        {d.name}{d.isInterface ? " (interface)" : ""}{d.isDefault ? " (default)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="setting-row">
-                <div className="setting-label">
-                  <label>Test input</label>
-                  <span className="setting-hint">
-                    {evaluation.enabled
-                      ? evaluation.hasSignal ? "Receiving signal" : "Listening... play something"
-                      : "Start evaluation to test"}
-                  </span>
-                </div>
-                <button
-                  className={`toggle-btn ${evaluation.enabled ? "active" : ""}`}
-                  onClick={evaluation.toggle}
-                >
-                  {evaluation.enabled ? "Stop" : "Test"}
-                </button>
-              </div>
+              <h2>Evaluation <span className="hotkey-soon-badge">coming soon</span></h2>
               <div className="setting-hint setting-privacy-note">
-                Your audio never leaves your machine. All analysis runs locally on-device.
+                Play along with the metronome and get real-time feedback on your timing accuracy. All analysis runs locally on-device.
               </div>
             </section>
 
@@ -2819,7 +2782,7 @@ export function MainWindow() {
         </div>
       )}
     </div>
-    {/* Evaluation FAB + Spectrum — bottom-right corner */}
+    {/* Evaluation FAB + Spectrum — commented out until evaluation feature is ready
     <div className="eval-fab-container">
       {evaluation.enabled && (
         <SpectrumAnalyzer spectrum={evaluation.spectrum} hasSignal={evaluation.hasSignal} />
@@ -2850,6 +2813,7 @@ export function MainWindow() {
       open={evalPanelOpen}
       onClose={() => setEvalPanelOpen(false)}
     />
+    */}
     </>
   );
 }

@@ -538,6 +538,23 @@ pub fn list_output_devices() -> Vec<AudioOutputDevice> {
     devices
 }
 
+/// Start a background thread that polls for audio output device changes
+/// and emits "audio-devices-changed" when the list changes.
+pub fn start_audio_device_polling(app_handle: AppHandle) {
+    thread::spawn(move || {
+        let mut last_names: Vec<String> = Vec::new();
+        loop {
+            thread::sleep(Duration::from_secs(3));
+            let devices = list_output_devices();
+            let current_names: Vec<String> = devices.iter().map(|d| d.name.clone()).collect();
+            if current_names != last_names {
+                let _ = app_handle.emit("audio-devices-changed", &devices);
+                last_names = current_names;
+            }
+        }
+    });
+}
+
 /// Check if a device uses Bluetooth transport via CoreAudio properties.
 #[cfg(target_os = "macos")]
 fn is_bluetooth_transport(device_name: &str) -> bool {

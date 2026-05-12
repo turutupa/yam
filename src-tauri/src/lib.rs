@@ -123,6 +123,9 @@ pub fn run() {
             }
 
             app.manage(EngineState(Mutex::new(engine)));
+
+            // Start audio output device polling
+            engine::start_audio_device_polling(app.handle().clone());
             app.manage(create_shared_audio_input());
             app.manage(create_shared_onset_detector());
             app.manage(Arc::new(Mutex::new(TimingAnalyzer::new(beat_log))));

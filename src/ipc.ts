@@ -265,6 +265,10 @@ export async function setAudioOutputDevice(deviceName: string | null): Promise<v
   return invoke("set_audio_output_device", { deviceName });
 }
 
+export function onAudioDevicesChanged(callback: (devices: AudioOutputDevice[]) => void) {
+  return listen<AudioOutputDevice[]>("audio-devices-changed", (e) => callback(e.payload));
+}
+
 // ---------------------------------------------------------------------------
 // Audio Input / Evaluation
 // ---------------------------------------------------------------------------

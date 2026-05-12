@@ -36,6 +36,7 @@ import {
   togglePlayback,
   listAudioOutputDevices,
   setAudioOutputDevice,
+  onAudioDevicesChanged,
 } from "../ipc";
 import "../styles/main-window.css";
 import "../styles/transitions.css";
@@ -928,6 +929,20 @@ export function MainWindow() {
       }
     })();
   }, []);
+
+  // Auto-update audio output device list when devices change
+  useEffect(() => {
+    const unlisten = onAudioDevicesChanged((devices) => {
+      setAudioOutputDevices(devices);
+      // If selected device was removed, fall back to system default
+      if (selectedOutputDevice && !devices.some(d => d.name === selectedOutputDevice)) {
+        setSelectedOutputDevice("");
+        setAudioOutputDevice(null);
+      }
+    });
+    return () => { unlisten.then(fn => fn()); };
+  }, [selectedOutputDevice]);
+
   const [editingBpm, setEditingBpm] = useState(false);
   const [bpmEditValue, setBpmEditValue] = useState("");
   const bpmInputRef = useRef<HTMLInputElement>(null);

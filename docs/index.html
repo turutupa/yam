@@ -1034,9 +1034,19 @@
         });
         body.addEventListener("scroll", () => {
           clickedIdx = -1;
-          updateTimelineTicks();
+          scheduleTimelineUpdate();
         });
         updateTimelineTicks();
+      }
+
+      let _tlRafPending = false;
+      function scheduleTimelineUpdate() {
+        if (_tlRafPending) return;
+        _tlRafPending = true;
+        requestAnimationFrame(() => {
+          _tlRafPending = false;
+          updateTimelineTicks();
+        });
       }
 
       function rebuildTimelinePositions() {
@@ -1053,12 +1063,19 @@
         const clientH = body.clientHeight;
         const atBottom = scrollTop + clientH >= body.scrollHeight - 2;
 
+        // Batch all layout reads first to avoid thrashing
+        const releaseMetrics = Array.from(releases).map((rel) => ({
+          hidden: rel.classList.contains("changelog-hidden"),
+          offsetTop: rel.offsetTop,
+          offsetHeight: rel.offsetHeight,
+        }));
+
         // Find visible releases (in viewport)
         const visibleSet = new Set();
-        releases.forEach((rel, i) => {
-          if (rel.classList.contains("changelog-hidden")) return;
-          const top = rel.offsetTop - scrollTop;
-          const bottom = top + rel.offsetHeight;
+        releaseMetrics.forEach(({ hidden, offsetTop, offsetHeight }, i) => {
+          if (hidden) return;
+          const top = offsetTop - scrollTop;
+          const bottom = top + offsetHeight;
           if (bottom > 0 && top < clientH) visibleSet.add(i);
         });
 
@@ -1067,13 +1084,12 @@
         if (clickedIdx >= 0) {
           activeIdx = clickedIdx;
         } else if (atBottom) {
-          // At bottom: last visible release is active
           for (let i = releases.length - 1; i >= 0; i--) {
             if (visibleSet.has(i)) { activeIdx = i; break; }
           }
         } else {
-          releases.forEach((rel, i) => {
-            if (!rel.classList.contains("changelog-hidden") && rel.offsetTop <= scrollTop + clientH * 0.3) {
+          releaseMetrics.forEach(({ hidden, offsetTop }, i) => {
+            if (!hidden && offsetTop <= scrollTop + clientH * 0.3) {
               activeIdx = i;
             }
           });

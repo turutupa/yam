@@ -83,7 +83,26 @@ jobs:
         with:
           tagName: ${{ steps.version.outputs.tag }}
           releaseName: 'Yames ${{ steps.version.outputs.tag }}'
-          releaseBody: 'Download Yames for your platform below.'
+          releaseBody: |
+            ## What's New
+
+            ### Audio Engine Overhaul
+            - Migrated from rodio to **cpal direct audio callbacks** for sample-accurate beat timing
+            - **CoreAudio per-device latency query** — visual flash now precisely syncs with audio on every device
+            - Bluetooth devices report higher latency and compensation is applied automatically
+
+            ### Audio Output Device Selector
+            - New **Devices** section in settings (Audio Output + MIDI grouped together)
+            - Pick any connected audio output device from a dropdown
+            - Bluetooth devices are flagged with a warning about added latency
+            - **Auto-detect** device additions/removals — no restart needed
+
+            ### Bug Fixes
+            - Fixed 3D button flash effect losing shadow on velvet/sand themes
+            - Fixed audio crackling caused by device polling (now uses lightweight CoreAudio query)
+
+            ---
+            Download Yames for your platform below.
           releaseDraft: false
           prerelease: false
           tauriScript: npx tauri

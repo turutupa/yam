@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.12.0.schema.json
 PackageIdentifier: turutupa.yames
-PackageVersion: 0.8.0
+PackageVersion: 0.9.0
 PackageLocale: en-US
 Publisher: turutupa
 PublisherUrl: https://github.com/turutupa
@@ -23,7 +23,7 @@ Tags:
 Installers:
   - Architecture: x64
     InstallerType: nullsoft
-    InstallerUrl: https://github.com/turutupa/yames/releases/download/v0.8.0/Yames_0.8.0_x64-setup.exe
-    InstallerSha256: FFFC3D69A678D5FDF41BD3F690B1DD4BC5B54078AD0BF0EBC31CB5D007DA9458
+    InstallerUrl: https://github.com/turutupa/yames/releases/download/v0.9.0/Yames_0.9.0_x64-setup.exe
+    InstallerSha256: E39FB3444A2A3612263ACA7AA4D60DB42E80E626121EF888CD60B84726F9214B
 ManifestType: singleton
 ManifestVersion: 1.12.0

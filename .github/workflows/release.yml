@@ -100,9 +100,6 @@ jobs:
             ### Bug Fixes
             - Fixed 3D button flash effect losing shadow on velvet/sand themes
             - Fixed audio crackling caused by device polling (now uses lightweight CoreAudio query)
-
-            ---
-            Download Yames for your platform below.
           releaseDraft: false
           prerelease: false
           tauriScript: npx tauri

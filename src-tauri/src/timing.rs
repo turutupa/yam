@@ -138,6 +138,14 @@ impl TimingAnalyzer {
         // Accumulate unmatched onsets between beat processing rounds
         let mut pending_onsets: Vec<Onset> = Vec::with_capacity(32);
 
+        // ─── Activity state machine ─────────────────────────────────
+        // Prevents unfair misses when user isn't playing yet or is resting
+        #[derive(PartialEq)]
+        enum Activity { Idle, Active, Resting }
+        let mut activity = Activity::Idle;
+        let mut consecutive_misses: u32 = 0;
+        let mut grace_beats_remaining: u32 = 4; // warmup — never scored
+
         while alive.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(5));
             if !alive.load(Ordering::SeqCst) {
@@ -170,9 +178,22 @@ impl TimingAnalyzer {
                 }
                 last_processed_beat = Some(beat.beat_index);
 
+                // Grace period — first 4 beats are always skipped
+                if grace_beats_remaining > 0 {
+                    grace_beats_remaining -= 1;
+                    on_feedback(BeatFeedback {
+                        beat_index: beat.beat_index,
+                        deviation_ms: 0.0,
+                        interval_error_ms: 0.0,
+                        classification: "skipped".to_string(),
+                        amplitude: 0.0,
+                        calibration_offset_ms,
+                        calibration_confidence: 0.0,
+                    });
+                    continue;
+                }
+
                 // The calibrated beat time: shift by the learned offset
-                // so we compare onset times against where we expect the
-                // player to actually hit (accounting for system latency).
                 let calibrated_beat_ns = if calibration_offset_ms >= 0.0 {
                     beat.ts_ns.saturating_add((calibration_offset_ms * 1_000_000.0) as u64)
                 } else {
@@ -198,6 +219,10 @@ impl TimingAnalyzer {
 
                 if let Some(idx) = best_idx {
                     let onset = pending_onsets.remove(idx);
+
+                    // Onset matched — transition to Active
+                    activity = Activity::Active;
+                    consecutive_misses = 0;
 
                     // Raw offset (before calibration) for calibration update
                     let raw_offset_ms =
@@ -226,19 +251,22 @@ impl TimingAnalyzer {
 
                     // Classify
                     let abs_dev = deviation_ms.abs();
+                    let confidence = (calibration_offsets.len() as f64
+                        / calibration_window as f64)
+                        .min(1.0);
+
                     let classification = if abs_dev < 10.0 {
                         "perfect"
                     } else if abs_dev < 25.0 {
                         "good"
                     } else if abs_dev < 50.0 {
                         "ok"
+                    } else if confidence < 0.5 && abs_dev < 100.0 {
+                        // Calibration still settling — be lenient
+                        "ok"
                     } else {
                         "miss"
                     };
-
-                    let confidence = (calibration_offsets.len() as f64
-                        / calibration_window as f64)
-                        .min(1.0);
 
                     on_feedback(BeatFeedback {
                         beat_index: beat.beat_index,
@@ -250,8 +278,8 @@ impl TimingAnalyzer {
                         calibration_confidence: confidence,
                     });
                 } else {
-                    // No onset matched — this is a miss
-                    prev_onset_ns = None;
+                    // No onset matched — apply activity state machine
+                    consecutive_misses += 1;
 
                     let confidence = if calibration_offsets.is_empty() {
                         0.0
@@ -260,11 +288,42 @@ impl TimingAnalyzer {
                             .min(1.0)
                     };
 
+                    // Determine if this should be scored or skipped
+                    let classification = match activity {
+                        Activity::Idle => {
+                            // User hasn't started playing — don't penalize
+                            "skipped"
+                        }
+                        Activity::Active => {
+                            if consecutive_misses <= 2 {
+                                // Brief pause — likely intentional rest
+                                activity = Activity::Resting;
+                                "skipped"
+                            } else if consecutive_misses > 4 {
+                                // Long silence — user stopped
+                                activity = Activity::Idle;
+                                prev_onset_ns = None;
+                                "skipped"
+                            } else {
+                                // 3-4 consecutive misses while active — genuine misses
+                                "miss"
+                            }
+                        }
+                        Activity::Resting => {
+                            if consecutive_misses > 4 {
+                                // Rest turned into idle
+                                activity = Activity::Idle;
+                                prev_onset_ns = None;
+                            }
+                            "skipped"
+                        }
+                    };
+
                     on_feedback(BeatFeedback {
                         beat_index: beat.beat_index,
                         deviation_ms: 0.0,
                         interval_error_ms: 0.0,
-                        classification: "miss".to_string(),
+                        classification: classification.to_string(),
                         amplitude: 0.0,
                         calibration_offset_ms,
                         calibration_confidence: confidence,

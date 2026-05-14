@@ -5,19 +5,21 @@ import {
   stopEvaluation,
   getEvaluationState,
   onAudioSpectrum,
+  onAudioInputDevicesChanged,
   onBeatFeedback,
   storeLoad,
   storeSave,
 } from "../ipc";
 import type { AudioInputDevice, AudioSpectrum, BeatFeedback } from "../types";
 
-/** Colors matching feedback classifications */
+/** Colors matching feedback classifications — reads theme CSS vars */
 export const FEEDBACK_COLORS = {
-  perfect: "#10b981",
-  good: "#06b6d4",
-  ok: "#f59e0b",
-  miss: "#6b7280",
-} as const;
+  get perfect() { return getComputedStyle(document.documentElement).getPropertyValue("--feedback-perfect").trim() || "#10b981"; },
+  get good() { return getComputedStyle(document.documentElement).getPropertyValue("--feedback-good").trim() || "#06b6d4"; },
+  get ok() { return getComputedStyle(document.documentElement).getPropertyValue("--feedback-ok").trim() || "#f59e0b"; },
+  get miss() { return getComputedStyle(document.documentElement).getPropertyValue("--feedback-miss").trim() || "#6b7280"; },
+  skipped: "transparent",
+};
 
 export function useEvaluation() {
   const [enabled, setEnabled] = useState(false);
@@ -86,8 +88,8 @@ export function useEvaluation() {
         next.set(fb.beatIndex, fb);
         return next;
       });
-      // Track recent deviations for drift meter (skip misses)
-      if (fb.classification !== "miss") {
+      // Track recent deviations for drift meter (skip misses and skipped)
+      if (fb.classification !== "miss" && fb.classification !== "skipped") {
         setRecentDeviations((prev) => {
           const next = [...prev, fb.deviationMs];
           return next.slice(-16); // keep last 16
@@ -112,6 +114,9 @@ export function useEvaluation() {
   // Sync with backend state on mount
   useEffect(() => {
     getEvaluationState().then(setEnabled);
+    listAudioInputDevices().then(setDevices);
+    const unlisten = onAudioInputDevicesChanged(setDevices);
+    return () => { unlisten.then(fn => fn()); };
   }, []);
 
   const refreshDevices = useCallback(async () => {

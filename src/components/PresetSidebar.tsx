@@ -263,17 +263,6 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
 
   return (
     <>
-      {/* Toggle tab — only shown outside when sidebar is closed */}
-      {!isOpen && (
-        <button
-          className="preset-sidebar-toggle"
-          onClick={onToggle}
-          title={shortcut ? `Open presets (${shortcut})` : "Open presets"}
-        >
-          {toggleIcon}
-        </button>
-      )}
-
       {/* Sidebar panel */}
       <div
         className={`preset-sidebar ${isOpen ? "open" : ""}`}
@@ -283,6 +272,18 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
           }
         }}
       >
+        {/* Collapsed tab — clickable strip when sidebar is closed */}
+        {!isOpen && (
+          <button
+            className="preset-sidebar-collapsed-tab"
+            onClick={onToggle}
+            title={shortcut ? `Open presets (${shortcut})` : "Open presets"}
+          >
+            {toggleIcon}
+          </button>
+        )}
+        {isOpen && (
+        <>
         <div className="preset-sidebar-header">
           <span className="preset-sidebar-title">Presets</span>
           <div className="preset-sidebar-header-actions">
@@ -388,6 +389,8 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Context menu */}

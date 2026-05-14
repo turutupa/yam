@@ -571,6 +571,14 @@ pub fn start_evaluation(
     midi: State<SharedMidi>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
+    // Stop any existing evaluation first (idempotent — prevents deadlock if called twice)
+    {
+        let listener = midi.lock().unwrap();
+        listener.clear_onset_callback();
+    }
+    onset_detector.lock().unwrap().stop();
+    timing_analyzer.lock().unwrap().stop();
+
     let mut ai = audio_input.lock().unwrap();
     ai.start(device_name.as_deref(), app_handle.clone())?;
 
@@ -630,17 +638,16 @@ pub fn stop_evaluation(
     timing_analyzer: State<SharedTimingAnalyzer>,
     midi: State<SharedMidi>,
 ) {
-    // Clear MIDI onset callback
+    // Clear MIDI onset callback first (no lock ordering issue)
     {
         let listener = midi.lock().unwrap();
         listener.clear_onset_callback();
     }
-    let mut ta = timing_analyzer.lock().unwrap();
-    ta.stop();
-    let mut od = onset_detector.lock().unwrap();
-    od.stop();
-    let mut ai = audio_input.lock().unwrap();
-    ai.stop();
+    // Stop in reverse-start order: onset_detector → timing_analyzer → audio_input
+    // This matches start_evaluation's lock acquisition order to prevent deadlocks
+    onset_detector.lock().unwrap().stop();
+    timing_analyzer.lock().unwrap().stop();
+    audio_input.lock().unwrap().stop();
 }
 
 #[tauri::command]
@@ -664,9 +671,117 @@ pub fn clear_session(session_acc: State<SharedSessionAccumulator>) {
     session_acc.lock().unwrap().clear();
 }
 
+#[tauri::command]
+pub fn save_session(session: crate::session::SavedSession, app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").map_err(|e| e.to_string())?;
+    let mut history: Vec<crate::session::SavedSession> = store
+        .get("evalSessionHistory")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+    // Prepend new session at the front
+    history.insert(0, session);
+    // Cap at max
+    history.truncate(crate::session::MAX_SESSION_HISTORY);
+    store.set("evalSessionHistory", serde_json::to_value(&history).unwrap());
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_session_history(app_handle: AppHandle) -> Vec<crate::session::SavedSession> {
+    use tauri_plugin_store::StoreExt;
+    app_handle
+        .store("settings.json")
+        .ok()
+        .and_then(|store| {
+            store
+                .get("evalSessionHistory")
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+        })
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn delete_session(id: String, app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").map_err(|e| e.to_string())?;
+    let mut history: Vec<crate::session::SavedSession> = store
+        .get("evalSessionHistory")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+    history.retain(|s| s.id != id);
+    store.set("evalSessionHistory", serde_json::to_value(&history).unwrap());
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clear_all_sessions(app_handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+    let store = app_handle.store("settings.json").map_err(|e| e.to_string())?;
+    let empty: Vec<crate::session::SavedSession> = Vec::new();
+    store.set("evalSessionHistory", serde_json::to_value(&empty).unwrap());
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
-// Audio Output Device Commands
+// Audio Input Recording / Playback
 // ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn start_recording(audio_input: State<SharedAudioInput>) -> Result<(), String> {
+    let ai = audio_input.lock().unwrap();
+    if !ai.is_active() {
+        return Err("Audio input is not active".to_string());
+    }
+    ai.start_recording();
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_recording(audio_input: State<SharedAudioInput>) -> f32 {
+    let mut ai = audio_input.lock().unwrap();
+    ai.stop_recording()
+}
+
+#[tauri::command]
+pub fn start_playback(
+    audio_input: State<SharedAudioInput>,
+    engine_state: State<EngineState>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    // Use the same output device as the metronome engine
+    let output_device_name = {
+        let engine = engine_state.0.lock().unwrap();
+        engine.device_name().map(|s| s.to_string())
+    };
+    let mut ai = audio_input.lock().unwrap();
+    ai.start_playback(app_handle, output_device_name.as_deref())
+}
+
+#[tauri::command]
+pub fn stop_playback(audio_input: State<SharedAudioInput>) {
+    let mut ai = audio_input.lock().unwrap();
+    ai.stop_playback();
+}
+
+#[tauri::command]
+pub fn discard_recording(audio_input: State<SharedAudioInput>) {
+    let mut ai = audio_input.lock().unwrap();
+    ai.discard_recording();
+}
+
+#[tauri::command]
+pub fn get_waveform(audio_input: State<SharedAudioInput>) -> Vec<f32> {
+    let ai = audio_input.lock().unwrap();
+    ai.get_waveform(100)
+}
+
+#[tauri::command]
+pub fn set_input_gain(gain_db: f32, audio_input: State<SharedAudioInput>) {
+    let gain_linear = 10.0_f32.powf(gain_db / 20.0);
+    let ai = audio_input.lock().unwrap();
+    ai.set_input_gain(gain_linear);
+}
 
 use crate::engine::AudioOutputDevice;
 

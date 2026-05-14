@@ -47,6 +47,10 @@ const mono: Theme = {
     "--font-weight": "400",
     "--radius": "4px",
     "--radius-sm": "3px",
+    "--feedback-perfect": "#10b981",
+    "--feedback-good": "#06b6d4",
+    "--feedback-ok": "#f59e0b",
+    "--feedback-miss": "#6b7280",
   },
 };
 
@@ -78,6 +82,10 @@ const obsidian: Theme = {
     "--font-weight": "400",
     "--radius": "6px",
     "--radius-sm": "4px",
+    "--feedback-perfect": "#22c55e",
+    "--feedback-good": "#eab308",
+    "--feedback-ok": "#f97316",
+    "--feedback-miss": "#6b7280",
   },
 };
 
@@ -109,6 +117,10 @@ const velvet: Theme = {
     "--font-weight": "600",
     "--radius": "16px",
     "--radius-sm": "12px",
+    "--feedback-perfect": "#a78bfa",
+    "--feedback-good": "#818cf8",
+    "--feedback-ok": "#f472b6",
+    "--feedback-miss": "#6b7280",
   },
 };
 
@@ -140,6 +152,10 @@ const neon: Theme = {
     "--font-weight": "500",
     "--radius": "10px",
     "--radius-sm": "8px",
+    "--feedback-perfect": "#22d3ee",
+    "--feedback-good": "#a78bfa",
+    "--feedback-ok": "#fb923c",
+    "--feedback-miss": "#6b7280",
   },
 };
 
@@ -171,6 +187,10 @@ const aurora: Theme = {
     "--font-weight": "500",
     "--radius": "20px",
     "--radius-sm": "14px",
+    "--feedback-perfect": "#34d399",
+    "--feedback-good": "#67e8f9",
+    "--feedback-ok": "#c084fc",
+    "--feedback-miss": "#6b7280",
   },
 };
 
@@ -206,6 +226,10 @@ const ivory: Theme = {
     "--font-weight": "500",
     "--radius": "14px",
     "--radius-sm": "10px",
+    "--feedback-perfect": "#059669",
+    "--feedback-good": "#0891b2",
+    "--feedback-ok": "#d97706",
+    "--feedback-miss": "#9ca3af",
   },
 };
 
@@ -237,6 +261,10 @@ const arctic: Theme = {
     "--font-weight": "500",
     "--radius": "10px",
     "--radius-sm": "7px",
+    "--feedback-perfect": "#0d9488",
+    "--feedback-good": "#0284c7",
+    "--feedback-ok": "#ea580c",
+    "--feedback-miss": "#94a3b8",
   },
 };
 
@@ -268,6 +296,10 @@ const sand: Theme = {
     "--font-weight": "500",
     "--radius": "12px",
     "--radius-sm": "8px",
+    "--feedback-perfect": "#16a34a",
+    "--feedback-good": "#ca8a04",
+    "--feedback-ok": "#dc2626",
+    "--feedback-miss": "#a8a29e",
   },
 };
 
@@ -299,6 +331,10 @@ const lavender: Theme = {
     "--font-weight": "600",
     "--radius": "18px",
     "--radius-sm": "12px",
+    "--feedback-perfect": "#7c3aed",
+    "--feedback-good": "#a78bfa",
+    "--feedback-ok": "#e879f9",
+    "--feedback-miss": "#9585b5",
   },
 };
 
@@ -330,6 +366,10 @@ const prism: Theme = {
     "--font-weight": "500",
     "--radius": "20px",
     "--radius-sm": "14px",
+    "--feedback-perfect": "#ec4899",
+    "--feedback-good": "#a855f7",
+    "--feedback-ok": "#f97316",
+    "--feedback-miss": "#9878b0",
   },
 };
 

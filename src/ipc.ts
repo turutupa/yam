@@ -278,6 +278,10 @@ export async function listAudioInputDevices(): Promise<AudioInputDevice[]> {
   return invoke<AudioInputDevice[]>("list_audio_input_devices");
 }
 
+export function onAudioInputDevicesChanged(callback: (devices: AudioInputDevice[]) => void) {
+  return listen<AudioInputDevice[]>("audio-input-devices-changed", (e) => callback(e.payload));
+}
+
 export async function startEvaluation(deviceName?: string): Promise<void> {
   return invoke("start_evaluation", { deviceName: deviceName ?? null });
 }
@@ -304,4 +308,61 @@ export async function getSessionReport(): Promise<SessionReport | null> {
 
 export async function clearSession(): Promise<void> {
   return invoke("clear_session");
+}
+
+// ---------------------------------------------------------------------------
+// Session History
+// ---------------------------------------------------------------------------
+import type { SavedSession } from "./types";
+
+export async function saveSession(session: SavedSession): Promise<void> {
+  return invoke("save_session", { session });
+}
+
+export async function getSessionHistory(): Promise<SavedSession[]> {
+  return invoke<SavedSession[]>("get_session_history");
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  return invoke("delete_session", { id });
+}
+
+export async function clearAllSessions(): Promise<void> {
+  return invoke("clear_all_sessions");
+}
+
+// ---------------------------------------------------------------------------
+// Audio Input Recording / Playback
+// ---------------------------------------------------------------------------
+
+export async function startRecording(): Promise<void> {
+  return invoke("start_recording");
+}
+
+export async function stopRecording(): Promise<number> {
+  return invoke<number>("stop_recording");
+}
+
+export async function startPlayback(): Promise<void> {
+  return invoke("start_playback");
+}
+
+export async function stopPlayback(): Promise<void> {
+  return invoke("stop_playback");
+}
+
+export async function discardRecording(): Promise<void> {
+  return invoke("discard_recording");
+}
+
+export async function getWaveform(): Promise<number[]> {
+  return invoke<number[]>("get_waveform");
+}
+
+export async function setInputGain(gainDb: number): Promise<void> {
+  return invoke("set_input_gain", { gainDb });
+}
+
+export function onPlaybackFinished(callback: () => void) {
+  return listen<void>("playback-finished", () => callback());
 }

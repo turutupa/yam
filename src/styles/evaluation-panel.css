@@ -1,29 +1,70 @@
 /* ─── Evaluation Panel (right sidebar) ─── */
 .eval-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 280px;
-  background: var(--bg-primary);
-  border-left: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
-  z-index: 100;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 1px solid var(--sidebar-border, color-mix(in srgb, var(--border) 60%, transparent));
+  background: color-mix(in srgb, var(--bg-primary) 95%, transparent);
   display: flex;
   flex-direction: column;
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.eval-panel:not(.open) {
+  width: 44px;
+  min-width: 44px;
+  border-left-color: var(--sidebar-border, color-mix(in srgb, var(--border) 60%, transparent));
 }
 
 .eval-panel.open {
-  transform: translateX(0);
+  width: 320px;
+  min-width: 320px;
+}
+
+/* Collapsed tab */
+.eval-panel-collapsed-tab {
+  width: 44px;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 82px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.eval-panel-collapsed-tab:hover {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.eval-panel-collapsed-tab:active {
+  transform: none;
+}
+
+.eval-panel-inner {
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.15s ease 0.1s;
+}
+
+.eval-panel.open .eval-panel-inner {
+  opacity: 1;
 }
 
 .eval-panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 16px;
+  padding-top: 77px;
   border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
@@ -32,14 +73,15 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+  flex: 1;
 }
 
 .eval-panel-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -52,6 +94,140 @@
   background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
+.eval-panel-close:active {
+  transform: none;
+}
+
+/* Clear all button — icon only, expands on hover */
+.eval-clear-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 28px;
+  width: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+  overflow: hidden;
+  transition: width 0.2s ease, gap 0.2s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.eval-clear-all-label {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+
+.eval-clear-all-btn:hover {
+  width: auto;
+  gap: 4px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.eval-clear-all-btn:hover .eval-clear-all-label {
+  max-width: 60px;
+  opacity: 1;
+}
+
+.eval-clear-all-btn:active {
+  transform: none;
+}
+
+/* Confirm dialog */
+.eval-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.eval-confirm-dialog {
+  background: var(--bg-secondary, var(--bg-primary));
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.eval-confirm-dialog p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.eval-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.eval-confirm-cancel,
+.eval-confirm-delete {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease;
+}
+
+.eval-confirm-cancel {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-secondary);
+}
+
+.eval-confirm-cancel:hover {
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+
+.eval-confirm-delete {
+  background: #dc2626;
+  color: #fff;
+}
+
+.eval-confirm-delete:hover {
+  background: #b91c1c;
+}
+
+.eval-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  border: none;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.eval-back-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  color: var(--text-primary);
+}
+
 .eval-panel-body {
   flex: 1;
   overflow-y: auto;
@@ -61,28 +237,67 @@
   gap: 20px;
 }
 
-/* Grade */
-.eval-grade-section {
+/* ─── Score Ring ─── */
+.eval-ring-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.eval-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eval-ring-bg {
+  opacity: 0.1;
+}
+
+.eval-ring-fill {
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.eval-ring-score {
+  position: absolute;
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-ring-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Comment */
+.eval-comment {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.4;
   text-align: center;
 }
 
-.eval-grade {
-  font-size: 48px;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 4px;
+/* Insights */
+.eval-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.eval-grade.grade-s { color: #10b981; }
-.eval-grade.grade-a { color: #06b6d4; }
-.eval-grade.grade-b { color: #3b82f6; }
-.eval-grade.grade-c { color: #f59e0b; }
-.eval-grade.grade-d { color: #f97316; }
-.eval-grade.grade-f { color: #ef4444; }
+.eval-insight {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
 
-.eval-score {
-  font-size: 13px;
-  color: var(--text-secondary);
+/* Muted stat value (for skipped count) */
+.eval-stat-muted {
+  color: var(--text-tertiary);
+  font-weight: 500;
 }
 
 /* Stats */
@@ -197,7 +412,162 @@
   margin-top: 4px;
 }
 
-/* Clear button */
+/* ─── History List ─── */
+.eval-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.eval-history-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.eval-history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.eval-history-list::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.eval-history-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  filter: brightness(1.2);
+}
+
+.eval-history-heading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  padding: 8px 12px 6px;
+}
+
+.eval-history-list > div + div > .eval-history-heading {
+  margin-top: 24px;
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  padding-top: 24px;
+}
+
+/* ─── Session Card ─── */
+.eval-history-card {
+  position: relative;
+  padding: 10px 12px;
+  margin: 4px 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eval-history-card:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+
+.eval-card-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.eval-card-meta {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.eval-card-time {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.eval-card-sep {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.eval-card-bpm {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.eval-score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 20px;
+  padding: 0 6px;
+  margin-right: 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.eval-card-comment {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.eval-card-sparkline {
+  height: 24px;
+  width: 100%;
+  color: var(--text-primary);
+}
+
+.eval-card-sparkline svg {
+  width: 100%;
+  height: 100%;
+}
+
+.eval-history-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.eval-history-card:hover .eval-history-delete {
+  opacity: 1;
+}
+
+.eval-history-delete:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+/* Clear/Delete button */
 .eval-clear-btn {
   width: 100%;
   padding: 8px;

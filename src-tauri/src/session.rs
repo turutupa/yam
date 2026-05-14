@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::timing::BeatFeedback;
 
 /// Accumulated session statistics from beat feedback events.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SessionReport {
     /// Total beats in session
     #[serde(rename = "totalBeats")]
@@ -14,6 +14,9 @@ pub struct SessionReport {
     /// Number of missed beats
     #[serde(rename = "missCount")]
     pub miss_count: u32,
+    /// Number of skipped beats (warmup, idle, resting — not scored)
+    #[serde(rename = "skippedBeats")]
+    pub skipped_beats: u32,
     /// Counts per classification
     #[serde(rename = "perfectCount")]
     pub perfect_count: u32,
@@ -51,6 +54,10 @@ pub struct SessionReport {
     /// Longest streak of consecutive non-miss beats
     #[serde(rename = "longestStreak")]
     pub longest_streak: u32,
+    /// Human-readable one-liner comment based on performance
+    pub comment: String,
+    /// Specific insights about the session (early/late tendency, consistency, etc.)
+    pub insights: Vec<String>,
 }
 
 /// Accumulates BeatFeedback events during a playing session.
@@ -84,6 +91,7 @@ impl SessionAccumulator {
         let mut good_count = 0u32;
         let mut ok_count = 0u32;
         let mut miss_count = 0u32;
+        let mut skipped_beats = 0u32;
         let mut deviations: Vec<f64> = Vec::new();
         let mut interval_errors: Vec<f64> = Vec::new();
         let mut amplitudes: Vec<f64> = Vec::new();
@@ -112,7 +120,12 @@ impl SessionAccumulator {
                     amplitudes.push(fb.amplitude as f64);
                     current_streak += 1;
                 }
+                "skipped" => {
+                    skipped_beats += 1;
+                    // Skipped beats don't break streaks or count as misses
+                }
                 _ => {
+                    // "miss"
                     miss_count += 1;
                     if current_streak > longest_streak {
                         longest_streak = current_streak;
@@ -120,7 +133,7 @@ impl SessionAccumulator {
                     current_streak = 0;
                 }
             }
-            if fb.classification != "miss" && fb.interval_error_ms != 0.0 {
+            if fb.classification != "miss" && fb.classification != "skipped" && fb.interval_error_ms != 0.0 {
                 interval_errors.push(fb.interval_error_ms.abs());
             }
         }
@@ -129,6 +142,8 @@ impl SessionAccumulator {
         }
 
         let hits_count = perfect_count + good_count + ok_count;
+        // Scored beats exclude skipped — only hits + misses count for scoring
+        let scored_beats = hits_count + miss_count;
 
         let mean_deviation_ms = if deviations.is_empty() {
             0.0
@@ -191,8 +206,9 @@ impl SessionAccumulator {
         };
 
         // Score: weighted combination of hit rate, accuracy, and consistency
-        let hit_rate = if total_beats > 0 {
-            hits_count as f64 / total_beats as f64
+        // Use scored_beats (not total_beats) so skipped beats don't deflate hit rate
+        let hit_rate = if scored_beats > 0 {
+            hits_count as f64 / scored_beats as f64
         } else {
             0.0
         };
@@ -220,10 +236,27 @@ impl SessionAccumulator {
         }
         .to_string();
 
+        // Generate human-readable comment
+        let comment = generate_comment(&grade, score, scored_beats);
+
+        // Generate insights
+        let insights = generate_insights(
+            mean_deviation_ms,
+            std_deviation_ms,
+            longest_streak,
+            hit_rate,
+            score,
+            scored_beats,
+            perfect_count,
+            hits_count,
+            tempo_stability_ms,
+        );
+
         SessionReport {
             total_beats,
             hits_count,
             miss_count,
+            skipped_beats,
             perfect_count,
             good_count,
             ok_count,
@@ -238,6 +271,8 @@ impl SessionAccumulator {
             mean_amplitude,
             tempo_stability_ms,
             longest_streak,
+            comment,
+            insights,
         }
     }
 }
@@ -246,4 +281,119 @@ pub type SharedSessionAccumulator = Arc<Mutex<SessionAccumulator>>;
 
 pub fn create_shared_session_accumulator() -> SharedSessionAccumulator {
     Arc::new(Mutex::new(SessionAccumulator::new()))
+}
+
+/// A persisted session with metadata for history.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SavedSession {
+    pub id: String,
+    pub timestamp: u64,
+    pub bpm: u16,
+    #[serde(rename = "timeSignature")]
+    pub time_signature: u8,
+    pub report: SessionReport,
+}
+
+pub const MAX_SESSION_HISTORY: usize = 30;
+
+/// Generate a one-liner comment based on the grade and score.
+fn generate_comment(grade: &str, score: u32, scored_beats: u32) -> String {
+    if scored_beats < 8 {
+        return "Not enough data yet — keep playing!".to_string();
+    }
+    match grade {
+        "S" => match score {
+            100 => "Flawless. You're a metronome yourself.",
+            _ => "Outstanding timing — near-perfect precision.",
+        },
+        "A" => "Solid performance. Your timing is tight and consistent.",
+        "B" => "Good work! A few rough edges, but strong overall.",
+        "C" => "Decent foundation. Focus on evenness and you'll climb fast.",
+        "D" => "Getting there. Slow down and lock in with the click.",
+        _ => "Keep at it — consistent practice builds timing muscle memory.",
+    }
+    .to_string()
+}
+
+/// Generate specific, actionable insights from session data.
+fn generate_insights(
+    mean_deviation_ms: f64,
+    std_deviation_ms: f64,
+    longest_streak: u32,
+    hit_rate: f64,
+    score: u32,
+    scored_beats: u32,
+    perfect_count: u32,
+    hits_count: u32,
+    tempo_stability_ms: f64,
+) -> Vec<String> {
+    let mut insights = Vec::new();
+
+    if scored_beats < 8 {
+        return insights;
+    }
+
+    // Early/late tendency
+    if mean_deviation_ms.abs() > 5.0 {
+        if mean_deviation_ms < 0.0 {
+            insights.push(format!(
+                "You tend to rush — averaging {:.0}ms ahead of the beat.",
+                mean_deviation_ms.abs()
+            ));
+        } else {
+            insights.push(format!(
+                "You tend to drag — averaging {:.0}ms behind the beat.",
+                mean_deviation_ms
+            ));
+        }
+    } else if hits_count > 8 {
+        insights.push("Your timing is centered — no early/late bias.".to_string());
+    }
+
+    // Consistency praise or guidance
+    if std_deviation_ms < 8.0 && hits_count > 12 {
+        insights.push("Extremely consistent — your timing barely varies.".to_string());
+    } else if std_deviation_ms > 25.0 {
+        insights.push("Your timing varies quite a bit between beats. Try focusing on smaller phrases.".to_string());
+    }
+
+    // Streak highlight
+    if longest_streak >= 16 {
+        insights.push(format!(
+            "Impressive streak of {} beats in a row without a miss!",
+            longest_streak
+        ));
+    } else if longest_streak >= 8 {
+        insights.push(format!(
+            "Best streak: {} beats in a row. Build on that.",
+            longest_streak
+        ));
+    }
+
+    // High hit rate but low score = accuracy issue
+    if hit_rate > 0.9 && score < 70 {
+        insights.push("You're hitting most beats but not precisely — focus on locking in tighter.".to_string());
+    }
+
+    // Perfect ratio
+    if hits_count > 0 {
+        let perfect_ratio = perfect_count as f64 / hits_count as f64;
+        if perfect_ratio > 0.6 && hits_count > 12 {
+            insights.push(format!(
+                "{:.0}% of your hits were perfect (<10ms). Keep it up!",
+                perfect_ratio * 100.0
+            ));
+        }
+    }
+
+    // Tempo stability
+    if tempo_stability_ms > 25.0 && hits_count > 8 {
+        insights.push("Your spacing between beats is uneven. Try subdividing mentally to keep a steadier pulse.".to_string());
+    } else if tempo_stability_ms < 5.0 && hits_count > 12 {
+        insights.push("Rock-solid internal clock — your spacing between beats is very even.".to_string());
+    }
+
+    // Cap at 3 most relevant insights
+    insights.truncate(3);
+    insights
 }

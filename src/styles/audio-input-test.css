@@ -1,0 +1,469 @@
+/* ─── Audio Input Test Modal ─── */
+.input-test-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: input-test-fade-in 0.15s ease;
+}
+
+@keyframes input-test-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.input-test-modal {
+  background: var(--bg-primary);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+  animation: input-test-slide-in 0.2s ease;
+  overflow: hidden;
+}
+
+@keyframes input-test-slide-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.input-test-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.input-test-modal-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-test-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.input-test-modal-close:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.input-test-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Device selector */
+.input-test-device-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-test-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+
+.input-test-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.input-test-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Level meter */
+.input-test-meter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Input gain slider */
+.input-test-gain-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-test-gain-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.input-test-gain-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.input-test-meter-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+
+.input-test-db {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.input-test-meter-track {
+  position: relative;
+  height: 20px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.input-test-meter-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #22c55e 60%, #eab308 80%, #ef4444 100%);
+  border-radius: 4px;
+  transition: width 0.05s linear;
+}
+
+.input-test-meter-fill.hot {
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+}
+
+.input-test-meter-fill.clipping {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+.input-test-meter-peak {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--text-primary);
+  opacity: 0.6;
+  transform: translateX(-1px);
+  transition: left 0.05s linear;
+}
+
+.input-test-meter-ticks {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 8px;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  pointer-events: none;
+  line-height: 18px;
+}
+
+/* Spectrum analyzer */
+.input-test-spectrum-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-test-spectrum {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 64px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border-radius: 6px;
+}
+
+.input-test-spectrum-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.input-test-spectrum-bar {
+  width: 100%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  opacity: 0.7;
+  transition: height 0.06s linear;
+}
+
+.input-test-spectrum-bar.hot {
+  opacity: 1;
+  box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* Status */
+.input-test-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border-radius: 8px;
+  transition: color 0.2s ease;
+}
+
+.input-test-status.active {
+  color: #22c55e;
+}
+
+.input-test-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-tertiary);
+  opacity: 0.5;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.input-test-status-dot.connected {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+  opacity: 1;
+}
+
+/* ─── Record & Playback ─── */
+.input-test-rec-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-test-rec-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Recording progress bar */
+.input-test-rec-progress {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.input-test-rec-progress-fill {
+  height: 4px;
+  width: 0;
+  background: #ef4444;
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+/* Fixed-height display area — prevents layout jumps */
+.input-test-rec-display {
+  height: 56px;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.input-test-rec-empty {
+  height: 100%;
+}
+
+/* Waveform display */
+.input-test-waveform {
+  position: relative;
+  height: 100%;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.input-test-waveform-bars {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 100%;
+}
+
+.input-test-waveform-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.input-test-waveform-bar {
+  width: 100%;
+  border-radius: 1px;
+  background: var(--text-tertiary);
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+.input-test-waveform-bar.played {
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.input-test-waveform-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+  pointer-events: none;
+  transition: left 0.05s linear;
+}
+
+/* Controls row — fixed height */
+.input-test-rec-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 32px;
+  align-items: center;
+}
+
+.input-test-rec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.input-test-rec-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.input-test-rec-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.input-test-rec-btn:disabled:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+/* Record button red dot */
+.input-test-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+}
+
+.input-test-rec-btn.record:not(:disabled) .input-test-rec-dot {
+  animation: input-test-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes input-test-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Stop button styling */
+.input-test-rec-btn.stop {
+  border-color: color-mix(in srgb, #ef4444 30%, transparent);
+  color: #ef4444;
+}
+
+.input-test-rec-btn.stop:hover {
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+}
+
+/* Play button styling */
+.input-test-rec-btn.play {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+}
+
+.input-test-rec-btn.play:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* Discard button */
+.input-test-rec-btn.discard {
+  color: var(--text-tertiary);
+}
+
+/* Hint text — uses visibility to preserve space */
+.input-test-rec-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+  min-height: 16px;
+}
+
+.input-test-rec-hint.hidden {
+  visibility: hidden;
+}

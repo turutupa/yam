@@ -27,7 +27,10 @@
   width: 0;
 }
 
-/* Settings page — show themed scrollbar */
+.main-content[data-view="settings"] .view-transition-wrapper {
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent);
+}
 .main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar {
   width: 8px;
 }

@@ -568,8 +568,8 @@ fn poll_device_count() -> usize {
     host.output_devices().map(|d| d.count()).unwrap_or(0)
 }
 
-/// Start a background thread that polls for audio output device changes
-/// and emits "audio-devices-changed" when the list changes.
+/// Start a background thread that polls for audio device changes
+/// and emits "audio-devices-changed" / "audio-input-devices-changed" when the list changes.
 /// Uses a lightweight name-only check; only does the full enumeration
 /// (with BT detection) when the device list actually changes.
 pub fn start_audio_device_polling(app_handle: AppHandle) {
@@ -583,6 +583,8 @@ pub fn start_audio_device_polling(app_handle: AppHandle) {
                 // (only hits cpal when devices actually change, not every poll)
                 let devices = list_output_devices();
                 let _ = app_handle.emit("audio-devices-changed", &devices);
+                let input_devices = crate::audio_input::AudioInput::list_devices();
+                let _ = app_handle.emit("audio-input-devices-changed", &input_devices);
                 last_count = current_count;
             }
         }
@@ -751,6 +753,11 @@ impl MetronomeEngine {
     /// Set the device name without restarting (for startup/restore).
     pub fn set_device_name(&mut self, name: Option<String>) {
         self.device_name = name;
+    }
+
+    /// Get the current output device name.
+    pub fn device_name(&self) -> Option<&str> {
+        self.device_name.as_deref()
     }
 
     /// Ensure the audio thread is running (opens audio device once).

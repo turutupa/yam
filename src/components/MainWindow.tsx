@@ -37,12 +37,14 @@ import {
   listAudioOutputDevices,
   setAudioOutputDevice,
   onAudioDevicesChanged,
+  getSessionReport,
+  saveSession,
 } from "../ipc";
 import "../styles/main-window.css";
 import "../styles/transitions.css";
 import "../styles/evaluation.css";
 import { THEMES } from "../themes";
-import type { AudioOutputDevice, Preset, Subdivision, WidgetMode } from "../types";
+import type { AudioInputDevice, AudioOutputDevice, Preset, Subdivision, WidgetMode } from "../types";
 import { DrillView } from "./DrillView";
 import { FullscreenView } from "./FullscreenView";
 import { PresetSidebar } from "./PresetSidebar";
@@ -51,11 +53,12 @@ import { ThemeEffects } from "./ThemeEffects";
 import { TrackView } from "./TrackView";
 import { ViewTransition } from "./ViewTransition";
 import { ZenTransition } from "./ZenTransition";
-// Evaluation — commented out until feature is ready
-// import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { useEvaluation } from "../hooks/useEvaluation";
-// import DriftMeter from "./DriftMeter";
-// import EvaluationPanel from "./EvaluationPanel";
+import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
+import DriftMeter from "./DriftMeter";
+import EvaluationPanel from "./EvaluationPanel";
+import AudioInputTestModal from "./AudioInputTestModal";
+import "../styles/audio-input-test.css";
 
 // Force the webview to reclaim keyboard focus after macOS fullscreen exit.
 // The hidden-input trick is the only reliable way — body.focus()/click() don't work.
@@ -499,14 +502,8 @@ function MidiDeviceDropdown({
         type="button"
       >
         <span className="midi-dropdown-value">
-          {value ? (
-            <>
-              <span className="midi-dropdown-dot connected" />
-              {selected.label}
-            </>
-          ) : (
-            selected.label
-          )}
+          <span className={`midi-dropdown-dot ${value ? "connected" : ""}`} />
+          {selected.label}
         </span>
         <svg
           className="midi-dropdown-chevron"
@@ -611,8 +608,8 @@ function AudioOutputDropdown({
               <path d="M6.5 17.5l5.5-5.5 5.5-5.5-5.5-5.5v22l5.5-5.5" />
             </svg>
           )}
-          {!selected.isBluetooth && value && (
-            <span className="midi-dropdown-dot connected" />
+          {!selected.isBluetooth && (
+            <span className={`midi-dropdown-dot ${value ? "connected" : ""}`} />
           )}
           {selected.label}
         </span>
@@ -669,19 +666,141 @@ function AudioOutputDropdown({
   );
 }
 
+function AudioInputDropdown({
+  devices,
+  value,
+  onChange,
+}: {
+  devices: AudioInputDevice[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const options = useMemo(
+    () => [
+      { value: "", label: "System default" },
+      ...devices.map((d) => ({
+        value: d.name,
+        label: d.name + (d.isDefault ? " (default)" : ""),
+      })),
+    ],
+    [devices],
+  );
+
+  const selected = options.find((o) => o.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className={`midi-dropdown ${open ? "open" : ""}`} ref={ref}>
+      <button
+        className="midi-dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
+        <span className="midi-dropdown-value">
+          <span className={`midi-dropdown-dot ${value ? "connected" : ""}`} />
+          {selected.label}
+        </span>
+        <svg
+          className="midi-dropdown-chevron"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="midi-dropdown-menu">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              className={`midi-dropdown-item ${opt.value === value ? "selected" : ""}`}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {opt.value === value && (
+                <svg
+                  className="midi-dropdown-check"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MainWindow() {
   useDrag();
   const { state, currentBeat } = useMetronome();
   const evaluation = useEvaluation();
-  // Evaluation panel — commented out until feature is ready
-  // const [evalPanelOpen, setEvalPanelOpen] = useState(false);
-  // const wasPlayingRef = useRef(false);
-  // useEffect(() => {
-  //   if (wasPlayingRef.current && !state.isPlaying && evaluation.enabled && evaluation.lastFeedback) {
-  //     setEvalPanelOpen(true);
-  //   }
-  //   wasPlayingRef.current = state.isPlaying;
-  // }, [state.isPlaying, evaluation.enabled, evaluation.lastFeedback]);
+  const [evalPanelOpen, setEvalPanelOpen] = useState(false);
+  const [evalPanelView, setEvalPanelView] = useState<"history" | "detail">("history");
+  const [evalSelectedReport, setEvalSelectedReport] = useState<import("../types").SessionReport | null>(null);
+  const [evalSelectedMeta, setEvalSelectedMeta] = useState<{ bpm: number; timestamp: number; id?: string } | null>(null);
+  const [inputTestOpen, setInputTestOpen] = useState(false);
+  const [currentReport, setCurrentReport] = useState<import("../types").SessionReport | null>(null);
+  const [currentMeta, setCurrentMeta] = useState<{ bpm: number; timestamp: number } | null>(null);
+  const wasPlayingRef = useRef(false);
+  useEffect(() => {
+    if (wasPlayingRef.current && !state.isPlaying && evaluation.enabled && evaluation.lastFeedback) {
+      // Playback just stopped with evaluation active — fetch report and auto-save
+      const timestamp = Date.now();
+      getSessionReport().then((report) => {
+        if (report && (report.hitsCount + report.missCount) >= 8) {
+          setCurrentReport(report);
+          setCurrentMeta({ bpm: state.bpm, timestamp });
+          setEvalPanelOpen(true);
+          // Auto-save to history
+          saveSession({
+            id: crypto.randomUUID(),
+            timestamp,
+            bpm: state.bpm,
+            timeSignature: state.timeSignature,
+            report,
+          });
+        } else if (report) {
+          setCurrentReport(report);
+          setCurrentMeta({ bpm: state.bpm, timestamp });
+          setEvalPanelOpen(true);
+        }
+      });
+    }
+    wasPlayingRef.current = state.isPlaying;
+  }, [state.isPlaying, evaluation.enabled, evaluation.lastFeedback]);
   const [view, setViewRaw] = useState<"beat" | "drill" | "track" | "settings">(
     "beat",
   );
@@ -779,10 +898,7 @@ export function MainWindow() {
     updateFeedbackTimer.current = setTimeout(() => setUpdateFeedback(false), 1800);
   }, []);
 
-  // Sidebar is not relevant on settings or pocket check — close it automatically
-  useEffect(() => {
-    if (view === "settings" || view === "track") setSidebarOpen(false);
-  }, [view]);
+
 
   const [keyBindings, setKeyBindings] = useState<Record<string, string>>(() =>
     Object.fromEntries(HOTKEYS.map((hk) => [hk.id, hk.key])),
@@ -1805,26 +1921,13 @@ export function MainWindow() {
           setIsFullscreen(true);
         }}
       >
-        <ViewTransition viewKey={view} themeId={state.theme} disabled={viewTransitions === "off"} level={viewTransitions} animStyle={animationStyle}>
         {(view === "beat" || view === "drill") && (
           <div className="preset-save-area">
-            {activePreset && (
-              <button
-                className="preset-active-name"
-                onClick={() => {
-                  setSidebarOpen(true);
-                  setTimeout(() => sidebarRef.current?.triggerRename(activePreset.id), 150);
-                }}
-                title="Rename preset"
-              >
-                {activePreset.name}{presetDirty ? " •" : ""}
-              </button>
-            )}
             {activePreset ? (
               <button
                 className={`preset-save-btn preset-save-btn--update ${updateFeedback ? "preset-save-btn--feedback" : ""}`}
                 onClick={handlePresetUpdate}
-                title="Update preset"
+                title={presetDirty ? "Update preset" : "No changes to save"}
               >
                 {updateFeedback ? (
                   <>
@@ -1839,7 +1942,7 @@ export function MainWindow() {
                       <path d="M12 3v13M7 8l5-5 5 5" />
                       <path d="M5 20h14" />
                     </svg>
-                    <span className="preset-save-btn-label">Update</span>
+                    <span className="preset-save-btn-label">{presetDirty ? "Update" : "No changes"}</span>
                   </>
                 )}
               </button>
@@ -1857,8 +1960,43 @@ export function MainWindow() {
                 <span className="preset-save-btn-label">Save preset</span>
               </button>
             )}
+            {activePreset && (
+              <button
+                className="preset-active-name"
+                onClick={() => {
+                  setSidebarOpen(true);
+                  setTimeout(() => sidebarRef.current?.triggerRename(activePreset.id), 150);
+                }}
+                title="Rename preset"
+              >
+                {activePreset.name}{presetDirty ? " •" : ""}
+              </button>
+            )}
           </div>
         )}
+        {view !== "settings" && view !== "track" && (
+          <div className="eval-actions-area">
+            <button
+              className={`eval-action-btn ${evaluation.enabled ? "eval-action-active" : ""}`}
+              onClick={evaluation.toggle}
+              title={evaluation.enabled ? "Disable practice coach" : "Enable practice coach"}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+              <span className="eval-action-label">{evaluation.enabled ? "Listening" : "Practice coach"}</span>
+            </button>
+          </div>
+        )}
+        {evaluation.enabled && (
+          <div className="spectrum-wrap">
+            <SpectrumAnalyzer spectrum={evaluation.spectrum} hasSignal={evaluation.hasSignal} />
+          </div>
+        )}
+        <ViewTransition viewKey={view} themeId={state.theme} disabled={viewTransitions === "off"} level={viewTransitions} animStyle={animationStyle}>
         {view === "beat" ? (
           <>
             <section className="bpm-section">
@@ -1975,7 +2113,6 @@ export function MainWindow() {
                   );
                 })}
               </div>
-              {/* DriftMeter — commented out until evaluation feature is ready
               {evaluation.enabled && state.isPlaying && (
                 <DriftMeter
                   lastFeedback={evaluation.lastFeedback}
@@ -1983,7 +2120,6 @@ export function MainWindow() {
                   visible={evaluation.enabled && state.isPlaying}
                 />
               )}
-              */}
             </section>
 
             <div className="sub-row">
@@ -2247,6 +2383,25 @@ export function MainWindow() {
                   </div>
                 )}
               </div>
+
+              <div className="midi-device-section" style={{ marginTop: 28 }}>
+                <label className="midi-label devices-subsection-label">Audio Input</label>
+                <div className="midi-device-row">
+                  <AudioInputDropdown
+                    devices={evaluation.devices}
+                    value={evaluation.selectedDevice ?? ""}
+                    onChange={(val) => evaluation.selectDevice(val)}
+                  />
+                  <button
+                    className="input-test-btn"
+                    onClick={() => setInputTestOpen(true)}
+                    title="Test audio input"
+                  >
+                    Test
+                  </button>
+                </div>
+              </div>
+
               <div className="midi-device-section" style={{ marginTop: 28 }}>
                 <label className="midi-label devices-subsection-label">MIDI</label>
                 <div className="midi-device-row">
@@ -2273,12 +2428,6 @@ export function MainWindow() {
                     </svg>
                   </button>
                 </div>
-                {midi.connectedDevice && (
-                  <div className="midi-status">
-                    <span className="midi-status-dot connected" />
-                    Connected
-                  </div>
-                )}
                 {!midi.connectedDevice && midi.devices.length === 0 && (
                   <div className="midi-status">
                     <span className="midi-status-dot" />
@@ -2345,13 +2494,6 @@ export function MainWindow() {
                     <span className="theme-card-name">{t.name}</span>
                   </button>
                 ))}
-              </div>
-            </section>
-
-            <section className="settings-section">
-              <h2>Practice Coach <span className="hotkey-soon-badge">coming soon</span></h2>
-              <div className="setting-hint setting-privacy-note">
-                Play along with the metronome and get real-time feedback on your timing, dynamics, and consistency. All analysis runs locally on-device.
               </div>
             </section>
 
@@ -2732,6 +2874,21 @@ export function MainWindow() {
           </button>
         )}
       </div>
+      {(view === "beat" || view === "drill") && (
+      <EvaluationPanel
+        open={evalPanelOpen}
+        onClose={() => { setEvalPanelOpen(false); setCurrentReport(null); setCurrentMeta(null); }}
+        onToggle={() => { setEvalPanelOpen((v) => !v); if (evalPanelOpen) { setCurrentReport(null); setCurrentMeta(null); } }}
+        currentReport={currentReport}
+        currentMeta={currentMeta}
+        panelView={evalPanelView}
+        setPanelView={setEvalPanelView}
+        selectedReport={evalSelectedReport}
+        setSelectedReport={setEvalSelectedReport}
+        selectedMeta={evalSelectedMeta}
+        setSelectedMeta={setEvalSelectedMeta}
+      />
+      )}
       </div>{/* main-body */}
       {showResetConfirm && (
         <div
@@ -2975,38 +3132,14 @@ export function MainWindow() {
         </div>
       )}
     </div>
-    {/* Evaluation FAB + Spectrum — commented out until evaluation feature is ready
-    <div className="eval-fab-container">
-      {evaluation.enabled && (
-        <SpectrumAnalyzer spectrum={evaluation.spectrum} hasSignal={evaluation.hasSignal} />
-      )}
-      <button
-        className={`eval-fab ${evaluation.enabled ? "active" : ""} ${evaluation.hasSignal ? "has-signal" : ""}`}
-        onClick={evaluation.toggle}
-        data-tooltip={evaluation.enabled ? "Disable evaluation" : "Enable evaluation"}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-          <line x1="12" y1="19" x2="12" y2="23" />
-          <line x1="8" y1="23" x2="16" y2="23" />
-        </svg>
-      </button>
-    </div>
-    <EvaluationPanel
-      open={evalPanelOpen}
-      onClose={() => setEvalPanelOpen(false)}
+    <AudioInputTestModal
+      open={inputTestOpen}
+      onClose={() => setInputTestOpen(false)}
+      selectedDevice={evaluation.selectedDevice}
+      onDeviceChange={(d) => evaluation.selectDevice(d)}
+      initialDevices={evaluation.devices}
+      evaluationActive={evaluation.enabled}
     />
-    */}
     </>
   );
 }

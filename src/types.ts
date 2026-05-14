@@ -128,7 +128,7 @@ export type BeatFeedback = {
   /** Error in interval between this onset and previous (ms) */
   intervalErrorMs: number;
   /** "perfect" | "good" | "ok" | "miss" */
-  classification: "perfect" | "good" | "ok" | "miss";
+  classification: "perfect" | "good" | "ok" | "miss" | "skipped";
   /** Amplitude of matched onset (0.0 for miss) */
   amplitude: number;
   /** Current calibration offset in ms */
@@ -141,6 +141,7 @@ export type SessionReport = {
   totalBeats: number;
   hitsCount: number;
   missCount: number;
+  skippedBeats: number;
   perfectCount: number;
   goodCount: number;
   okCount: number;
@@ -155,4 +156,14 @@ export type SessionReport = {
   meanAmplitude: number;
   tempoStabilityMs: number;
   longestStreak: number;
+  comment: string;
+  insights: string[];
+};
+
+export type SavedSession = {
+  id: string;
+  timestamp: number;
+  bpm: number;
+  timeSignature: number;
+  report: SessionReport;
 };

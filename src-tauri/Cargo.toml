@@ -1,7 +1,7 @@
 [package]
 name = "yames"
 version = "0.9.0"
-description = "Yet Another Metronome Everyone Skips — musician-grade floating metronome"
+description = "Yet Another Metronome Everyone Skips — practice metronome with MIDI control, speed drills, and AI coach"
 authors = ["you"]
 edition = "2021"
 

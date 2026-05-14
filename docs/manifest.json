@@ -1,7 +1,7 @@
 {
   "name": "Yames Metronome",
   "short_name": "Yames",
-  "description": "Free, open-source desktop metronome app for musicians. Always-on-top floating widget, sub-millisecond precision, zen mode, drill practice, and beautiful themes.",
+  "description": "Free, open-source desktop metronome built for real practice. MIDI footswitch control, sub-millisecond precision, zen mode, speed drills, presets, and AI practice coach. Hands stay on the instrument.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0a0a0f",

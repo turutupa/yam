@@ -2,7 +2,7 @@
 
 **Yet Another Metronome Everyone Skips** — except this one, you won't.
 
-[Website](https://turutupa.github.io/yames) &nbsp;·&nbsp; [Download](https://github.com/turutupa/yames/releases/latest) &nbsp;·&nbsp; [Request a Feature](https://github.com/turutupa/yames/issues/new)
+[Website](https://yames.app) &nbsp;·&nbsp; [Download](https://github.com/turutupa/yames/releases/latest) &nbsp;·&nbsp; [Request a Feature](https://github.com/turutupa/yames/issues/new)
 
 <br>
 
@@ -15,12 +15,14 @@
 ## Table of Contents
 
 - [Why does this exist?](#why-does-this-exist)
+- [Designed for Practice](#designed-for-practice)
 - [The Metronome](#the-metronome)
 - [Speed Drill](#speed-drill)
-- [Tap It](#tap-it)
+- [Pocket Check](#pocket-check)
 - [Zen Mode](#zen-mode)
 - [Floating Widget](#floating-widget)
-- [Keyboard-Driven](#keyboard-driven)
+- [Hands-Free Control](#hands-free-control)
+- [Practice Coach (coming soon)](#practice-coach-coming-soon)
 - [Screenshots](#screenshots)
 - [Install](#install)
 - [Built With](#built-with)
@@ -40,6 +42,20 @@ Built with Rust for sub-millisecond precision. No drift. No jitter. No Electron.
 
 <br>
 
+## Designed for Practice
+
+Yames is built around one principle: **your hands stay on the instrument.** Everything is designed so you never have to break your flow to interact with the app.
+
+- **MIDI controller & footswitch support** — map any MIDI CC, note, or program change to play/stop, BPM adjust, subdivisions, and more. Assign a footswitch and control everything without looking up.
+- **Full keyboard shortcuts** — every action has a hotkey. Rebindable in settings.
+- **Presets** — save your exercise configurations (BPM, subdivision, time signature) and switch between them instantly. No setup time between exercises.
+- **Zen mode** — fullscreen immersive visuals. No UI, no distractions. Just rhythm.
+- **Always-on-top floating widget** — sits over your DAW, tabs, or sheet music. Draggable, minimal, out of your way.
+
+The metronome is a background tool. You should be focused on playing, not on the screen.
+
+<br>
+
 ## The Metronome
 
 The classic view. BPM control, subdivisions, time signatures, and a clean visual pulse that tracks every beat. Pick from 10+ handcrafted themes — dark, light, vibrant, minimal — and make it feel like yours.
@@ -54,7 +70,9 @@ The classic view. BPM control, subdivisions, time signatures, and a clean visual
 
 ## Speed Drill
 
-This is where it gets serious. Set a start BPM, an end BPM, and how many bars to hold each step. Hit play and the metronome auto-ramps for you — pushing your technique incrementally without breaking flow. No more fiddling with the tempo dial mid-practice. Just you and the climb.
+This is where it gets serious. Set a start BPM, an end BPM, and how many bars to hold each step. Hit play and the metronome auto-ramps for you — pushing your technique incrementally without breaking flow. No more fiddling with the tempo dial mid-practice.
+
+Choose your ramp strategy: **Linear** (steady climb), **Zigzag** (push and pull), or **Adaptive** (coming soon — the app adjusts tempo based on how you're playing).
 
 If you're working on a passage, building speed on scales, or training endurance, Drill is the single best reason to use Yames.
 
@@ -66,14 +84,14 @@ If you're working on a passage, building speed on scales, or training endurance,
 
 <br>
 
-## Tap It
+## Pocket Check
 
 Practice keeping tempo by tapping along. Yames tracks your accuracy — how consistent your taps are — so you can see your internal clock improving over time.
 
 <p align="center">
-  <img src="docs/img/tapit/obsidian-tap.png" alt="Yames tap tempo" height="310">
+  <img src="docs/img/tapit/obsidian-tap.png" alt="Yames pocket check" height="310">
   &nbsp;&nbsp;
-  <img src="docs/img/tapit/prism-tap.png" alt="Yames tap tempo — Prism theme" height="310">
+  <img src="docs/img/tapit/prism-tap.png" alt="Yames pocket check — Prism theme" height="310">
 </p>
 
 <br>
@@ -104,24 +122,38 @@ A tiny always-on-top mini-player that sits over your DAW, sheet music, tabs, or 
 
 <br>
 
-## Keyboard-Driven
+## Hands-Free Control
 
-Everything is a hotkey. You never have to reach for the mouse during practice.
+Everything is a hotkey. MIDI controllers and footswitches are first-class. You never have to reach for the mouse during practice.
 
 | Key | Action |
 |-----|--------|
 | `Space` | Play / Stop |
-| `↑` / `↓` | BPM ±5 |
-| `Shift+↑` / `Shift+↓` | BPM ±1 |
-| `[` / `]` | Cycle subdivision |
-| `T` | Cycle time signature |
+| `K` / `J` | BPM +5 / -5 |
+| `Shift+K` / `Shift+J` | BPM +1 / -1 |
+| `I` / `U` | Subdivision +/- |
+| `L` / `H` | Time signature +/- |
 | `Z` | Zen mode (fullscreen visuals) |
 | `F` | OS fullscreen |
 | `W` | Toggle floating widget |
-| `⌘1` / `⌘2` / `⌘3` | Switch tabs (Metronome / Drill / Tap It) |
-| `⌘,` | Settings |
+| `1` / `2` / `3` | Switch tabs (Metronome / Drill / Pocket Check) |
+| `S` | Settings |
 
-Global shortcuts work even when Yames isn't focused — play/stop, BPM nudge, and widget toggle all work from any app.
+All keyboard shortcuts are rebindable. MIDI bindings are fully customizable — connect any controller and map CC, Note, or Program Change messages to any action.
+
+<br>
+
+## Practice Coach (coming soon)
+
+An AI-powered practice companion that listens to your playing and gives real-time feedback — without you ever looking at the screen.
+
+- **Live coaching during practice** — audio notifications (chime or natural voice) when the coach has feedback. Comments appear in a chat-like feed for you to read when you pause.
+- **Automatic detection** — the coach knows if you're doing grid exercises or playing freely. Feedback adapts: timing accuracy for exercises, groove and tempo stability for musical playing.
+- **Session reports** — timeline-based breakdown of your practice with stats per segment. Not just numbers — natural language summaries that tell you what to work on.
+- **Adaptive drill mode** — set a start BPM and a target (or no ceiling). The coach adjusts tempo based on your accuracy: pushes you when you're comfortable, backs off when you struggle.
+- **Preset history** — track your progress on specific exercises over weeks and months. See how your comfortable BPM and accuracy improve over time.
+- **Conversational** — ask the coach questions about your session: "How was my timing?" "What should I focus on?"
+- **Fully local** — runs entirely on your machine. No internet required, no data sent anywhere.
 
 <br>
 
@@ -215,7 +247,7 @@ npm run tauri build
 
 ## Built With
 
-Rust · Tauri v2 · React · TypeScript · rodio
+Rust · Tauri v2 · React · TypeScript · cpal · rodio
 
 ## Development
 

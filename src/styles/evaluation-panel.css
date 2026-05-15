@@ -250,6 +250,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .eval-ring-bg {
@@ -262,7 +263,10 @@
 
 .eval-ring-score {
   position: absolute;
-  font-size: 24px;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }

@@ -3,7 +3,7 @@ use crate::timing::{BeatLog, BeatTick};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rodio::Source;
 use std::io::Cursor;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -430,6 +430,28 @@ struct BeatNotification {
 // Speed ramp logic
 // ---------------------------------------------------------------------------
 
+/// Payload emitted when adaptive mode needs a decision from the coach model.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct AdaptiveEvalRequest {
+    #[serde(rename = "currentBpm")]
+    pub current_bpm: u16,
+    #[serde(rename = "startBpm")]
+    pub start_bpm: u16,
+    #[serde(rename = "targetBpm")]
+    pub target_bpm: u16,
+    #[serde(rename = "accuracyPct")]
+    pub accuracy_pct: u32,
+    pub aggressiveness: String,
+    #[serde(rename = "currentStep")]
+    pub current_step: u16,
+}
+
+/// Model decision constants for the adaptive_model_decision atomic.
+pub const DECISION_NONE: u8 = 0;
+pub const DECISION_UP: u8 = 1;
+pub const DECISION_HOLD: u8 = 2;
+pub const DECISION_DOWN: u8 = 3;
+
 /// Returns (up_threshold, down_threshold, step_up_bpm, step_down_bpm) for adaptive mode.
 fn adaptive_thresholds(aggressiveness: &str, increment: u16, decrement: u16) -> (u32, u32, u16, u16) {
     match aggressiveness {
@@ -728,6 +750,8 @@ pub struct MetronomeEngine {
     device_name: Option<String>,
     /// Shared adaptive accuracy score (0-100), updated by timing analyzer callback
     adaptive_score: Arc<AtomicU32>,
+    /// Shared model decision for adaptive mode: 0=none, 1=up, 2=hold, 3=down
+    adaptive_model_decision: Arc<AtomicU8>,
 }
 
 impl MetronomeEngine {
@@ -739,6 +763,7 @@ impl MetronomeEngine {
             beat_log,
             device_name: None,
             adaptive_score: Arc::new(AtomicU32::new(0)),
+            adaptive_model_decision: Arc::new(AtomicU8::new(0)),
         }
     }
 
@@ -777,6 +802,11 @@ impl MetronomeEngine {
         self.adaptive_score.clone()
     }
 
+    /// Get a clone of the adaptive model decision Arc for external writes.
+    pub fn adaptive_model_decision(&self) -> Arc<AtomicU8> {
+        self.adaptive_model_decision.clone()
+    }
+
     /// Ensure the audio thread is running (opens audio device once).
     fn ensure_thread(&mut self, state: SharedState, app_handle: AppHandle) {
         if self.alive.load(Ordering::SeqCst) {
@@ -789,6 +819,7 @@ impl MetronomeEngine {
         let beat_log = self.beat_log.clone();
         let device_name = self.device_name.clone();
         let adaptive_score = self.adaptive_score.clone();
+        let adaptive_model_decision = self.adaptive_model_decision.clone();
 
         let handle = thread::spawn(move || {
             // ---- cpal setup ----
@@ -1226,61 +1257,78 @@ impl MetronomeEngine {
                             s.speed_ramp.bars_in_step = 0;
 
                             if s.speed_ramp.mode == "adaptive" {
-                                // Adaptive mode: use live accuracy score to decide
                                 let score = adaptive_score.load(Ordering::Relaxed);
                                 let (up_thresh, down_thresh, step_up, step_down) =
                                     adaptive_thresholds(&s.speed_ramp.aggressiveness, s.speed_ramp.increment, s.speed_ramp.decrement);
 
+                                // Check if the coach model provided a decision
+                                let model_decision = adaptive_model_decision.swap(DECISION_NONE, Ordering::Relaxed);
+
+                                // Determine direction: model decision overrides DSP thresholds
+                                let direction = match model_decision {
+                                    DECISION_UP => "up",
+                                    DECISION_HOLD => "hold",
+                                    DECISION_DOWN => "down",
+                                    _ => {
+                                        // No model decision — fall back to DSP thresholds
+                                        if score >= up_thresh { "up" }
+                                        else if score <= down_thresh { "down" }
+                                        else { "hold" }
+                                    }
+                                };
+
                                 let prev_bpm = s.speed_ramp.current_bpm;
                                 let target = s.speed_ramp.target_bpm;
                                 let no_ceiling = target >= 300;
+                                let mut completed = false;
 
-                                if score >= up_thresh {
-                                    // Step up
+                                if direction == "up" {
                                     let new_bpm = s.speed_ramp.current_bpm.saturating_add(step_up).min(300);
                                     if !no_ceiling && new_bpm >= target {
                                         s.speed_ramp.current_bpm = target;
                                         s.speed_ramp.completed = true;
                                         s.speed_ramp.active = false;
                                         s.is_playing = false;
-                                        let sc = s.clone();
-                                        let rc = s.speed_ramp.clone();
-                                        drop(s);
-                                        playing.store(false, Ordering::SeqCst);
-                                        let _ = app_handle.emit("ramp-step", &rc);
-                                        let _ = app_handle.emit("state-changed", &sc);
+                                        completed = true;
                                     } else {
                                         s.speed_ramp.current_bpm = new_bpm;
                                         s.speed_ramp.current_step += 1;
-                                        let rc = s.speed_ramp.clone();
-                                        let sc = s.clone();
-                                        drop(s);
-                                        if let Ok(mut c) = pending_chime.lock() {
-                                            *c = Some(SoundId::ChimeUp);
-                                        }
-                                        let _ = app_handle.emit("ramp-step", &rc);
-                                        let _ = app_handle.emit("state-changed", &sc);
                                     }
-                                } else if score <= down_thresh && s.speed_ramp.current_bpm > s.speed_ramp.start_bpm {
-                                    // Step down
+                                    if let Ok(mut c) = pending_chime.lock() {
+                                        *c = Some(SoundId::ChimeUp);
+                                    }
+                                } else if direction == "down" && prev_bpm > s.speed_ramp.start_bpm {
                                     let new_bpm = s.speed_ramp.current_bpm.saturating_sub(step_down).max(s.speed_ramp.start_bpm);
                                     s.speed_ramp.current_bpm = new_bpm;
                                     s.speed_ramp.current_step += 1;
-                                    let rc = s.speed_ramp.clone();
-                                    let sc = s.clone();
-                                    drop(s);
                                     if new_bpm < prev_bpm {
                                         if let Ok(mut c) = pending_chime.lock() {
                                             *c = Some(SoundId::ChimeDown);
                                         }
                                     }
-                                    let _ = app_handle.emit("ramp-step", &rc);
-                                    let _ = app_handle.emit("state-changed", &sc);
-                                } else {
-                                    // Hold — accuracy in the middle, keep current tempo
-                                    let sc = s.clone();
-                                    drop(s);
-                                    let _ = app_handle.emit("state-changed", &sc);
+                                }
+                                // else: hold — no BPM change
+
+                                // Emit events
+                                let rc = s.speed_ramp.clone();
+                                let eval_req = AdaptiveEvalRequest {
+                                    current_bpm: s.speed_ramp.current_bpm,
+                                    start_bpm: s.speed_ramp.start_bpm,
+                                    target_bpm: s.speed_ramp.target_bpm,
+                                    accuracy_pct: score,
+                                    aggressiveness: s.speed_ramp.aggressiveness.clone(),
+                                    current_step: s.speed_ramp.current_step,
+                                };
+                                let sc = s.clone();
+                                drop(s);
+                                if completed {
+                                    playing.store(false, Ordering::SeqCst);
+                                }
+                                let _ = app_handle.emit("ramp-step", &rc);
+                                let _ = app_handle.emit("state-changed", &sc);
+                                // Ask the model for the next decision (non-blocking)
+                                if !completed {
+                                    let _ = app_handle.emit("adaptive-eval", &eval_req);
                                 }
                             } else {
                             let prev_bpm = s.speed_ramp.current_bpm;

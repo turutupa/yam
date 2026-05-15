@@ -32,7 +32,7 @@ export function ScoreRing({ score, size, strokeWidth }: { score: number; size: n
           className="eval-ring-fill"
         />
       </svg>
-      <span className="eval-ring-score" style={{ color }}>{score}</span>
+      <span className="eval-ring-score" style={{ color, fontSize: Math.max(10, size * 0.35) }}>{score}</span>
     </div>
   );
 }

@@ -38,13 +38,16 @@ import {
   setAudioOutputDevice,
   onAudioDevicesChanged,
   getModelStatus,
-  downloadModelFile,
-  writeModelChunk,
+  startModelDownload,
+  cancelModelDownload,
+  onDownloadProgress,
+  onDownloadComplete,
   deleteModels,
+  ttsListVoices,
+  ttsSetVoice,
 } from "../ipc";
 import type { ModelStatus, DownloadProgress } from "../ipc";
 import CoachCard from "./CoachCard";
-import type { FeedMessage } from "../types";
 import "../styles/main-window.css";
 import "../styles/transitions.css";
 import "../styles/evaluation.css";
@@ -59,6 +62,7 @@ import { TrackView } from "./TrackView";
 import { ViewTransition } from "./ViewTransition";
 import { ZenTransition } from "./ZenTransition";
 import { useEvaluation } from "../hooks/useEvaluation";
+import { useSession } from "../hooks/useSession";
 import DriftMeter from "./DriftMeter";
 import AudioInputTestModal from "./AudioInputTestModal";
 import SettingsTimeline from "./SettingsTimeline";
@@ -779,15 +783,12 @@ export function MainWindow() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [downloadingTier, setDownloadingTier] = useState<"standard" | "full" | null>(null);
-  const downloadAbort = useRef<AbortController | null>(null);
   const [coachBrainTier, setCoachBrainTier] = useState<"off" | "standard" | "full">("off");
   const [coachVoiceMode, setCoachVoiceMode] = useState<"silent" | "chime" | "voice">("silent");
+  const [coachVoiceName, setCoachVoiceName] = useState("lessac");
+  const [availableVoices, setAvailableVoices] = useState<[string, string][]>([]);
   const [coachNotifLevel, setCoachNotifLevel] = useState<"all" | "important" | "silent">("all");
   const [pendingDownloadTier, setPendingDownloadTier] = useState<"standard" | "full" | null>(null);
-  // Coach card state
-  const [coachOpen, setCoachOpen] = useState(false);
-  const [coachActive, setCoachActive] = useState(false);
-  const [coachMessages, setCoachMessages] = useState<FeedMessage[]>([]);
   const [view, setViewRaw] = useState<"beat" | "drill" | "track" | "settings">(
     "beat",
   );
@@ -866,6 +867,17 @@ export function MainWindow() {
   const [presetDirty, setPresetDirty] = useState(false);
   const [updateFeedback, setUpdateFeedback] = useState(false);
   const updateFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const session = useSession({
+    evaluation,
+    isPlaying: state.isPlaying,
+    bpm: state.bpm,
+    timeSignature: state.timeSignature,
+    presetId: activePreset?.id,
+    presetName: activePreset?.name,
+    voiceMode: coachVoiceMode,
+    notifLevel: coachNotifLevel,
+  });
 
   const handleActivePresetChange = useCallback((preset: Preset | null, dirty: boolean) => {
     setActivePreset(preset);
@@ -1141,13 +1153,13 @@ export function MainWindow() {
     getModelStatus().then(setModelStatus);
     storeLoad<"off" | "standard" | "full">("coachBrainTier").then((v) => { if (v) setCoachBrainTier(v); });
     storeLoad<"silent" | "chime" | "voice">("coachVoiceMode").then((v) => { if (v) setCoachVoiceMode(v); });
+    storeLoad<string>("coachVoiceName").then((v) => { if (v) { setCoachVoiceName(v); ttsSetVoice(v); } });
     storeLoad<"all" | "important" | "silent">("coachNotifLevel").then((v) => { if (v) setCoachNotifLevel(v); });
+    ttsListVoices().then(setAvailableVoices);
   }, []);
 
-  // Download model for a given tier
-  const startModelDownload = useCallback(async (tier: "standard" | "full") => {
-    const abort = new AbortController();
-    downloadAbort.current = abort;
+  // Download model for a given tier — runs in Rust backend, survives hot reloads
+  const handleStartDownload = useCallback(async (tier: "standard" | "full") => {
     setModelDownloading(true);
     setDownloadingTier(tier);
     setPendingDownloadTier(null);
@@ -1158,34 +1170,42 @@ export function MainWindow() {
       standard: "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
       full: "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf",
     };
-    const modelNames = { standard: "Qwen 2.5 1.5B", full: "Phi 3.5 Mini" };
     try {
-      await downloadModelFile(
-        modelUrls[tier],
-        "brain",
-        "model.bin",
-        (downloaded, total) => setDownloadProgress({ component: modelNames[tier], downloadedBytes: downloaded, totalBytes: total, fraction: total > 0 ? downloaded / total : 0, done: false }),
-        abort.signal,
-      );
-      const enc = new TextEncoder();
-      await writeModelChunk("brain", "tier", Array.from(enc.encode(tier)));
-      const status = await getModelStatus();
-      setModelStatus(status);
-      setCoachBrainTier(tier);
-      storeSave("coachBrainTier", tier);
-      setDownloadSuccess(true);
+      await startModelDownload(modelUrls[tier], "brain", "model.bin", tier);
     } catch (err) {
-      if (abort.signal.aborted) {
-        // User cancelled — silently clear
-      } else {
-        const msg = err instanceof Error ? err.message : String(err);
-        setDownloadError(msg);
-      }
+      const msg = err instanceof Error ? err.message : String(err);
+      setDownloadError(msg);
+      setModelDownloading(false);
+      setDownloadProgress(null);
+      setDownloadingTier(null);
     }
-    downloadAbort.current = null;
-    setModelDownloading(false);
-    setDownloadProgress(null);
-    setDownloadingTier(null);
+  }, []);
+
+  // Listen for backend download progress and completion events
+  useEffect(() => {
+    const unsubProgress = onDownloadProgress((progress) => {
+      setDownloadProgress(progress);
+      if (progress.done) {
+        // Refresh model status when done
+        getModelStatus().then(setModelStatus);
+      }
+    });
+    const unsubComplete = onDownloadComplete((result) => {
+      if (result.success && result.tier) {
+        setCoachBrainTier(result.tier as "standard" | "full");
+        storeSave("coachBrainTier", result.tier);
+        setDownloadSuccess(true);
+        getModelStatus().then(setModelStatus);
+        ttsListVoices().then(setAvailableVoices);
+      } else if (!result.cancelled && result.error) {
+        setDownloadError(result.error);
+      }
+      setModelDownloading(false);
+      setDownloadProgress(null);
+      setDownloadingTier(null);
+    });
+
+    return () => { unsubProgress.then((u) => u()); unsubComplete.then((u) => u()); };
   }, []);
 
   // Format bytes helper
@@ -2511,6 +2531,8 @@ export function MainWindow() {
                       if (modelStatus?.brainReady && modelStatus.brainTier === "standard") {
                         setCoachBrainTier("standard");
                         storeSave("coachBrainTier", "standard");
+                        // Re-trigger download to pick up missing voices/piper
+                        if (!modelStatus.voiceReady) handleStartDownload("standard");
                       } else {
                         setPendingDownloadTier("standard");
                       }
@@ -2526,6 +2548,8 @@ export function MainWindow() {
                       if (modelStatus?.brainReady && modelStatus.brainTier === "full") {
                         setCoachBrainTier("full");
                         storeSave("coachBrainTier", "full");
+                        // Re-trigger download to pick up missing voices/piper
+                        if (!modelStatus.voiceReady) handleStartDownload("full");
                       } else {
                         setPendingDownloadTier("full");
                       }
@@ -2550,7 +2574,7 @@ export function MainWindow() {
                         mode === "chime" ? "Short chime sound when coach has feedback for you" :
                         "Spoken feedback using local text-to-speech after each session segment"
                       }
-                      disabled={coachBrainTier === "off" || (mode !== "silent" && !modelStatus?.voiceReady)}
+                      disabled={coachBrainTier === "off" || (mode === "voice" && availableVoices.length === 0)}
                       onClick={() => { setCoachVoiceMode(mode); storeSave("coachVoiceMode", mode); }}
                     >
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -2558,6 +2582,36 @@ export function MainWindow() {
                   ))}
                 </div>
               </div>
+              {coachVoiceMode === "voice" && (
+                <div className="setting-row">
+                  <div className="setting-label">
+                    <label>Voice Name</label>
+                    <span className="setting-hint">
+                      {modelStatus?.voiceReady ? "Choose a voice personality" : "Download voices to enable"}
+                    </span>
+                  </div>
+                  <div className="toggle-group">
+                    {([["lessac", "Lessac"], ["amy", "Amy"], ["ryan", "Ryan"]] as const).map(([id, name]) => {
+                      const downloaded = availableVoices.some(([vid]) => vid === id);
+                      return (
+                        <button
+                          key={id}
+                          className={`toggle-btn ${coachVoiceName === id ? "active" : ""}`}
+                          disabled={!downloaded}
+                          title={downloaded ? name : `${name} — not downloaded`}
+                          onClick={() => {
+                            setCoachVoiceName(id);
+                            storeSave("coachVoiceName", id);
+                            ttsSetVoice(id);
+                          }}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="setting-row">
                 <div className="setting-label">
                   <label>Notifications</label>
@@ -2585,7 +2639,16 @@ export function MainWindow() {
                 <div className="coach-download-section">
                   <p className="setting-hint" style={{ marginBottom: 8 }}>
                     {modelStatus.brainTier === "full" ? "Full" : "Standard"} coach installed ({formatBytes(modelStatus.brainSizeBytes + modelStatus.voiceSizeBytes)})
+                    {!modelStatus.voiceReady && " — voices not installed"}
                   </p>
+                  {!modelStatus.voiceReady && !modelDownloading && (
+                    <button
+                      className="coach-download-btn"
+                      onClick={() => handleStartDownload(modelStatus.brainTier as "standard" | "full" ?? "standard")}
+                    >
+                      Download voices
+                    </button>
+                  )}
                   <button
                     className="coach-download-btn"
                     onClick={async () => {
@@ -2595,10 +2658,6 @@ export function MainWindow() {
                       storeSave("coachBrainTier", "off");
                     }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    </svg>
                     Remove models
                   </button>
                 </div>
@@ -3034,20 +3093,16 @@ export function MainWindow() {
       </div>
       {(view === "beat" || view === "drill") && (
       <CoachCard
-        open={coachOpen}
-        active={coachActive}
-        messages={coachMessages}
-        onToggle={() => setCoachOpen((v) => !v)}
-        onStartSession={() => {
-          setCoachActive(true);
-          setCoachOpen(true);
-          setCoachMessages([{ id: crypto.randomUUID(), type: "session-start", content: "Session started", timestamp: Date.now() }]);
-        }}
-        onEndSession={() => {
-          setCoachActive(false);
-          const endMsg: FeedMessage = { id: crypto.randomUUID(), type: "session-end", content: "Session ended", timestamp: Date.now() };
-          setCoachMessages((msgs) => [...msgs, endMsg]);
-        }}
+        open={session.cardOpen}
+        active={session.active}
+        messages={session.messages}
+        onToggle={session.toggleCard}
+        onStartSession={session.startSession}
+        onEndSession={session.endSession}
+        onSendChat={session.sendChat}
+        listening={evaluation.enabled}
+        hasSignal={evaluation.hasSignal}
+        spectrum={evaluation.spectrum}
       />
       )}
       </div>{/* main-body */}
@@ -3304,7 +3359,7 @@ export function MainWindow() {
                 <div className="download-confirm-model-name" style={{ fontWeight: 400, fontSize: 13 }}>Qwen 2.5 1.5B</div>
                 <div className="download-confirm-model-size">~1.1 GB download &middot; ~2 GB RAM</div>
                 <p className="download-confirm-model-detail">Good comments, solid Q&A, reliable timing decisions. Best for simple time signatures and moderate tempos.</p>
-                <button className="download-confirm-go" onClick={() => startModelDownload("standard")}>
+                <button className="download-confirm-go" onClick={() => handleStartDownload("standard")}>
                   Download Standard
                 </button>
               </div>
@@ -3313,7 +3368,7 @@ export function MainWindow() {
                 <div className="download-confirm-model-name" style={{ fontWeight: 400, fontSize: 13 }}>Phi 3.5 Mini</div>
                 <div className="download-confirm-model-size">~2.4 GB download &middot; ~4 GB RAM</div>
                 <p className="download-confirm-model-detail">Best quality, most nuanced feedback, strongest Q&A. Handles complex patterns, fast tempos, and polyrhythms.</p>
-                <button className="download-confirm-go" onClick={() => startModelDownload("full")}>
+                <button className="download-confirm-go" onClick={() => handleStartDownload("full")}>
                   Download Full
                 </button>
               </div>
@@ -3330,13 +3385,16 @@ export function MainWindow() {
         const pct = downloadProgress ? Math.round(downloadProgress.fraction * 100) : 0;
         const tierLabel = downloadingTier === "full" ? "Full" : "Standard";
         const modelName = downloadProgress?.component ?? "model";
-        const label = `${tierLabel} — ${modelName} · ${downloadProgress ? formatBytes(downloadProgress.downloadedBytes) : "0 B"}${downloadProgress && downloadProgress.totalBytes > 0 ? ` / ${formatBytes(downloadProgress.totalBytes)}` : ""} (${pct}%)`;
+        const bytesInfo = downloadProgress && downloadProgress.downloadedBytes > 0
+          ? ` · ${formatBytes(downloadProgress.downloadedBytes)}${downloadProgress.totalBytes > 0 ? ` / ${formatBytes(downloadProgress.totalBytes)}` : ""}`
+          : "";
+        const label = `${tierLabel} — ${modelName}${bytesInfo} ${pct}%`;
         return (
           <div className="global-download-bar">
             <div className="global-download-bar-fill" style={{ width: `${pct}%` }} />
             <span className="global-download-bar-label global-download-bar-label-base">{label}</span>
             <span className="global-download-bar-label global-download-bar-label-filled" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>{label}</span>
-            <button className="global-download-bar-cancel" onClick={() => downloadAbort.current?.abort()} title="Cancel download">
+            <button className="global-download-bar-cancel" onClick={() => cancelModelDownload()} title="Cancel download">
               Cancel
             </button>
           </div>

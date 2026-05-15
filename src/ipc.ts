@@ -126,6 +126,23 @@ export async function stopSpeedRamp(): Promise<void> {
   return invoke("stop_speed_ramp");
 }
 
+export async function setAdaptiveDecision(decision: "up" | "hold" | "down"): Promise<void> {
+  return invoke("set_adaptive_decision", { decision });
+}
+
+export type AdaptiveEvalRequest = {
+  currentBpm: number;
+  startBpm: number;
+  targetBpm: number;
+  accuracyPct: number;
+  aggressiveness: string;
+  currentStep: number;
+};
+
+export function onAdaptiveEval(callback: (req: AdaptiveEvalRequest) => void) {
+  return listen<AdaptiveEvalRequest>("adaptive-eval", (e) => callback(e.payload));
+}
+
 export function onRampStep(callback: (ramp: SpeedRamp) => void) {
   return listen<SpeedRamp>("ramp-step", (e) => callback(e.payload));
 }
@@ -454,8 +471,52 @@ export async function deleteModels(): Promise<void> {
   return invoke("delete_models");
 }
 
+// ---------------------------------------------------------------------------
+// Coach LLM Inference
+// ---------------------------------------------------------------------------
+
+export async function loadCoachModel(): Promise<boolean> {
+  return invoke<boolean>("load_coach_model");
+}
+
+export async function coachGenerate(context: string): Promise<string> {
+  return invoke<string>("coach_generate", { context });
+}
+
+export async function isCoachLoaded(): Promise<boolean> {
+  return invoke<boolean>("is_coach_loaded");
+}
+
+// ---------------------------------------------------------------------------
+// TTS (Text-to-Speech)
+// ---------------------------------------------------------------------------
+
+export async function ttsSpeak(text: string): Promise<void> {
+  return invoke("tts_speak", { text });
+}
+
+export async function ttsSetVoice(voice: string): Promise<void> {
+  return invoke("tts_set_voice", { voice });
+}
+
+export async function ttsListVoices(): Promise<[string, string][]> {
+  return invoke<[string, string][]>("tts_list_voices");
+}
+
 export function onDownloadProgress(callback: (progress: DownloadProgress) => void) {
   return listen<DownloadProgress>("model-download-progress", (e) => callback(e.payload));
+}
+
+export function onDownloadComplete(callback: (result: { success: boolean; tier?: string; cancelled?: boolean; error?: string }) => void) {
+  return listen<{ success: boolean; tier?: string; cancelled?: boolean; error?: string }>("model-download-complete", (e) => callback(e.payload));
+}
+
+export async function startModelDownload(url: string, component: string, filename: string, tier: string): Promise<void> {
+  return invoke("start_model_download", { url, component, filename, tier });
+}
+
+export async function cancelModelDownload(): Promise<void> {
+  return invoke("cancel_model_download");
 }
 
 export function onPlaybackFinished(callback: () => void) {

@@ -1,10 +1,12 @@
 use crate::audio_input::{AudioDevice, SharedAudioInput};
+use crate::coach::SharedCoachEngine;
 use crate::engine::MetronomeEngine;
 use crate::midi::{MidiBinding, MidiDeviceInfo, MidiMsgType, SharedMidi};
 use crate::onset::SharedOnsetDetector;
 use crate::session::{SessionReport, SharedSessionAccumulator};
 use crate::state::{AppState, SharedState};
 use crate::timing::SharedTimingAnalyzer;
+use crate::tts::SharedTts;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -346,6 +348,22 @@ pub fn stop_speed_ramp(
         engine.stop();
     }
     let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
+}
+
+#[tauri::command]
+pub fn set_adaptive_decision(
+    decision: String,
+    engine_state: State<EngineState>,
+) {
+    use crate::engine::{DECISION_UP, DECISION_HOLD, DECISION_DOWN};
+    let val = match decision.as_str() {
+        "up" => DECISION_UP,
+        "hold" => DECISION_HOLD,
+        "down" => DECISION_DOWN,
+        _ => return,
+    };
+    let engine = engine_state.0.lock().unwrap();
+    engine.adaptive_model_decision().store(val, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[tauri::command]
@@ -846,6 +864,8 @@ pub fn set_audio_output_device(
 
 use crate::models;
 
+pub struct DownloadState(pub std::sync::Mutex<Option<models::DownloadCancelFlag>>);
+
 #[tauri::command]
 pub fn get_model_status(app_handle: AppHandle) -> Result<models::ModelStatus, String> {
     models::check_model_status(&app_handle)
@@ -869,4 +889,112 @@ pub fn get_models_path(app_handle: AppHandle) -> Result<String, String> {
 #[tauri::command]
 pub fn delete_models(app_handle: AppHandle) -> Result<(), String> {
     models::delete_models(&app_handle)
+}
+
+#[tauri::command]
+pub fn start_model_download(
+    app_handle: AppHandle,
+    url: String,
+    component: String,
+    filename: String,
+    tier: String,
+    dl_state: State<DownloadState>,
+) -> Result<(), String> {
+    let mut guard = dl_state.0.lock().unwrap();
+    // Cancel any existing download first
+    if let Some(old) = guard.take() {
+        old.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    *guard = Some(cancel.clone());
+    models::start_download(app_handle, url, component, filename, tier, cancel);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn cancel_model_download(dl_state: State<DownloadState>) -> Result<(), String> {
+    let mut guard = dl_state.0.lock().unwrap();
+    if let Some(cancel) = guard.take() {
+        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Coach LLM inference
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn load_coach_model(
+    app_handle: AppHandle,
+    engine: State<'_, SharedCoachEngine>,
+) -> Result<bool, String> {
+    let model_path = {
+        let dir = app_handle
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("Failed to get app data dir: {e}"))?;
+        dir.join("models").join("brain").join("model.bin")
+    };
+
+    let mut lock = engine.lock().map_err(|e| format!("Lock failed: {e}"))?;
+    crate::coach::load_model(&mut lock, &model_path)
+}
+
+#[tauri::command]
+pub fn coach_generate(
+    engine: State<'_, SharedCoachEngine>,
+    context: String,
+) -> Result<String, String> {
+    let lock = engine.lock().map_err(|e| format!("Lock failed: {e}"))?;
+    crate::coach::generate(&lock, &context)
+}
+
+#[tauri::command]
+pub fn is_coach_loaded(engine: State<'_, SharedCoachEngine>) -> bool {
+    engine.lock().map(|lock| lock.is_loaded()).unwrap_or(false)
+}
+
+// ---------------------------------------------------------------------------
+// TTS
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn tts_speak(
+    tts: State<'_, SharedTts>,
+    state: State<SharedState>,
+    text: String,
+) -> Result<(), String> {
+    // Dim metronome volume during speech (temporary, not persisted)
+    let original_volume = {
+        let mut s = state.lock().unwrap();
+        let orig = s.volume;
+        s.volume = (orig * 0.15).max(0.02);
+        orig
+    };
+
+    let result = {
+        let mut tts_engine = tts.lock().map_err(|e| format!("Lock failed: {e}"))?;
+        tts_engine.speak(&text)
+    };
+
+    // Restore original volume
+    {
+        let mut s = state.lock().unwrap();
+        s.volume = original_volume;
+    }
+
+    result
+}
+
+#[tauri::command]
+pub fn tts_set_voice(tts: State<'_, SharedTts>, voice: String) {
+    if let Ok(mut engine) = tts.lock() {
+        engine.set_voice(&voice);
+    }
+}
+
+#[tauri::command]
+pub fn tts_list_voices(tts: State<'_, SharedTts>) -> Vec<(String, String)> {
+    tts.lock().map(|e| e.list_available_voices()).unwrap_or_default()
 }

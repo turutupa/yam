@@ -58,6 +58,9 @@ pub struct SessionReport {
     pub comment: String,
     /// Specific insights about the session (early/late tendency, consistency, etc.)
     pub insights: Vec<String>,
+    /// Mean grid correlation (0.0–1.0). High = structured exercise, low = free playing.
+    #[serde(rename = "gridCorrelation")]
+    pub grid_correlation: f64,
 }
 
 /// Accumulates BeatFeedback events during a playing session.
@@ -95,6 +98,7 @@ impl SessionAccumulator {
         let mut deviations: Vec<f64> = Vec::new();
         let mut interval_errors: Vec<f64> = Vec::new();
         let mut amplitudes: Vec<f64> = Vec::new();
+        let mut grid_correlations: Vec<f64> = Vec::new();
 
         // Track longest streak
         let mut longest_streak = 0u32;
@@ -135,6 +139,9 @@ impl SessionAccumulator {
             }
             if fb.classification != "miss" && fb.classification != "skipped" && fb.interval_error_ms != 0.0 {
                 interval_errors.push(fb.interval_error_ms.abs());
+            }
+            if fb.grid_correlation > 0.0 {
+                grid_correlations.push(fb.grid_correlation);
             }
         }
         if current_streak > longest_streak {
@@ -273,6 +280,7 @@ impl SessionAccumulator {
             longest_streak,
             comment,
             insights,
+            grid_correlation: if grid_correlations.is_empty() { 0.0 } else { grid_correlations.iter().sum::<f64>() / grid_correlations.len() as f64 },
         }
     }
 }
@@ -292,6 +300,10 @@ pub struct SavedSession {
     #[serde(rename = "timeSignature")]
     pub time_signature: u8,
     pub report: SessionReport,
+    #[serde(rename = "presetId", default, skip_serializing_if = "Option::is_none")]
+    pub preset_id: Option<String>,
+    #[serde(rename = "presetName", default, skip_serializing_if = "Option::is_none")]
+    pub preset_name: Option<String>,
 }
 
 pub const MAX_SESSION_HISTORY: usize = 30;

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { ScoreRing, ScoreBadge, MiniSparkline, BreakdownBar, Histogram } from "./evaluation";
 import { FEEDBACK_COLORS } from "../hooks/useEvaluation";
 import { getSessionHistory, deleteSession, clearAllSessions } from "../ipc";
-import type { FeedMessage, SessionReport, SavedSession } from "../types";
+import type { FeedMessage, SessionReport, SavedSession, SessionSegment, AudioSpectrum } from "../types";
 import "../styles/coach-card.css";
+import "../styles/evaluation-panel.css";
 
 interface CoachCardProps {
   open: boolean;
@@ -12,12 +13,16 @@ interface CoachCardProps {
   onToggle: () => void;
   onStartSession: () => void;
   onEndSession: () => void;
+  onSendChat?: (message: string) => void;
+  listening?: boolean;
+  hasSignal?: boolean;
+  spectrum?: AudioSpectrum | null;
 }
 
 type CardTab = "feed" | "history";
 type HistoryView = "list" | "detail";
 
-export default function CoachCard({ open, active, messages, onToggle, onStartSession, onEndSession }: CoachCardProps) {
+export default function CoachCard({ open, active, messages, onToggle, onStartSession, onEndSession, onSendChat, listening, hasSignal, spectrum }: CoachCardProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [chatInput, setChatInput] = useState("");
   const [tab, setTab] = useState<CardTab>("feed");
@@ -99,6 +104,7 @@ export default function CoachCard({ open, active, messages, onToggle, onStartSes
         onClick={onToggle}
         title="Practice Coach"
       >
+        {listening && <span className={`coach-status-dot ${hasSignal ? "signal" : "listening"}`} />}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2z" />
           <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z" />
@@ -120,7 +126,20 @@ export default function CoachCard({ open, active, messages, onToggle, onStartSes
               {" "}Back
             </button>
           ) : (
-            <span className="coach-card-title">Practice Coach</span>
+            <span className="coach-card-title">
+              <span className={`coach-status-dot ${listening ? (hasSignal ? "signal" : "listening") : ""}`} />
+              Practice Coach
+              {active && listening && spectrum && (
+                <span className={`coach-title-spectrum ${hasSignal ? "has-signal" : ""}`}>
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const bands = spectrum.bands ?? [];
+                    const step = Math.max(1, Math.floor(bands.length / 5));
+                    const level = i * step < bands.length ? bands[i * step] : 0;
+                    return <span key={i} className="coach-title-spectrum-bar" style={{ height: `${Math.max(2, level * 100)}%` }} />;
+                  })}
+                </span>
+              )}
+            </span>
           )}
           <div className="coach-card-header-actions">
             {active && tab === "feed" && (
@@ -190,25 +209,26 @@ export default function CoachCard({ open, active, messages, onToggle, onStartSes
               </div>
             )}
 
-            {/* Chat input — placeholder until model integration */}
+            {/* Chat input */}
             <div className="coach-card-chat">
               <input
                 className="coach-card-chat-input"
                 type="text"
-                placeholder={active ? "Ask the coach..." : "Start a session to chat"}
+                placeholder="Ask the coach..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                disabled={!active}
                 onKeyDown={(e) => {
+                  e.stopPropagation();
                   if (e.key === "Enter" && chatInput.trim()) {
+                    onSendChat?.(chatInput.trim());
                     setChatInput("");
                   }
                 }}
               />
               <button
                 className="coach-card-chat-send"
-                disabled={!active || !chatInput.trim()}
-                onClick={() => { setChatInput(""); }}
+                disabled={!chatInput.trim()}
+                onClick={() => { onSendChat?.(chatInput.trim()); setChatInput(""); }}
                 title="Send"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -257,8 +277,22 @@ function FeedMessageItem({ message }: { message: FeedMessage }) {
   switch (message.type) {
     case "session-start":
     case "system":
+    case "coach-tip":
+    case "coach-chat":
       return (
-        <div className="coach-feed-msg coach-feed-msg-system">
+        <div className={`coach-feed-msg ${
+          message.type === "coach-tip" ? "coach-feed-msg-tip" :
+          message.type === "coach-chat" ? "coach-feed-msg-coach" :
+          "coach-feed-msg-system"
+        }`}>
+          <span>{message.content}</span>
+          <div className="coach-feed-msg-time">{formatTime(message.timestamp)}</div>
+        </div>
+      );
+
+    case "user-chat":
+      return (
+        <div className="coach-feed-msg coach-feed-msg-user">
           <span>{message.content}</span>
           <div className="coach-feed-msg-time">{formatTime(message.timestamp)}</div>
         </div>
@@ -286,10 +320,14 @@ function FeedMessageItem({ message }: { message: FeedMessage }) {
       return (
         <div className="coach-feed-msg coach-feed-msg-session-end">
           <div className="coach-end-report-title">Session Complete</div>
+          {message.content && <div className="coach-end-report-comment">{message.content}</div>}
           {message.report ? (
             <EndReportSummary report={message.report} />
           ) : (
             <span className="coach-mini-report-text">{message.content}</span>
+          )}
+          {message.segments && message.segments.length > 1 && (
+            <SegmentTimeline segments={message.segments} sessionStart={message.segments[0].startTime ?? message.timestamp} />
           )}
           <div className="coach-feed-msg-time">{formatTime(message.timestamp)}</div>
         </div>
@@ -334,6 +372,53 @@ function EndReportSummary({ report }: { report: SessionReport }) {
       </div>
     </>
   );
+}
+
+// ─── Segment Timeline ──────────────────────────────────────────────────────
+
+function SegmentTimeline({ segments, sessionStart }: { segments: SessionSegment[]; sessionStart: number }) {
+  return (
+    <div className="coach-segment-timeline">
+      <div className="coach-segment-timeline-title">Timeline</div>
+      {segments.map((seg, i) => {
+        const start = seg.startTime ?? sessionStart;
+        const end = seg.endTime ?? start;
+        const offsetSec = Math.round((start - sessionStart) / 1000);
+        const durationSec = Math.round((end - start) / 1000);
+        const accuracy = seg.report.totalBeats > 0
+          ? Math.round((seg.report.hitsCount / seg.report.totalBeats) * 100) : 0;
+        const style = seg.report.gridCorrelation > 0.8 ? "Grid exercise"
+          : seg.report.gridCorrelation > 0.3 ? "Semi-structured"
+          : "Free playing";
+        const pocket = seg.report.meanDeviationMs < -5 ? "rushing"
+          : seg.report.meanDeviationMs > 5 ? "dragging" : "on beat";
+
+        return (
+          <div key={i} className="coach-segment-row">
+            <div className="coach-segment-time">
+              {formatDuration(offsetSec)}–{formatDuration(offsetSec + durationSec)}
+            </div>
+            <div className="coach-segment-info">
+              <span className="coach-segment-style">{style}</span>
+              <span className="coach-segment-sep">&middot;</span>
+              <span>{seg.bpm} BPM</span>
+              <span className="coach-segment-sep">&middot;</span>
+              <span>{accuracy}%</span>
+              <span className="coach-segment-sep">&middot;</span>
+              <span>{pocket}</span>
+            </div>
+            <ScoreBadge score={seg.report.score} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatDuration(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 // ─── History List ───────────────────────────────────────────────────────────
@@ -387,6 +472,9 @@ function HistoryList({
                 <span className="coach-history-sep">&middot;</span>
                 <span className="coach-history-bpm">{session.bpm} BPM</span>
               </div>
+              {session.presetName && (
+                <div className="coach-history-preset">{session.presetName}</div>
+              )}
               {session.report.comment && (
                 <div className="coach-history-comment">{session.report.comment}</div>
               )}
@@ -420,6 +508,7 @@ function SessionDetail({
       <div className="coach-detail-ring">
         <ScoreRing score={report.score} size={80} strokeWidth={5} />
         <div className="coach-detail-meta">
+          {session.presetName && <>{session.presetName} &middot; </>}
           {session.bpm} BPM &middot; {formatDate(session.timestamp)}
         </div>
         {report.comment && (

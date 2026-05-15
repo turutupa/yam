@@ -162,6 +162,7 @@ export type SessionReport = {
   longestStreak: number;
   comment: string;
   insights: string[];
+  gridCorrelation: number;
 };
 
 export type SavedSession = {
@@ -170,9 +171,19 @@ export type SavedSession = {
   bpm: number;
   timeSignature: number;
   report: SessionReport;
+  presetId?: string;
+  presetName?: string;
 };
 
-export type FeedMessageType = "session-start" | "mini-report" | "session-end" | "system";
+export type FeedMessageType = "session-start" | "mini-report" | "session-end" | "system" | "coach-tip" | "user-chat" | "coach-chat";
+
+export type SessionSegment = {
+  report: SessionReport;
+  bpm: number;
+  timeSignature: number;
+  startTime?: number;
+  endTime?: number;
+};
 
 export type FeedMessage = {
   id: string;
@@ -181,4 +192,6 @@ export type FeedMessage = {
   content: string;
   report?: SessionReport;
   meta?: { bpm: number; timeSignature: number };
+  segments?: SessionSegment[];
+  urgency?: "urgent" | "normal";
 };

@@ -1,5 +1,6 @@
 mod audio_input;
 mod clock;
+mod coach;
 mod commands;
 mod engine;
 mod midi;
@@ -8,13 +9,16 @@ mod onset;
 mod session;
 mod state;
 mod timing;
+mod tts;
 
 use audio_input::create_shared_audio_input;
+use coach::create_shared_engine;
+use tts::create_shared_tts;
 use commands::{
     get_state, get_active_tab, get_calibration_offset, open_url, save_window_position, set_active_tab, set_always_on_top, set_bpm, set_calibration_offset,
     set_playing, set_sound_type, set_subdivision, set_theme, set_time_signature, set_volume, set_widget_mode,
     set_widget_always_on_top, show_floating, show_main, toggle_playback, configure_speed_ramp, start_speed_ramp,
-    start_speed_ramp_from, stop_speed_ramp,
+    start_speed_ramp_from, stop_speed_ramp, set_adaptive_decision,
     list_midi_devices, connect_midi_device, disconnect_midi_device, set_midi_binding, clear_midi_binding, get_midi_bindings,
     list_presets, save_preset, delete_preset, reorder_presets,
     list_audio_input_devices, start_evaluation, stop_evaluation, get_evaluation_state,
@@ -24,7 +28,10 @@ use commands::{
     set_input_gain,
     list_audio_output_devices, set_audio_output_device,
     get_model_status, write_model_chunk, get_models_path, delete_models,
-    EngineState,
+    start_model_download, cancel_model_download,
+    load_coach_model, coach_generate, is_coach_loaded,
+    tts_speak, tts_set_voice, tts_list_voices,
+    EngineState, DownloadState,
 };
 use onset::create_shared_onset_detector;
 use engine::MetronomeEngine;
@@ -135,6 +142,14 @@ pub fn run() {
             app.manage(create_shared_onset_detector());
             app.manage(Arc::new(Mutex::new(TimingAnalyzer::new(beat_log))));
             app.manage(create_shared_session_accumulator());
+            app.manage(create_shared_engine());
+            let shared_tts = create_shared_tts();
+            {
+                let models_dir = app.path().app_data_dir().unwrap().join("models");
+                shared_tts.lock().unwrap().set_models_dir(models_dir);
+            }
+            app.manage(shared_tts);
+            app.manage(DownloadState(std::sync::Mutex::new(None)));
 
             // Set up MIDI listener
             let shared_midi = create_shared_midi();
@@ -265,6 +280,7 @@ pub fn run() {
             start_speed_ramp,
             start_speed_ramp_from,
             stop_speed_ramp,
+            set_adaptive_decision,
             set_active_tab,
             get_active_tab,
             set_calibration_offset,
@@ -303,6 +319,14 @@ pub fn run() {
             write_model_chunk,
             get_models_path,
             delete_models,
+            start_model_download,
+            cancel_model_download,
+            load_coach_model,
+            coach_generate,
+            is_coach_loaded,
+            tts_speak,
+            tts_set_voice,
+            tts_list_voices,
         ])
         .on_window_event(|window, event| {
             match event {

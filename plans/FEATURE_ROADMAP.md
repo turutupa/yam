@@ -6,38 +6,42 @@
 
 ---
 
-## 1. Playing Evaluation / Rhythm Accuracy Feedback `[PLAN]`
-Record mic input, score timing against the beat. The killer feature that turns Yames from a tool into a coach. Nothing else in the desktop metronome space does this well.
+## Shipped
 
-**Plans:** `PLAYING_EVALUATION_PLAN.md`, `AI_EVALUATION_BACKLOG.md`
+- ~~Playing Evaluation / Rhythm Accuracy Feedback~~ → `PLAYING_EVALUATION_PLAN.md` (Phases 1-7 done)
+- ~~Practice Coach (session lifecycle, card UI, template + LLM coaching, TTS, chat)~~ → `PRACTICE_COACH_UX_PLAN.md`
+- ~~Setlist / Preset Manager~~ → Presets with save/load/reorder, session history per preset
+- ~~Sound Customization~~ → Click, wood, beep, drum
+- ~~Speed Trainer / Adaptive Drill~~ → Linear, zigzag, adaptive modes with model-driven tempo
 
-## 2. Practice Session History & Stats
-Track BPM, duration, accuracy over time. Graphs showing progress. The #1 reason musicians would open Yames daily instead of occasionally.
+---
 
-## 3. Setlist / Preset Manager
-Save named presets (BPM, time signature, subdivision, theme) and chain them into setlists. Essential for gigging musicians and structured practice.
+## Active
 
-## 4. Odd Time Signatures & Polyrhythms
-5/4, 7/8, 3 against 4, etc. Table stakes for serious musicians and a common reason people look beyond basic metronomes.
+### 1. DSP Accuracy & Coach Intelligence `[PLAN]`
+Polish the DSP scoring pipeline (diagnostic logging, formula overhaul, onset detection improvements) and make the coach contextually smart (history-aware greetings, preset awareness, recurring issue detection).
 
-## 5. Accent Patterns / Custom Beat Emphasis `[PLAN]`
+**Plan:** `DSP_AND_COACH_INTELLIGENCE_PLAN.md`
+
+---
+
+## Backlog
+
+### 2. Accent Patterns / Custom Beat Emphasis `[PLAN]`
 Configure which beats get accented (e.g., strong on 1 and 3, ghost on the "and"s). Critical for genre-specific practice.
 
 **Plan:** `ACCENT_PATTERN_PLAN.md`
 
-## 6. Sound Customization
-Choose click sounds (wood block, rimshot, hi-hat, cowbell, silent flash). Everyone has a preferred click sound.
+### 3. Odd Time Signatures & Polyrhythms
+5/4, 7/8, 3 against 4, etc. Table stakes for serious musicians and a common reason people look beyond basic metronomes.
 
-## 7. Speed Trainer with Auto-Detection
-Like drill mode but smarter: auto-advance BPM only when you're playing accurately (ties into #1). This is what serious practice apps charge for.
-
-## 8. Import / Sync with Sheet Music or Setlist Apps
-Read BPM/time sig from a file, integrate with apps like OnSong or forScore. Bridges the gap between practice and performance.
-
-## 9. Subdivisions with Swing / Shuffle Feel
+### 4. Subdivisions with Swing / Shuffle Feel
 Adjustable swing percentage (50% straight to 67% triplet swing). Jazz, blues, funk players need this constantly.
 
-## 10. Multi-Device Sync
+### 5. Import / Sync with Sheet Music or Setlist Apps
+Read BPM/time sig from a file, integrate with apps like OnSong or forScore. Bridges the gap between practice and performance.
+
+### 6. Multi-Device Sync
 Two musicians in a room, both running Yames, locked to the same tempo. Also useful for online jam sessions.
 
 ---

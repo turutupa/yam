@@ -3,6 +3,7 @@ mod clock;
 mod commands;
 mod engine;
 mod midi;
+mod models;
 mod onset;
 mod session;
 mod state;
@@ -22,6 +23,7 @@ use commands::{
     start_recording, stop_recording, start_playback, stop_playback, discard_recording, get_waveform,
     set_input_gain,
     list_audio_output_devices, set_audio_output_device,
+    get_model_status, write_model_chunk, get_models_path, delete_models,
     EngineState,
 };
 use onset::create_shared_onset_detector;
@@ -297,6 +299,10 @@ pub fn run() {
             set_input_gain,
             list_audio_output_devices,
             set_audio_output_device,
+            get_model_status,
+            write_model_chunk,
+            get_models_path,
+            delete_models,
         ])
         .on_window_event(|window, event| {
             match event {

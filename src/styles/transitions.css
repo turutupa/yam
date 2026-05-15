@@ -22,146 +22,23 @@
   overflow-x: hidden;
 }
 
-/* Scrollable views — hide scrollbar by default */
+/* Scrollable views — hide scrollbar */
+.view-transition-wrapper {
+  scrollbar-width: none;
+}
 .view-transition-wrapper::-webkit-scrollbar {
+  display: none;
   width: 0;
+  height: 0;
 }
 
 .main-content[data-view="settings"] .view-transition-wrapper {
   -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent);
   mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent);
+  scrollbar-width: none;
 }
 .main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar {
-  width: 8px;
-}
-
-.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar-thumb {
-  background: var(--accent);
-  border-radius: 4px;
-}
-
-.main-content[data-view="settings"] .view-transition-wrapper::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
-  filter: brightness(1.2);
-}
-
-/* ─── Per-theme scrollbar overrides (settings only) ──────────────────────── */
-
-/* Mono — minimal, sharp, muted */
-.main-content[data-view="settings"] [data-theme-transition="mono"]::-webkit-scrollbar { width: 6px; }
-.main-content[data-view="settings"] [data-theme-transition="mono"]::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 1px;
-}
-.main-content[data-view="settings"] [data-theme-transition="mono"]::-webkit-scrollbar-thumb:hover {
-  background: #777;
-}
-
-/* Obsidian — solid amber */
-.main-content[data-view="settings"] [data-theme-transition="obsidian"]::-webkit-scrollbar { width: 7px; }
-.main-content[data-view="settings"] [data-theme-transition="obsidian"]::-webkit-scrollbar-thumb {
-  background: #b87a08;
-  border-radius: 4px;
-}
-.main-content[data-view="settings"] [data-theme-transition="obsidian"]::-webkit-scrollbar-thumb:hover {
-  background: #d4940a;
-}
-
-/* Velvet — solid purple */
-.main-content[data-view="settings"] [data-theme-transition="velvet"]::-webkit-scrollbar { width: 8px; }
-.main-content[data-view="settings"] [data-theme-transition="velvet"]::-webkit-scrollbar-thumb {
-  background: #7c3aed;
-  border-radius: 4px;
-}
-.main-content[data-view="settings"] [data-theme-transition="velvet"]::-webkit-scrollbar-thumb:hover {
-  background: #9461f7;
-}
-
-/* Neon — solid cyan with glow */
-.main-content[data-view="settings"] [data-theme-transition="neon"]::-webkit-scrollbar { width: 6px; }
-.main-content[data-view="settings"] [data-theme-transition="neon"]::-webkit-scrollbar-thumb {
-  background: #06b6d4;
-  border-radius: 3px;
-  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
-}
-.main-content[data-view="settings"] [data-theme-transition="neon"]::-webkit-scrollbar-thumb:hover {
-  background: #22d3ee;
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
-}
-
-/* Aurora — wide glassy (keep translucent) */
-.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar { width: 18px; }
-.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-}
-.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-}
-.main-content[data-view="settings"] [data-theme-transition="aurora"]::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
-}
-
-/* Ivory — solid warm brown */
-.main-content[data-view="settings"] [data-theme-transition="ivory"]::-webkit-scrollbar { width: 7px; }
-.main-content[data-view="settings"] [data-theme-transition="ivory"]::-webkit-scrollbar-thumb {
-  background: #a0784a;
-  border-radius: 4px;
-}
-.main-content[data-view="settings"] [data-theme-transition="ivory"]::-webkit-scrollbar-thumb:hover {
-  background: #b8925e;
-}
-
-/* Arctic — solid ice blue */
-.main-content[data-view="settings"] [data-theme-transition="arctic"]::-webkit-scrollbar { width: 8px; }
-.main-content[data-view="settings"] [data-theme-transition="arctic"]::-webkit-scrollbar-thumb {
-  background: #0284c7;
-  border-radius: 4px;
-}
-.main-content[data-view="settings"] [data-theme-transition="arctic"]::-webkit-scrollbar-thumb:hover {
-  background: #0ea5e9;
-}
-
-/* Sand — solid earth tone */
-.main-content[data-view="settings"] [data-theme-transition="sand"]::-webkit-scrollbar { width: 7px; }
-.main-content[data-view="settings"] [data-theme-transition="sand"]::-webkit-scrollbar-thumb {
-  background: #92400e;
-  border-radius: 4px;
-}
-.main-content[data-view="settings"] [data-theme-transition="sand"]::-webkit-scrollbar-thumb:hover {
-  background: #b45309;
-}
-
-/* Lavender — solid purple */
-.main-content[data-view="settings"] [data-theme-transition="lavender"]::-webkit-scrollbar { width: 9px; }
-.main-content[data-view="settings"] [data-theme-transition="lavender"]::-webkit-scrollbar-thumb {
-  background: #7c3aed;
-  border-radius: 5px;
-}
-.main-content[data-view="settings"] [data-theme-transition="lavender"]::-webkit-scrollbar-thumb:hover {
-  background: #8b5cf6;
-}
-
-/* Prism — wide, glassy rainbow (keep translucent) */
-.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar { width: 18px; }
-.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
-}
-.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(236, 72, 153, 0.4), rgba(167, 139, 250, 0.4), rgba(59, 130, 246, 0.4));
-  border-radius: 6px;
-  border: 1px solid rgba(236, 72, 153, 0.2);
-}
-.main-content[data-view="settings"] [data-theme-transition="prism"]::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(236, 72, 153, 0.6), rgba(167, 139, 250, 0.6), rgba(59, 130, 246, 0.6));
+  display: none;
 }
 
 /* ─── Staggered view enter animations ─────────────────────────────────────── */
@@ -173,7 +50,10 @@
   animation: none !important;
 }
 
-/* Settings page — no animations, render immediately */
+/* Settings page — animate the whole wrapper as one unit, no staggered children */
+.main-content[data-view="settings"] .view-transition-wrapper.settings-entering {
+  animation: var(--view-enter-animation, fade-in) 200ms var(--view-enter-easing, ease-out) both;
+}
 .main-content[data-view="settings"] .view-transition-wrapper.view-entering > * {
   animation: none !important;
 }

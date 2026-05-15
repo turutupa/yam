@@ -9,8 +9,9 @@ export type SpeedRamp = {
   decrement: number;
   barsPerStep: number;
   beatsPerBar: number;
-  mode: "linear" | "zigzag";
+  mode: "linear" | "zigzag" | "adaptive";
   cyclic: boolean;
+  aggressiveness: "conservative" | "moderate" | "aggressive";
   active: boolean;
   currentStep: number;
   currentBpm: number;
@@ -93,6 +94,7 @@ export type Preset = {
     mode: string;
     cyclic: boolean;
     warmupBeats: number;
+    aggressiveness?: string;
   };
 };
 
@@ -135,6 +137,8 @@ export type BeatFeedback = {
   calibrationOffsetMs: number;
   /** Confidence in calibration (0.0–1.0) */
   calibrationConfidence: number;
+  /** Grid correlation score (0.0–1.0). High = structured exercise, low = free playing */
+  gridCorrelation: number;
 };
 
 export type SessionReport = {
@@ -166,4 +170,15 @@ export type SavedSession = {
   bpm: number;
   timeSignature: number;
   report: SessionReport;
+};
+
+export type FeedMessageType = "session-start" | "mini-report" | "session-end" | "system";
+
+export type FeedMessage = {
+  id: string;
+  type: FeedMessageType;
+  timestamp: number;
+  content: string;
+  report?: SessionReport;
+  meta?: { bpm: number; timeSignature: number };
 };

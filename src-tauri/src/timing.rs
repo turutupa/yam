@@ -45,6 +45,11 @@ pub struct BeatFeedback {
     /// Confidence in calibration (0.0–1.0)
     #[serde(rename = "calibrationConfidence")]
     pub calibration_confidence: f64,
+    /// Grid correlation score (0.0–1.0). Measures what fraction of recent
+    /// onsets land near subdivision grid points.  High (>0.8) = structured
+    /// exercise; low (<0.3) = free/improvisational playing.
+    #[serde(rename = "gridCorrelation")]
+    pub grid_correlation: f64,
 }
 
 /// Shared beat log — engine writes, timing analyzer reads.
@@ -138,6 +143,13 @@ impl TimingAnalyzer {
         // Accumulate unmatched onsets between beat processing rounds
         let mut pending_onsets: Vec<Onset> = Vec::with_capacity(32);
 
+        // ─── Grid correlation ──────────────────────────────────────
+        // Track recent onset timestamps to measure alignment with the
+        // subdivision grid.  We keep the last 64 onsets and compare each
+        // against the nearest grid point (quarter, eighth, sixteenth, triplet).
+        let mut grid_onset_times: VecDeque<u64> = VecDeque::with_capacity(64);
+        let mut grid_correlation: f64 = 0.0;
+
         // ─── Activity state machine ─────────────────────────────────
         // Prevents unfair misses when user isn't playing yet or is resting
         #[derive(PartialEq)]
@@ -155,7 +167,14 @@ impl TimingAnalyzer {
             // Drain new onsets into pending buffer
             {
                 let mut log = onset_log.lock().unwrap();
-                pending_onsets.extend(log.drain(..));
+                for onset in log.drain(..) {
+                    // Record for grid correlation
+                    grid_onset_times.push_back(onset.ts_ns);
+                    while grid_onset_times.len() > 64 {
+                        grid_onset_times.pop_front();
+                    }
+                    pending_onsets.push(onset);
+                }
             }
 
             // Drain new beats
@@ -189,6 +208,7 @@ impl TimingAnalyzer {
                         amplitude: 0.0,
                         calibration_offset_ms,
                         calibration_confidence: 0.0,
+                        grid_correlation,
                     });
                     continue;
                 }
@@ -276,6 +296,7 @@ impl TimingAnalyzer {
                         amplitude: onset.amplitude,
                         calibration_offset_ms,
                         calibration_confidence: confidence,
+                        grid_correlation,
                     });
                 } else {
                     // No onset matched — apply activity state machine
@@ -327,7 +348,24 @@ impl TimingAnalyzer {
                         amplitude: 0.0,
                         calibration_offset_ms,
                         calibration_confidence: confidence,
+                        grid_correlation,
                     });
+                }
+            }
+
+            // ─── Update grid correlation ────────────────────────────
+            // Use the most recent beat's interval to define the grid.
+            // Check each recent onset against the subdivision grid
+            // (1, 2, 3, 4, 6 subdivisions of the beat interval).
+            if let Some(latest_beat) = beats.last() {
+                let interval_ns = (latest_beat.expected_interval_ms * 1_000_000.0) as u64;
+                if interval_ns > 0 && grid_onset_times.len() >= 4 {
+                    grid_correlation = compute_grid_correlation(
+                        &grid_onset_times,
+                        latest_beat.ts_ns,
+                        interval_ns,
+                        calibration_offset_ms,
+                    );
                 }
             }
 
@@ -359,6 +397,72 @@ fn running_median(values: &VecDeque<f64>) -> f64 {
     } else {
         sorted[mid]
     }
+}
+
+/// Compute grid correlation: what fraction of recent onsets land near
+/// subdivision grid points (quarter, eighth, triplet, sixteenth).
+///
+/// Returns 0.0–1.0.  High values mean the player is following the grid
+/// closely (exercise/drill); low values mean free/improvised playing.
+fn compute_grid_correlation(
+    onset_times: &VecDeque<u64>,
+    reference_beat_ns: u64,
+    beat_interval_ns: u64,
+    calibration_offset_ms: f64,
+) -> f64 {
+    if onset_times.len() < 4 || beat_interval_ns == 0 {
+        return 0.0;
+    }
+
+    let cal_ns = (calibration_offset_ms * 1_000_000.0) as i64;
+
+    // Subdivision divisors: 1 (quarter), 2 (eighth), 3 (triplet), 4 (16th), 6 (sextuplet)
+    let divisors: &[u64] = &[1, 2, 3, 4, 6];
+
+    // Tolerance: 15% of the smallest subdivision grid interval (sixteenth)
+    let smallest_grid = beat_interval_ns / 6;
+    let tolerance_ns = smallest_grid * 15 / 100; // 15%
+    let tolerance_ns = tolerance_ns.max(5_000_000); // at least 5ms
+
+    let mut on_grid_count: usize = 0;
+
+    for &onset_ns in onset_times.iter() {
+        // Apply calibration offset
+        let adjusted_ns = onset_ns as i64 - cal_ns;
+        // Distance from reference beat
+        let diff = adjusted_ns - reference_beat_ns as i64;
+        // We only care about the phase, not the absolute position
+        let interval = beat_interval_ns as i64;
+
+        // Find the phase within one beat interval (always positive via modulo)
+        let phase = ((diff % interval) + interval) % interval;
+
+        // Check if phase is near any subdivision grid point
+        let mut best_distance = i64::MAX;
+        for &d in divisors {
+            let grid_step = interval / d as i64;
+            if grid_step == 0 {
+                continue;
+            }
+            // Nearest grid point for this subdivision
+            let grid_phase = ((phase + grid_step / 2) / grid_step) * grid_step;
+            let dist = (phase - grid_phase).abs();
+            // Also check wrapping around beat boundary
+            let dist_wrap = (phase - (grid_phase - interval)).abs().min(
+                (phase - (grid_phase + interval)).abs(),
+            );
+            let min_dist = dist.min(dist_wrap);
+            if min_dist < best_distance {
+                best_distance = min_dist;
+            }
+        }
+
+        if best_distance <= tolerance_ns as i64 {
+            on_grid_count += 1;
+        }
+    }
+
+    on_grid_count as f64 / onset_times.len() as f64
 }
 
 pub type SharedTimingAnalyzer = Arc<Mutex<TimingAnalyzer>>;

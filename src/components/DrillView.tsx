@@ -10,8 +10,9 @@ const DRILL_DESCRIPTIONS: Record<string, string> = {
   decrement: "BPM subtracted each down-step (zigzag only). Smaller than increment to crawl forward.",
   beats: "Clicks per cell. Beat 1 is always accented so you can hear the pattern.",
   repeat: "How many cells per column — the number of times you repeat at each tempo before moving on.",
-  mode: "Linear goes straight up. Zigzag alternates: +increment, −decrement, netting forward.",
+  mode: "Linear goes straight up. Zigzag alternates. Adaptive adjusts based on your accuracy.",
   cyclic: "Goes up to target then back down to start in the same increments (round-trip).",
+  aggressiveness: "How quickly the tempo changes. Conservative waits longer, Aggressive pushes faster.",
 };
 
 interface DrillViewProps {
@@ -34,6 +35,8 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
   const [beatsPerBar, setBeatsPerBar] = useState(ramp.beatsPerBar);
   const [mode, setMode] = useState(ramp.mode);
   const [cyclic, setCyclic] = useState(ramp.cyclic);
+  const [aggressiveness, setAggressiveness] = useState(ramp.aggressiveness || "moderate");
+  const [noCeiling, setNoCeiling] = useState(ramp.mode === "adaptive" && ramp.targetBpm >= 300);
   const [countIn, setCountIn] = useState(ramp.warmupBeats > 0);
 
   // Ghost elements for smooth exit animations
@@ -90,6 +93,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
       mode: overrides.mode ?? mode,
       cyclic: overrides.cyclic ?? cyclic,
       warmupBeats: overrides.warmupBeats ?? (countIn ? 4 : 0),
+      aggressiveness: aggressiveness,
     });
   };
 
@@ -101,6 +105,14 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
     let bpm = startBpm;
     let dir: "up" | "down" = "up";
     steps.push(bpm);
+    if (mode === "adaptive") {
+      // Adaptive: show projected linear path (actual path determined by accuracy)
+      while (bpm < targetBpm && steps.length < 200) {
+        bpm = Math.min(bpm + increment, targetBpm);
+        steps.push(bpm);
+        if (bpm >= targetBpm) break;
+      }
+    } else {
     for (let i = 0; i < 200; i++) {
       if (mode === "zigzag") {
         // Zigzag: alternate +increment / -decrement each step
@@ -127,6 +139,7 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
         }
       }
       steps.push(bpm);
+    }
     }
   }
 
@@ -316,6 +329,11 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
           </div>
           <div className="drill-row view-stagger-item" style={{ animationDelay: '100ms' }} onMouseEnter={() => setHighlightMode("targetBpm")} onMouseLeave={() => setHighlightMode(null)}>
             <label className="drill-label-tip">Target BPM<span className="drill-tip">{DRILL_DESCRIPTIONS.targetBpm}</span></label>
+            {mode === "adaptive" && noCeiling ? (
+              <button className="toggle-btn active" onClick={() => { setNoCeiling(false); const v = Math.max(startBpm + 20, 140); setTargetBpm(v); saveWith({ targetBpm: v }); }}>
+                No ceiling
+              </button>
+            ) : (
             <div className="drill-stepper">
               <button className="stepper-btn" onClick={() => { const v = Math.max(startBpm, targetBpm - 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>−</button>
               <input
@@ -327,7 +345,13 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
                 onBlur={() => { const clamped = Math.max(startBpm, Math.min(300, targetBpm)); setTargetBpm(clamped); saveWith({ targetBpm: clamped }); }}
               />
               <button className="stepper-btn" onClick={() => { const v = Math.min(300, targetBpm + 5); setTargetBpm(v); saveWith({ targetBpm: v }); }}>+</button>
+              {mode === "adaptive" && (
+                <button className="toggle-btn" style={{ marginLeft: 6, fontSize: 10, padding: '2px 6px' }} onClick={() => { setNoCeiling(true); setTargetBpm(300); saveWith({ targetBpm: 300 }); }} title="No upper limit — keep going until you can't">
+                  ∞
+                </button>
+              )}
             </div>
+            )}
           </div>
           <div className="drill-row view-stagger-item" style={{ animationDelay: '130ms' }}>
             <label className="drill-label-tip">Speed Up<span className="drill-tip">{DRILL_DESCRIPTIONS.increment}</span></label>
@@ -400,8 +424,27 @@ export function DrillView({ state, currentBeat, autoCollapse = true, animations 
               <button className={`toggle-btn ${mode === "zigzag" ? "active" : ""}`} onClick={() => { setMode("zigzag"); saveWith({ mode: "zigzag" }); }}>
                 Zigzag
               </button>
+              <button className={`toggle-btn ${mode === "adaptive" ? "active" : ""}`} onClick={() => { setMode("adaptive"); saveWith({ mode: "adaptive" }); }}>
+                Adaptive
+              </button>
             </div>
           </div>
+          {mode === "adaptive" && (
+          <div className="drill-row view-stagger-item" style={{ animationDelay: '265ms' }}>
+            <label className="drill-label-tip">Push<span className="drill-tip">{DRILL_DESCRIPTIONS.aggressiveness}</span></label>
+            <div className="toggle-group">
+              <button className={`toggle-btn ${aggressiveness === "conservative" ? "active" : ""}`} onClick={() => { setAggressiveness("conservative"); saveWith({ mode: "adaptive" }); }}>
+                Gentle
+              </button>
+              <button className={`toggle-btn ${aggressiveness === "moderate" ? "active" : ""}`} onClick={() => { setAggressiveness("moderate"); saveWith({ mode: "adaptive" }); }}>
+                Moderate
+              </button>
+              <button className={`toggle-btn ${aggressiveness === "aggressive" ? "active" : ""}`} onClick={() => { setAggressiveness("aggressive"); saveWith({ mode: "adaptive" }); }}>
+                Push
+              </button>
+            </div>
+          </div>
+          )}
           <div className="drill-row view-stagger-item" style={{ animationDelay: '280ms' }}>
             <label className="drill-label-tip">Cyclic<span className="drill-tip">{DRILL_DESCRIPTIONS.cyclic}</span></label>
             <button

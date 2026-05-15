@@ -37,9 +37,14 @@ import {
   listAudioOutputDevices,
   setAudioOutputDevice,
   onAudioDevicesChanged,
-  getSessionReport,
-  saveSession,
+  getModelStatus,
+  downloadModelFile,
+  writeModelChunk,
+  deleteModels,
 } from "../ipc";
+import type { ModelStatus, DownloadProgress } from "../ipc";
+import CoachCard from "./CoachCard";
+import type { FeedMessage } from "../types";
 import "../styles/main-window.css";
 import "../styles/transitions.css";
 import "../styles/evaluation.css";
@@ -54,10 +59,9 @@ import { TrackView } from "./TrackView";
 import { ViewTransition } from "./ViewTransition";
 import { ZenTransition } from "./ZenTransition";
 import { useEvaluation } from "../hooks/useEvaluation";
-import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import DriftMeter from "./DriftMeter";
-import EvaluationPanel from "./EvaluationPanel";
 import AudioInputTestModal from "./AudioInputTestModal";
+import SettingsTimeline from "./SettingsTimeline";
 import "../styles/audio-input-test.css";
 
 // Force the webview to reclaim keyboard focus after macOS fullscreen exit.
@@ -767,40 +771,23 @@ export function MainWindow() {
   useDrag();
   const { state, currentBeat } = useMetronome();
   const evaluation = useEvaluation();
-  const [evalPanelOpen, setEvalPanelOpen] = useState(false);
-  const [evalPanelView, setEvalPanelView] = useState<"history" | "detail">("history");
-  const [evalSelectedReport, setEvalSelectedReport] = useState<import("../types").SessionReport | null>(null);
-  const [evalSelectedMeta, setEvalSelectedMeta] = useState<{ bpm: number; timestamp: number; id?: string } | null>(null);
   const [inputTestOpen, setInputTestOpen] = useState(false);
-  const [currentReport, setCurrentReport] = useState<import("../types").SessionReport | null>(null);
-  const [currentMeta, setCurrentMeta] = useState<{ bpm: number; timestamp: number } | null>(null);
-  const wasPlayingRef = useRef(false);
-  useEffect(() => {
-    if (wasPlayingRef.current && !state.isPlaying && evaluation.enabled && evaluation.lastFeedback) {
-      // Playback just stopped with evaluation active — fetch report and auto-save
-      const timestamp = Date.now();
-      getSessionReport().then((report) => {
-        if (report && (report.hitsCount + report.missCount) >= 8) {
-          setCurrentReport(report);
-          setCurrentMeta({ bpm: state.bpm, timestamp });
-          setEvalPanelOpen(true);
-          // Auto-save to history
-          saveSession({
-            id: crypto.randomUUID(),
-            timestamp,
-            bpm: state.bpm,
-            timeSignature: state.timeSignature,
-            report,
-          });
-        } else if (report) {
-          setCurrentReport(report);
-          setCurrentMeta({ bpm: state.bpm, timestamp });
-          setEvalPanelOpen(true);
-        }
-      });
-    }
-    wasPlayingRef.current = state.isPlaying;
-  }, [state.isPlaying, evaluation.enabled, evaluation.lastFeedback]);
+  // Practice Coach model state
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [modelDownloading, setModelDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [downloadingTier, setDownloadingTier] = useState<"standard" | "full" | null>(null);
+  const downloadAbort = useRef<AbortController | null>(null);
+  const [coachBrainTier, setCoachBrainTier] = useState<"off" | "standard" | "full">("off");
+  const [coachVoiceMode, setCoachVoiceMode] = useState<"silent" | "chime" | "voice">("silent");
+  const [coachNotifLevel, setCoachNotifLevel] = useState<"all" | "important" | "silent">("all");
+  const [pendingDownloadTier, setPendingDownloadTier] = useState<"standard" | "full" | null>(null);
+  // Coach card state
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachActive, setCoachActive] = useState(false);
+  const [coachMessages, setCoachMessages] = useState<FeedMessage[]>([]);
   const [view, setViewRaw] = useState<"beat" | "drill" | "track" | "settings">(
     "beat",
   );
@@ -1148,6 +1135,66 @@ export function MainWindow() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [soundOpen]);
+
+  // Load Practice Coach settings from storage
+  useEffect(() => {
+    getModelStatus().then(setModelStatus);
+    storeLoad<"off" | "standard" | "full">("coachBrainTier").then((v) => { if (v) setCoachBrainTier(v); });
+    storeLoad<"silent" | "chime" | "voice">("coachVoiceMode").then((v) => { if (v) setCoachVoiceMode(v); });
+    storeLoad<"all" | "important" | "silent">("coachNotifLevel").then((v) => { if (v) setCoachNotifLevel(v); });
+  }, []);
+
+  // Download model for a given tier
+  const startModelDownload = useCallback(async (tier: "standard" | "full") => {
+    const abort = new AbortController();
+    downloadAbort.current = abort;
+    setModelDownloading(true);
+    setDownloadingTier(tier);
+    setPendingDownloadTier(null);
+    setDownloadError(null);
+    setDownloadSuccess(false);
+    setDownloadProgress({ component: "brain", downloadedBytes: 0, totalBytes: 0, fraction: 0, done: false });
+    const modelUrls = {
+      standard: "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+      full: "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf",
+    };
+    const modelNames = { standard: "Qwen 2.5 1.5B", full: "Phi 3.5 Mini" };
+    try {
+      await downloadModelFile(
+        modelUrls[tier],
+        "brain",
+        "model.bin",
+        (downloaded, total) => setDownloadProgress({ component: modelNames[tier], downloadedBytes: downloaded, totalBytes: total, fraction: total > 0 ? downloaded / total : 0, done: false }),
+        abort.signal,
+      );
+      const enc = new TextEncoder();
+      await writeModelChunk("brain", "tier", Array.from(enc.encode(tier)));
+      const status = await getModelStatus();
+      setModelStatus(status);
+      setCoachBrainTier(tier);
+      storeSave("coachBrainTier", tier);
+      setDownloadSuccess(true);
+    } catch (err) {
+      if (abort.signal.aborted) {
+        // User cancelled — silently clear
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        setDownloadError(msg);
+      }
+    }
+    downloadAbort.current = null;
+    setModelDownloading(false);
+    setDownloadProgress(null);
+    setDownloadingTier(null);
+  }, []);
+
+  // Format bytes helper
+  const formatBytes = useCallback((bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }, []);
 
   // Listen for fullscreen changes from Rust (global shortcut)
   useEffect(() => {
@@ -1974,28 +2021,6 @@ export function MainWindow() {
             )}
           </div>
         )}
-        {view !== "settings" && view !== "track" && (
-          <div className="eval-actions-area">
-            <button
-              className={`eval-action-btn ${evaluation.enabled ? "eval-action-active" : ""}`}
-              onClick={evaluation.toggle}
-              title={evaluation.enabled ? "Disable practice coach" : "Enable practice coach"}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-              <span className="eval-action-label">{evaluation.enabled ? "Listening" : "Practice coach"}</span>
-            </button>
-          </div>
-        )}
-        {evaluation.enabled && (
-          <div className="spectrum-wrap">
-            <SpectrumAnalyzer spectrum={evaluation.spectrum} hasSignal={evaluation.hasSignal} />
-          </div>
-        )}
         <ViewTransition viewKey={view} themeId={state.theme} disabled={viewTransitions === "off"} level={viewTransitions} animStyle={animationStyle}>
         {view === "beat" ? (
           <>
@@ -2318,7 +2343,7 @@ export function MainWindow() {
                   ))}
                 </div>
               </div>
-              {viewTransitions !== "off" && (
+              {(
                 <div className="setting-row">
                   <div className="setting-label">
                     <label>Animation style</label>
@@ -2331,6 +2356,7 @@ export function MainWindow() {
                       <button
                         key={style}
                         className={`toggle-btn ${animationStyle === style ? "active" : ""}`}
+                        disabled={viewTransitions === "off"}
                         onClick={() => {
                           setAnimationStyle(style);
                           storeSave("animationStyle", style);
@@ -2435,6 +2461,123 @@ export function MainWindow() {
                   </div>
                 )}
               </div>
+            </section>
+
+            <section className="settings-section">
+              <h2>Practice Coach</h2>
+              <div className="setting-row">
+                <div className="setting-label">
+                  <label>Brain</label>
+                  <span className="setting-hint">Local AI model for coaching</span>
+                </div>
+                <div className="toggle-group">
+                  <button
+                    className={`toggle-btn ${coachBrainTier === "off" ? "active" : ""}`}
+                    data-tooltip="No AI coaching — timing feedback only"
+                    onClick={() => { setCoachBrainTier("off"); storeSave("coachBrainTier", "off"); }}
+                  >
+                    Off
+                  </button>
+                  <button
+                    className={`toggle-btn ${coachBrainTier === "standard" ? "active" : ""}`}
+                    data-tooltip="Fast & lightweight model. ~1.1 GB download, ~2 GB RAM while running. Good for real-time tips."
+                    disabled={modelDownloading}
+                    onClick={() => {
+                      if (modelStatus?.brainReady && modelStatus.brainTier === "standard") {
+                        setCoachBrainTier("standard");
+                        storeSave("coachBrainTier", "standard");
+                      } else {
+                        setPendingDownloadTier("standard");
+                      }
+                    }}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    className={`toggle-btn ${coachBrainTier === "full" ? "active" : ""}`}
+                    data-tooltip="Larger model with deeper analysis. ~2.1 GB download, ~4 GB RAM. Richer feedback and practice plans."
+                    disabled={modelDownloading}
+                    onClick={() => {
+                      if (modelStatus?.brainReady && modelStatus.brainTier === "full") {
+                        setCoachBrainTier("full");
+                        storeSave("coachBrainTier", "full");
+                      } else {
+                        setPendingDownloadTier("full");
+                      }
+                    }}
+                  >
+                    Full
+                  </button>
+                </div>
+              </div>
+              <div className="setting-row">
+                <div className="setting-label">
+                  <label>Voice</label>
+                  <span className="setting-hint">Audio feedback delivery</span>
+                </div>
+                <div className="toggle-group">
+                  {(["silent", "chime", "voice"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      className={`toggle-btn ${coachVoiceMode === mode ? "active" : ""}`}
+                      data-tooltip={
+                        mode === "silent" ? "No audio — feedback appears as text only" :
+                        mode === "chime" ? "Short chime sound when coach has feedback for you" :
+                        "Spoken feedback using local text-to-speech after each session segment"
+                      }
+                      disabled={coachBrainTier === "off" || (mode !== "silent" && !modelStatus?.voiceReady)}
+                      onClick={() => { setCoachVoiceMode(mode); storeSave("coachVoiceMode", mode); }}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="setting-row">
+                <div className="setting-label">
+                  <label>Notifications</label>
+                  <span className="setting-hint">When to show feedback</span>
+                </div>
+                <div className="toggle-group">
+                  {(["all", "important", "silent"] as const).map((level) => (
+                    <button
+                      key={level}
+                      className={`toggle-btn ${coachNotifLevel === level ? "active" : ""}`}
+                      data-tooltip={
+                        level === "all" ? "Show all feedback — tips, praise, and corrections after every segment" :
+                        level === "important" ? "Only show feedback when something needs attention — missed beats, tempo drift, etc." :
+                        "No notifications — feedback is still recorded, view it in session history"
+                      }
+                      disabled={coachBrainTier === "off"}
+                      onClick={() => { setCoachNotifLevel(level); storeSave("coachNotifLevel", level); }}
+                    >
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {modelStatus?.brainReady && (
+                <div className="coach-download-section">
+                  <p className="setting-hint" style={{ marginBottom: 8 }}>
+                    {modelStatus.brainTier === "full" ? "Full" : "Standard"} coach installed ({formatBytes(modelStatus.brainSizeBytes + modelStatus.voiceSizeBytes)})
+                  </p>
+                  <button
+                    className="coach-download-btn"
+                    onClick={async () => {
+                      await deleteModels();
+                      setModelStatus(await getModelStatus());
+                      setCoachBrainTier("off");
+                      storeSave("coachBrainTier", "off");
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                    Remove models
+                  </button>
+                </div>
+              )}
             </section>
 
             <section className="settings-section">
@@ -2843,6 +2986,21 @@ export function MainWindow() {
           </>
         )}
         </ViewTransition>
+        {view === "settings" && (
+          <SettingsTimeline
+            sections={[
+              { id: "general", label: "General" },
+              { id: "devices", label: "Devices" },
+              { id: "smart-coach", label: "Practice Coach" },
+              { id: "widget", label: "Widget" },
+              { id: "theme", label: "Theme" },
+              { id: "hotkeys", label: "Hotkeys" },
+              { id: "support", label: "Support" },
+              { id: "about", label: "About" },
+            ]}
+            containerRef={contentRef}
+          />
+        )}
         {/* Floating play button for Metronome and Drill */}
         {(view === "beat" || view === "drill") && (
           <button
@@ -2875,18 +3033,21 @@ export function MainWindow() {
         )}
       </div>
       {(view === "beat" || view === "drill") && (
-      <EvaluationPanel
-        open={evalPanelOpen}
-        onClose={() => { setEvalPanelOpen(false); setCurrentReport(null); setCurrentMeta(null); }}
-        onToggle={() => { setEvalPanelOpen((v) => !v); if (evalPanelOpen) { setCurrentReport(null); setCurrentMeta(null); } }}
-        currentReport={currentReport}
-        currentMeta={currentMeta}
-        panelView={evalPanelView}
-        setPanelView={setEvalPanelView}
-        selectedReport={evalSelectedReport}
-        setSelectedReport={setEvalSelectedReport}
-        selectedMeta={evalSelectedMeta}
-        setSelectedMeta={setEvalSelectedMeta}
+      <CoachCard
+        open={coachOpen}
+        active={coachActive}
+        messages={coachMessages}
+        onToggle={() => setCoachOpen((v) => !v)}
+        onStartSession={() => {
+          setCoachActive(true);
+          setCoachOpen(true);
+          setCoachMessages([{ id: crypto.randomUUID(), type: "session-start", content: "Session started", timestamp: Date.now() }]);
+        }}
+        onEndSession={() => {
+          setCoachActive(false);
+          const endMsg: FeedMessage = { id: crypto.randomUUID(), type: "session-end", content: "Session ended", timestamp: Date.now() };
+          setCoachMessages((msgs) => [...msgs, endMsg]);
+        }}
       />
       )}
       </div>{/* main-body */}
@@ -3129,6 +3290,86 @@ export function MainWindow() {
               Press Escape to close
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Download confirmation dialog */}
+      {pendingDownloadTier && (
+        <div className="download-confirm-overlay" onClick={() => setPendingDownloadTier(null)}>
+          <div className="download-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="download-confirm-title">Download AI Model</h3>
+            <div className="download-confirm-models">
+              <div className={`download-confirm-model${pendingDownloadTier === "standard" ? " download-confirm-model-selected" : ""}`}>
+                <div className="download-confirm-model-name">Standard</div>
+                <div className="download-confirm-model-name" style={{ fontWeight: 400, fontSize: 13 }}>Qwen 2.5 1.5B</div>
+                <div className="download-confirm-model-size">~1.1 GB download &middot; ~2 GB RAM</div>
+                <p className="download-confirm-model-detail">Good comments, solid Q&A, reliable timing decisions. Best for simple time signatures and moderate tempos.</p>
+                <button className="download-confirm-go" onClick={() => startModelDownload("standard")}>
+                  Download Standard
+                </button>
+              </div>
+              <div className={`download-confirm-model${pendingDownloadTier === "full" ? " download-confirm-model-selected" : ""}`}>
+                <div className="download-confirm-model-name">Full</div>
+                <div className="download-confirm-model-name" style={{ fontWeight: 400, fontSize: 13 }}>Phi 3.5 Mini</div>
+                <div className="download-confirm-model-size">~2.4 GB download &middot; ~4 GB RAM</div>
+                <p className="download-confirm-model-detail">Best quality, most nuanced feedback, strongest Q&A. Handles complex patterns, fast tempos, and polyrhythms.</p>
+                <button className="download-confirm-go" onClick={() => startModelDownload("full")}>
+                  Download Full
+                </button>
+              </div>
+            </div>
+            <button className="download-confirm-cancel" onClick={() => setPendingDownloadTier(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Global download progress bar */}
+      {modelDownloading && (() => {
+        const pct = downloadProgress ? Math.round(downloadProgress.fraction * 100) : 0;
+        const tierLabel = downloadingTier === "full" ? "Full" : "Standard";
+        const modelName = downloadProgress?.component ?? "model";
+        const label = `${tierLabel} — ${modelName} · ${downloadProgress ? formatBytes(downloadProgress.downloadedBytes) : "0 B"}${downloadProgress && downloadProgress.totalBytes > 0 ? ` / ${formatBytes(downloadProgress.totalBytes)}` : ""} (${pct}%)`;
+        return (
+          <div className="global-download-bar">
+            <div className="global-download-bar-fill" style={{ width: `${pct}%` }} />
+            <span className="global-download-bar-label global-download-bar-label-base">{label}</span>
+            <span className="global-download-bar-label global-download-bar-label-filled" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>{label}</span>
+            <button className="global-download-bar-close" onClick={() => downloadAbort.current?.abort()} title="Cancel download">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Download error bar */}
+      {downloadError && (
+        <div className="global-download-bar global-download-bar-error">
+          <span className="global-download-bar-label">
+            Download failed: {downloadError}
+          </span>
+          <button className="global-download-bar-close" onClick={() => setDownloadError(null)} title="Dismiss">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Download success bar */}
+      {downloadSuccess && !modelDownloading && (
+        <div className="global-download-bar global-download-bar-success">
+          <span className="global-download-bar-label">
+            Practice Coach available!
+          </span>
+          <button className="global-download-bar-close" onClick={() => setDownloadSuccess(false)} title="Dismiss">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
     </div>

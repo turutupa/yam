@@ -1,0 +1,733 @@
+/* ─── Coach Card (floating panel) ─── */
+.coach-card {
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(
+    --coach-card-bg,
+    color-mix(in srgb, var(--bg-secondary) 100%, black 8%)
+  );
+  border: 1px solid
+    var(--coach-card-border, color-mix(in srgb, var(--border) 80%, transparent));
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+/* Per-theme coach card overrides */
+[data-theme="obsidian"] .coach-card {
+  --coach-card-bg: #161616;
+  --coach-card-border: rgba(245, 158, 11, 0.15);
+}
+
+[data-theme="aurora"] .coach-card {
+  --coach-card-bg: rgba(10, 5, 30, 0.97);
+  --coach-card-border: rgba(0, 212, 255, 0.2);
+  box-shadow:
+    0 4px 32px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(0, 212, 255, 0.3);
+}
+
+[data-theme="prism"] .coach-card {
+  --coach-card-bg: rgba(245, 235, 250, 0.95);
+  --coach-card-border: rgba(160, 80, 200, 0.18);
+  box-shadow:
+    0 4px 32px rgba(160, 80, 200, 0.12),
+    0 0 1px rgba(255, 61, 138, 0.2);
+}
+
+[data-theme="neon"] .coach-card {
+  --coach-card-bg: #080c14;
+  --coach-card-border: rgba(0, 160, 200, 0.18);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(0, 160, 200, 0.2);
+}
+
+[data-theme="velvet"] .coach-card {
+  --coach-card-bg: #120e18;
+  --coach-card-border: rgba(168, 85, 247, 0.18);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(168, 85, 247, 0.2);
+}
+
+[data-theme="mono"] .coach-card {
+  --coach-card-bg: #1e1e1e;
+  --coach-card-border: rgba(255, 255, 255, 0.1);
+}
+
+.coach-card.coach-card-open {
+  width: 380px;
+  min-width: 380px;
+  height: auto;
+  align-self: stretch;
+  border-radius: 12px;
+  margin: 68px 8px 8px 0;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  /* Expand: smooth grow */
+  transition: none;
+  animation: coach-expand 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.coach-card.coach-card-open.coach-card-closing {
+  animation: coach-exit 0.15s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes coach-expand {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes coach-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Collapsed pill button */
+.coach-card-pill {
+  position: absolute;
+  right: 8px;
+  top: 72px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  z-index: 10;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.coach-card-pill:hover {
+  background: var(--accent);
+  color: var(--accent-text, white);
+}
+
+.coach-card-pill.coach-active {
+  color: var(--accent);
+}
+
+.coach-card-pill.coach-active:hover {
+  color: white;
+}
+
+.coach-card-pill-label {
+  white-space: nowrap;
+}
+
+/* Inner wrapper */
+.coach-card-inner {
+  min-width: 380px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.15s ease 0.1s;
+}
+
+.coach-card.coach-card-open .coach-card-inner {
+  opacity: 1;
+}
+
+/* Header */
+.coach-card-header {
+  padding: 12px 16px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.coach-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.coach-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.coach-card-header-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.coach-card-header-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+}
+
+.coach-card-end-btn {
+  color: var(--feedback-miss);
+  font-weight: 500;
+}
+
+.coach-card-end-btn:hover {
+  background: color-mix(in srgb, var(--feedback-miss) 15%, transparent);
+  color: var(--feedback-miss);
+}
+
+.coach-card-start-btn {
+  color: var(--accent);
+  font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 6px;
+  padding: 4px 12px;
+}
+
+.coach-card-start-btn:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Tab bar */
+.coach-card-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  flex-shrink: 0;
+}
+
+.coach-card-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 0 8px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.coach-card-tab:hover {
+  color: var(--text-secondary);
+}
+
+.coach-card-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Feed area */
+.coach-card-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coach-card-feed::-webkit-scrollbar {
+  width: 4px;
+}
+
+.coach-card-feed::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  border-radius: 2px;
+}
+
+/* Feed messages */
+.coach-feed-msg {
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.coach-feed-msg-system {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+}
+
+.coach-feed-msg-mini-report {
+  background: color-mix(
+    in srgb,
+    var(--bg-card, var(--bg-secondary)) 80%,
+    transparent
+  );
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.coach-feed-msg-session-end {
+  background: color-mix(
+    in srgb,
+    var(--bg-card, var(--bg-secondary)) 90%,
+    transparent
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Mini report card internals */
+.coach-mini-report-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.coach-mini-report-stats {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coach-mini-report-score-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.coach-mini-report-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Timestamp */
+.coach-feed-msg-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* End report */
+.coach-end-report-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.coach-end-report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.coach-end-report-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.coach-end-report-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.coach-end-report-stat-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Empty state */
+.coach-card-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.coach-card-empty-icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.coach-card-empty-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Chat input */
+.coach-card-chat {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.coach-card-chat-input {
+  flex: 1;
+  background: color-mix(in srgb, var(--bg-secondary) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.coach-card-chat-input:focus {
+  border-color: var(--accent);
+}
+
+.coach-card-chat-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coach-card-chat-input::placeholder {
+  color: var(--text-muted);
+}
+
+.coach-card-chat-send {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.coach-card-chat-send:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.coach-card-chat-send:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ─── History List ─── */
+.coach-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.coach-history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.coach-history-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  border-radius: 2px;
+}
+
+.coach-history-heading {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 0 4px;
+}
+
+.coach-history-card {
+  position: relative;
+  background: color-mix(
+    in srgb,
+    var(--bg-card, var(--bg-secondary)) 80%,
+    transparent
+  );
+  border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.coach-history-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--bg-card, var(--bg-secondary)) 95%,
+    transparent
+  );
+}
+
+.coach-history-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+}
+
+.coach-history-card:hover .coach-history-delete {
+  opacity: 0.6;
+}
+
+.coach-history-delete:hover {
+  opacity: 1 !important;
+  color: var(--feedback-miss);
+}
+
+.coach-history-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.coach-history-time {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.coach-history-sep {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.coach-history-bpm {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.coach-history-comment {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ─── Session Detail ─── */
+.coach-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.coach-detail::-webkit-scrollbar {
+  width: 4px;
+}
+
+.coach-detail::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  border-radius: 2px;
+}
+
+.coach-detail-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 16px;
+}
+
+.coach-detail-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.coach-detail-comment {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.coach-detail-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.coach-detail-insight {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+.coach-detail-section {
+  margin-bottom: 14px;
+}
+
+.coach-detail-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+.coach-detail-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coach-detail-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.coach-detail-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.coach-detail-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.coach-detail-stat-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.coach-detail-delete-btn {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 8px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--feedback-miss) 30%, transparent);
+  border-radius: 6px;
+  color: var(--feedback-miss);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.coach-detail-delete-btn:hover {
+  background: color-mix(in srgb, var(--feedback-miss) 10%, transparent);
+}
+
+/* ─── Confirm Dialog ─── */
+.coach-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 24px;
+}
+
+.coach-confirm-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.coach-confirm-dialog p {
+  font-size: 12px;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.coach-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.coach-confirm-cancel,
+.coach-confirm-delete {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.coach-confirm-cancel {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.coach-confirm-cancel:hover {
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+}
+
+.coach-confirm-delete {
+  background: var(--feedback-miss);
+  color: white;
+  border-color: var(--feedback-miss);
+}
+
+.coach-confirm-delete:hover {
+  opacity: 0.9;
+}

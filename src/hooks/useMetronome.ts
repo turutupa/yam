@@ -25,6 +25,7 @@ const DEFAULT_STATE: AppState = {
     beatsPerBar: 4,
     mode: "linear",
     cyclic: false,
+    aggressiveness: "moderate",
     active: false,
     currentStep: 0,
     currentBpm: 80,

@@ -249,6 +249,7 @@ pub fn configure_speed_ramp(
     mode: String,
     cyclic: bool,
     warmup_beats: u8,
+    aggressiveness: Option<String>,
     state: State<SharedState>,
     app_handle: AppHandle,
 ) {
@@ -261,11 +262,16 @@ pub fn configure_speed_ramp(
         s.speed_ramp.bars_per_step = bars_per_step.clamp(1, 32);
         s.speed_ramp.beats_per_bar = beats_per_bar.clamp(1, 12);
         s.speed_ramp.mode = match mode.as_str() {
-            "linear" | "zigzag" => mode,
+            "linear" | "zigzag" | "adaptive" => mode,
             _ => "linear".to_string(),
         };
         s.speed_ramp.cyclic = cyclic;
         s.speed_ramp.warmup_beats = warmup_beats.clamp(0, 8);
+        s.speed_ramp.aggressiveness = match aggressiveness.as_deref() {
+            Some("conservative") => "conservative".to_string(),
+            Some("aggressive") => "aggressive".to_string(),
+            _ => "moderate".to_string(),
+        };
     }
     let _ = app_handle.emit("state-changed", &*state.lock().unwrap());
     persist_state(&state, &app_handle);
@@ -568,6 +574,7 @@ pub fn start_evaluation(
     onset_detector: State<SharedOnsetDetector>,
     timing_analyzer: State<SharedTimingAnalyzer>,
     session_acc: State<SharedSessionAccumulator>,
+    engine_state: State<EngineState>,
     midi: State<SharedMidi>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
@@ -585,15 +592,38 @@ pub fn start_evaluation(
     // Clear previous session data
     session_acc.lock().unwrap().clear();
 
+    // Get adaptive score handle from engine for real-time accuracy updates
+    let adaptive_score = {
+        let engine = engine_state.0.lock().unwrap();
+        engine.adaptive_score()
+    };
+
     // Start timing analyzer — emits beat-feedback events and accumulates session data
     let app_for_timing = app_handle.clone();
     let session_for_timing = session_acc.inner().clone();
+    // Rolling window for adaptive score: track last N classifications
+    let recent_hits = std::sync::Arc::new(std::sync::Mutex::new(Vec::<bool>::with_capacity(32)));
+    let recent_hits_for_timing = recent_hits.clone();
+    let adaptive_score_for_timing = adaptive_score;
     let mut ta = timing_analyzer.lock().unwrap();
     ta.start(move |feedback| {
         let _ = app_for_timing.emit("beat-feedback", &feedback);
         // Accumulate for session report
         if let Ok(mut acc) = session_for_timing.lock() {
-            acc.push(feedback);
+            acc.push(feedback.clone());
+        }
+        // Update adaptive score (rolling window of last 16 beats)
+        if feedback.classification != "skipped" {
+            if let Ok(mut hits) = recent_hits_for_timing.lock() {
+                hits.push(feedback.classification != "miss");
+                if hits.len() > 16 {
+                    hits.remove(0);
+                }
+                let total = hits.len() as u32;
+                let hit_count = hits.iter().filter(|&&h| h).count() as u32;
+                let score = if total > 0 { (hit_count * 100) / total } else { 0 };
+                adaptive_score_for_timing.store(score, std::sync::atomic::Ordering::Relaxed);
+            }
         }
     });
 
@@ -808,4 +838,35 @@ pub fn set_audio_output_device(
 
     let mut engine = engine_state.0.lock().unwrap();
     engine.set_device(device_name, state.inner().clone(), app_handle);
+}
+
+// ---------------------------------------------------------------------------
+// Model download management
+// ---------------------------------------------------------------------------
+
+use crate::models;
+
+#[tauri::command]
+pub fn get_model_status(app_handle: AppHandle) -> Result<models::ModelStatus, String> {
+    models::check_model_status(&app_handle)
+}
+
+#[tauri::command]
+pub fn write_model_chunk(
+    app_handle: AppHandle,
+    component: String,
+    filename: String,
+    data: Vec<u8>,
+) -> Result<String, String> {
+    models::write_model_file(&app_handle, &component, &filename, &data)
+}
+
+#[tauri::command]
+pub fn get_models_path(app_handle: AppHandle) -> Result<String, String> {
+    models::get_models_path(&app_handle)
+}
+
+#[tauri::command]
+pub fn delete_models(app_handle: AppHandle) -> Result<(), String> {
+    models::delete_models(&app_handle)
 }

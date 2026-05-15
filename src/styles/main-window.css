@@ -596,75 +596,47 @@
 .preset-save-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  /* Circle at rest */
-  min-width: 30px;
-  height: 30px;
-  max-width: 30px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 0.7rem;
+  gap: 6px;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  overflow: hidden;
-  white-space: nowrap;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
   flex-shrink: 0;
+  white-space: nowrap;
   transition:
-    max-width 0.22s ease,
-    border-radius 0.22s ease,
-    padding 0.22s ease,
-    color 0.15s,
-    border-color 0.15s,
-    background 0.15s;
+    background 0.2s,
+    color 0.2s;
 }
 
-/* Label hidden at rest — no gap so icon stays truly centered */
+/* Label always visible */
 .preset-save-btn-label {
   white-space: nowrap;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  padding-left: 0;
-  transition:
-    max-width 0.22s ease,
-    opacity 0.15s ease,
-    padding-left 0.15s ease;
 }
 
 .preset-save-btn:hover {
-  max-width: 140px;
-  border-radius: var(--radius-sm);
-  padding: 0 10px;
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-subtle);
+  background: var(--accent);
+  color: var(--accent-text, white);
 }
 
 .preset-save-btn:hover .preset-save-btn-label {
-  max-width: 100px;
   opacity: 1;
-  padding-left: 5px;
 }
 
 
 
-/* Feedback state: always expanded, green */
+/* Feedback state: green */
 .preset-save-btn--feedback,
 .preset-save-btn--feedback:hover {
-  max-width: 140px;
-  border-radius: var(--radius-sm);
-  padding: 0 10px;
+  background: rgba(74, 222, 128, 0.12);
   color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.4);
-  background: rgba(74, 222, 128, 0.08);
 }
 
 .preset-save-btn--feedback .preset-save-btn-label {
-  max-width: 100px;
   opacity: 1;
-  padding-left: 5px;
 }
 
 .main-content {
@@ -1657,7 +1629,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0;
+  margin-bottom: 16px;
 }
 
 .hotkeys-section-header h2 {
@@ -1741,6 +1713,265 @@
   border-color: var(--accent);
 }
 
+/* Practice Coach download section */
+.coach-download-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+}
+
+.coach-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.coach-download-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent);
+}
+
+.coach-download-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coach-download-progress {
+  margin-top: 8px;
+  height: 4px;
+  background: color-mix(in srgb, var(--border) 40%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.coach-download-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ─── Global download progress bar ─── */
+.global-download-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+}
+
+.global-download-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.global-download-bar-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 0 10px 0 16px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 22px;
+}
+
+.global-download-bar-label-base {
+  color: var(--text-secondary);
+}
+
+.global-download-bar-label-filled {
+  color: var(--bg-primary);
+  transition: clip-path 0.3s ease;
+}
+
+.global-download-bar-error {
+  background: color-mix(in srgb, var(--feedback-miss) 15%, var(--bg-secondary));
+  border-top-color: color-mix(in srgb, var(--feedback-miss) 40%, transparent);
+  cursor: pointer;
+}
+
+.global-download-bar-error .global-download-bar-label {
+  color: var(--feedback-miss);
+}
+
+.global-download-bar-close {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+
+.global-download-bar-close:hover {
+  opacity: 1;
+}
+
+.global-download-bar-error .global-download-bar-close {
+  color: var(--feedback-miss);
+}
+
+.global-download-bar-success {
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg-secondary));
+  border-top-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.global-download-bar-success .global-download-bar-label {
+  color: var(--accent);
+}
+
+.global-download-bar-success .global-download-bar-close {
+  color: var(--accent);
+}
+
+/* ─── Download Confirmation Dialog ─── */
+.download-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.download-confirm-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 660px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.download-confirm-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+
+.download-confirm-desc {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.download-confirm-models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.download-confirm-model {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--bg-primary) 50%, transparent);
+}
+
+.download-confirm-model-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.download-confirm-model-size {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.download-confirm-model-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  opacity: 0.8;
+  flex: 1;
+  margin-top: 4px;
+}
+
+.download-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.download-confirm-cancel {
+  padding: 11px 16px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+}
+
+.download-confirm-cancel:hover {
+  background: color-mix(in srgb, var(--border) 30%, transparent);
+  color: var(--text-primary);
+}
+
+.download-confirm-go {
+  padding: 11px 16px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  margin-top: auto;
+  padding-top: 10px;
+  width: 100%;
+}
+
+.download-confirm-go:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text, white);
+}
+
 .setting-control {
   display: flex;
   align-items: center;
@@ -1771,6 +2002,50 @@
 .toggle-btn.active {
   background: var(--accent);
   color: var(--accent-text, white);
+}
+
+.toggle-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.toggle-btn:disabled.active {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.toggle-btn[data-tooltip] {
+  position: relative;
+}
+
+.toggle-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-primary);
+  white-space: normal;
+  width: max-content;
+  max-width: 200px;
+  text-align: center;
+  text-transform: none;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 30;
+}
+
+.toggle-btn[data-tooltip]:hover::after {
+  opacity: 1;
 }
 
 /* =================== Theme picker =================== */
@@ -1846,7 +2121,7 @@
 }
 
 .hotkey-group {
-  margin-bottom: 16px;
+  margin-bottom: 28px;
 }
 
 .hotkey-group:last-child {
@@ -2449,6 +2724,8 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 24px;
+  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 .support-card,

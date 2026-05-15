@@ -3,7 +3,7 @@ use crate::timing::{BeatLog, BeatTick};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rodio::Source;
 use std::io::Cursor;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -427,8 +427,17 @@ struct BeatNotification {
 }
 
 // ---------------------------------------------------------------------------
-// Speed ramp logic (unchanged from previous implementation)
+// Speed ramp logic
 // ---------------------------------------------------------------------------
+
+/// Returns (up_threshold, down_threshold, step_up_bpm, step_down_bpm) for adaptive mode.
+fn adaptive_thresholds(aggressiveness: &str, increment: u16, decrement: u16) -> (u32, u32, u16, u16) {
+    match aggressiveness {
+        "conservative" => (80, 40, increment.max(2).min(3), decrement.max(2).min(3)),
+        "aggressive" => (60, 25, increment.max(5).min(10), decrement.max(3).min(5)),
+        _ /* moderate */ => (70, 35, increment.max(3).min(5), decrement.max(2).min(4)),
+    }
+}
 
 /// Advance the speed ramp by one step. Returns (new_bpm, new_direction, is_done).
 fn advance_ramp(
@@ -717,6 +726,8 @@ pub struct MetronomeEngine {
     thread_handle: Option<thread::JoinHandle<()>>,
     beat_log: BeatLog,
     device_name: Option<String>,
+    /// Shared adaptive accuracy score (0-100), updated by timing analyzer callback
+    adaptive_score: Arc<AtomicU32>,
 }
 
 impl MetronomeEngine {
@@ -727,6 +738,7 @@ impl MetronomeEngine {
             thread_handle: None,
             beat_log,
             device_name: None,
+            adaptive_score: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -760,6 +772,11 @@ impl MetronomeEngine {
         self.device_name.as_deref()
     }
 
+    /// Get a clone of the adaptive score Arc for external updates.
+    pub fn adaptive_score(&self) -> Arc<AtomicU32> {
+        self.adaptive_score.clone()
+    }
+
     /// Ensure the audio thread is running (opens audio device once).
     fn ensure_thread(&mut self, state: SharedState, app_handle: AppHandle) {
         if self.alive.load(Ordering::SeqCst) {
@@ -771,6 +788,7 @@ impl MetronomeEngine {
         let playing = self.playing.clone();
         let beat_log = self.beat_log.clone();
         let device_name = self.device_name.clone();
+        let adaptive_score = self.adaptive_score.clone();
 
         let handle = thread::spawn(move || {
             // ---- cpal setup ----
@@ -1206,6 +1224,65 @@ impl MetronomeEngine {
 
                         if s.speed_ramp.bars_in_step >= s.speed_ramp.bars_per_step {
                             s.speed_ramp.bars_in_step = 0;
+
+                            if s.speed_ramp.mode == "adaptive" {
+                                // Adaptive mode: use live accuracy score to decide
+                                let score = adaptive_score.load(Ordering::Relaxed);
+                                let (up_thresh, down_thresh, step_up, step_down) =
+                                    adaptive_thresholds(&s.speed_ramp.aggressiveness, s.speed_ramp.increment, s.speed_ramp.decrement);
+
+                                let prev_bpm = s.speed_ramp.current_bpm;
+                                let target = s.speed_ramp.target_bpm;
+                                let no_ceiling = target >= 300;
+
+                                if score >= up_thresh {
+                                    // Step up
+                                    let new_bpm = s.speed_ramp.current_bpm.saturating_add(step_up).min(300);
+                                    if !no_ceiling && new_bpm >= target {
+                                        s.speed_ramp.current_bpm = target;
+                                        s.speed_ramp.completed = true;
+                                        s.speed_ramp.active = false;
+                                        s.is_playing = false;
+                                        let sc = s.clone();
+                                        let rc = s.speed_ramp.clone();
+                                        drop(s);
+                                        playing.store(false, Ordering::SeqCst);
+                                        let _ = app_handle.emit("ramp-step", &rc);
+                                        let _ = app_handle.emit("state-changed", &sc);
+                                    } else {
+                                        s.speed_ramp.current_bpm = new_bpm;
+                                        s.speed_ramp.current_step += 1;
+                                        let rc = s.speed_ramp.clone();
+                                        let sc = s.clone();
+                                        drop(s);
+                                        if let Ok(mut c) = pending_chime.lock() {
+                                            *c = Some(SoundId::ChimeUp);
+                                        }
+                                        let _ = app_handle.emit("ramp-step", &rc);
+                                        let _ = app_handle.emit("state-changed", &sc);
+                                    }
+                                } else if score <= down_thresh && s.speed_ramp.current_bpm > s.speed_ramp.start_bpm {
+                                    // Step down
+                                    let new_bpm = s.speed_ramp.current_bpm.saturating_sub(step_down).max(s.speed_ramp.start_bpm);
+                                    s.speed_ramp.current_bpm = new_bpm;
+                                    s.speed_ramp.current_step += 1;
+                                    let rc = s.speed_ramp.clone();
+                                    let sc = s.clone();
+                                    drop(s);
+                                    if new_bpm < prev_bpm {
+                                        if let Ok(mut c) = pending_chime.lock() {
+                                            *c = Some(SoundId::ChimeDown);
+                                        }
+                                    }
+                                    let _ = app_handle.emit("ramp-step", &rc);
+                                    let _ = app_handle.emit("state-changed", &sc);
+                                } else {
+                                    // Hold — accuracy in the middle, keep current tempo
+                                    let sc = s.clone();
+                                    drop(s);
+                                    let _ = app_handle.emit("state-changed", &sc);
+                                }
+                            } else {
                             let prev_bpm = s.speed_ramp.current_bpm;
                             let (new_bpm, new_dir, done) = advance_ramp(
                                 s.speed_ramp.current_bpm,
@@ -1250,6 +1327,7 @@ impl MetronomeEngine {
 
                                 let _ = app_handle.emit("ramp-step", &rc);
                                 let _ = app_handle.emit("state-changed", &sc);
+                            }
                             }
                         } else {
                             let sc = s.clone();

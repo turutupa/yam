@@ -1,0 +1,100 @@
+/* ─── Settings Timeline (minimap scrollbar) ─── */
+.settings-timeline {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.stl-tick {
+  pointer-events: auto;
+  position: relative;
+  width: 14px;
+  height: 3px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--text-muted) 25%, transparent);
+  cursor: pointer;
+  transition: width 0.15s ease, background 0.15s ease;
+}
+
+/* Expanded hit target */
+.stl-tick::before {
+  content: '';
+  position: absolute;
+  inset: -5px -6px;
+}
+
+.stl-tick:hover {
+  width: 20px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.stl-tick.stl-visible {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.stl-tick.stl-active {
+  background: var(--accent);
+  width: 16px;
+}
+
+/* Hover tooltip — shows on hover, styled like active popover */
+.stl-tooltip {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text, white);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.stl-tick:hover .stl-tooltip {
+  opacity: 1;
+}
+
+/* Active section popover — visible while scrolling */
+.stl-popover {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  animation: stl-popover-in 0.15s ease;
+}
+
+.stl-popover.stl-dark-text {
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.stl-popover.stl-light-text {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+@keyframes stl-popover-in {
+  from { opacity: 0; transform: translateY(-50%) translateX(4px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}

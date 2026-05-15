@@ -98,6 +98,7 @@ export async function configureSpeedRamp(config: {
   mode: string;
   cyclic: boolean;
   warmupBeats?: number;
+  aggressiveness?: string;
 }): Promise<void> {
   return invoke("configure_speed_ramp", {
     startBpm: config.startBpm,
@@ -109,6 +110,7 @@ export async function configureSpeedRamp(config: {
     mode: config.mode,
     cyclic: config.cyclic,
     warmupBeats: config.warmupBeats ?? 4,
+    aggressiveness: config.aggressiveness ?? null,
   });
 }
 
@@ -361,6 +363,99 @@ export async function getWaveform(): Promise<number[]> {
 
 export async function setInputGain(gainDb: number): Promise<void> {
   return invoke("set_input_gain", { gainDb });
+}
+
+// ---------------------------------------------------------------------------
+// Model Management
+// ---------------------------------------------------------------------------
+
+export type ModelStatus = {
+  brainReady: boolean;
+  brainTier: string | null;
+  brainSizeBytes: number;
+  voiceReady: boolean;
+  voiceSizeBytes: number;
+};
+
+export type DownloadProgress = {
+  component: string;
+  downloadedBytes: number;
+  totalBytes: number;
+  fraction: number;
+  done: boolean;
+};
+
+export async function getModelStatus(): Promise<ModelStatus> {
+  return invoke<ModelStatus>("get_model_status");
+}
+
+export async function writeModelChunk(
+  component: string,
+  filename: string,
+  data: number[],
+): Promise<string> {
+  return invoke<string>("write_model_chunk", { component, filename, data });
+}
+
+export async function getModelsPath(): Promise<string> {
+  return invoke<string>("get_models_path");
+}
+
+/**
+ * Download a model file from a URL, streaming chunks to the Rust filesystem.
+ * Emits DownloadProgress-like callbacks so the UI can show progress.
+ */
+export async function downloadModelFile(
+  url: string,
+  component: string,
+  filename: string,
+  onProgress?: (downloaded: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(url, { signal });
+  } catch (err) {
+    if (signal?.aborted) throw new Error("Download cancelled");
+    throw new Error("Could not reach server — check your internet connection");
+  }
+  if (!response.ok) throw new Error(`Server returned ${response.status} ${response.statusText}`);
+  const contentLength = Number(response.headers.get("content-length") ?? 0);
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  let downloaded = 0;
+  const chunks: Uint8Array[] = [];
+
+  while (true) {
+    if (signal?.aborted) {
+      await reader.cancel();
+      throw new Error("Download cancelled");
+    }
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    downloaded += value.length;
+    onProgress?.(downloaded, contentLength);
+  }
+
+  // Combine all chunks and write to disk via Rust
+  const full = new Uint8Array(downloaded);
+  let offset = 0;
+  for (const chunk of chunks) {
+    full.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  await writeModelChunk(component, filename, Array.from(full));
+}
+
+export async function deleteModels(): Promise<void> {
+  return invoke("delete_models");
+}
+
+export function onDownloadProgress(callback: (progress: DownloadProgress) => void) {
+  return listen<DownloadProgress>("model-download-progress", (e) => callback(e.payload));
 }
 
 export function onPlaybackFinished(callback: () => void) {

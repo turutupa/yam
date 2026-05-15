@@ -13,8 +13,9 @@ pub struct SpeedRamp {
     pub bars_per_step: u8,
     #[serde(rename = "beatsPerBar")]
     pub beats_per_bar: u8,
-    pub mode: String,       // "linear" | "zigzag"
+    pub mode: String,       // "linear" | "zigzag" | "adaptive"
     pub cyclic: bool,
+    pub aggressiveness: String, // "conservative" | "moderate" | "aggressive"
     // Runtime state
     pub active: bool,
     #[serde(rename = "currentStep")]
@@ -42,6 +43,7 @@ impl Default for SpeedRamp {
             beats_per_bar: 4,
             mode: "linear".to_string(),
             cyclic: false,
+            aggressiveness: "moderate".to_string(),
             active: false,
             current_step: 0,
             current_bpm: 80,

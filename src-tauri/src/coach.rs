@@ -92,6 +92,7 @@ fn generate_template(context: &str) -> Result<String, String> {
 
     let is_summary = context.contains("ended their practice session");
     let is_chat = context.contains("User asks:");
+    let is_greeting = context.contains("starting a new session") || context.contains("starting a free practice");
 
     if is_chat {
         // Extract the question
@@ -104,12 +105,40 @@ fn generate_template(context: &str) -> Result<String, String> {
         return Ok(format_chat_response(question, accuracy, deviation));
     }
 
+    if is_greeting {
+        return Ok(format_greeting(context));
+    }
+
     if is_summary {
         return Ok(format_session_summary(accuracy, deviation, streak));
     }
 
     // Mini-report
     Ok(format_mini_report(accuracy, deviation, streak))
+}
+
+fn format_greeting(context: &str) -> String {
+    let has_history = context.contains("Sessions:");
+    let preset_name = context.lines()
+        .find(|l| l.starts_with("Preset:"))
+        .map(|l| l.trim_start_matches("Preset:").trim());
+
+    if let Some(name) = preset_name {
+        if has_history {
+            let trend = if context.contains("Trend: improving") {
+                "You've been improving — keep that momentum going!"
+            } else if context.contains("Trend: declining") {
+                "Let's get back on track today."
+            } else {
+                "Let's build on your progress."
+            };
+            format!("Back at \"{name}\" — {trend}")
+        } else {
+            format!("First session with \"{name}\" — let's see what you've got. Play when you're ready!")
+        }
+    } else {
+        "Free practice — play when you're ready and I'll keep an eye on your timing.".to_string()
+    }
 }
 
 fn format_mini_report(accuracy: f64, deviation: f64, streak: u32) -> String {

@@ -598,7 +598,7 @@
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  border: none;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -627,6 +627,16 @@
 }
 
 
+
+/* Dirty state: accent border to signal changes */
+.preset-save-btn--dirty {
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  color: var(--accent);
+}
+
+.preset-save-btn--dirty:hover {
+  border-color: var(--accent);
+}
 
 /* Feedback state: green */
 .preset-save-btn--feedback,

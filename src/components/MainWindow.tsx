@@ -1970,9 +1970,21 @@ export function MainWindow() {
       >
         {(view === "beat" || view === "drill") && (
           <div className="preset-save-area">
+            {activePreset && (
+              <button
+                className="preset-active-name"
+                onClick={() => {
+                  setSidebarOpen(true);
+                  setTimeout(() => sidebarRef.current?.triggerRename(activePreset.id), 150);
+                }}
+                title="Rename preset"
+              >
+                {activePreset.name}{presetDirty ? " •" : ""}
+              </button>
+            )}
             {activePreset ? (
               <button
-                className={`preset-save-btn preset-save-btn--update ${updateFeedback ? "preset-save-btn--feedback" : ""}`}
+                className={`preset-save-btn preset-save-btn--update ${presetDirty ? "preset-save-btn--dirty" : ""} ${updateFeedback ? "preset-save-btn--feedback" : ""}`}
                 onClick={handlePresetUpdate}
                 title={presetDirty ? "Update preset" : "No changes to save"}
               >
@@ -2005,18 +2017,6 @@ export function MainWindow() {
                   <polyline points="7 3 7 8 15 8" />
                 </svg>
                 <span className="preset-save-btn-label">Save preset</span>
-              </button>
-            )}
-            {activePreset && (
-              <button
-                className="preset-active-name"
-                onClick={() => {
-                  setSidebarOpen(true);
-                  setTimeout(() => sidebarRef.current?.triggerRename(activePreset.id), 150);
-                }}
-                title="Rename preset"
-              >
-                {activePreset.name}{presetDirty ? " •" : ""}
               </button>
             )}
           </div>

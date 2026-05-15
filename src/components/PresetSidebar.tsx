@@ -92,6 +92,7 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
 }, ref) {
   const [allPresets, setAllPresets] = useState<Preset[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const justLoadedId = useRef<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
@@ -171,10 +172,12 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
         setActiveId(null);
         return;
       }
+      justLoadedId.current = preset.id;
       setActiveId(preset.id);
       onLoadPreset(preset);
+      onActiveChange(preset, false);
     },
-    [activeId, onLoadPreset],
+    [activeId, onLoadPreset, onActiveChange],
   );
 
   const handleDelete = useCallback(
@@ -221,7 +224,10 @@ export const PresetSidebar = forwardRef<PresetSidebarHandle, PresetSidebarProps>
   );
 
   const activePreset = viewPresets.find((p) => p.id === activeId);
-  const dirty = activePreset ? isDirty(state, activePreset, view) : false;
+  const computedDirty = activePreset ? isDirty(state, activePreset, view) : false;
+  // Suppress dirty flicker: after loading a preset, force clean until state settles
+  if (!computedDirty && justLoadedId.current) justLoadedId.current = null;
+  const dirty = justLoadedId.current === activeId ? false : computedDirty;
 
   // Notify parent of active preset + dirty state changes
   useEffect(() => {

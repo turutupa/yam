@@ -3336,10 +3336,8 @@ export function MainWindow() {
             <div className="global-download-bar-fill" style={{ width: `${pct}%` }} />
             <span className="global-download-bar-label global-download-bar-label-base">{label}</span>
             <span className="global-download-bar-label global-download-bar-label-filled" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>{label}</span>
-            <button className="global-download-bar-close" onClick={() => downloadAbort.current?.abort()} title="Cancel download">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+            <button className="global-download-bar-cancel" onClick={() => downloadAbort.current?.abort()} title="Cancel download">
+              Cancel
             </button>
           </div>
         );

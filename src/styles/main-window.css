@@ -1797,7 +1797,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  padding: 0 10px 0 16px;
+  padding: 0 10px 0 24px;
   font-size: 10px;
   font-weight: 500;
   white-space: nowrap;
@@ -1836,6 +1836,26 @@
   opacity: 0.7;
   transition: opacity 0.15s;
   z-index: 2;
+}
+
+.global-download-bar-cancel {
+  position: absolute;
+  right: 16px;  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+
+.global-download-bar-cancel:hover {
+  opacity: 1;
 }
 
 .global-download-bar-close:hover {

@@ -581,19 +581,21 @@ pub fn reorder_presets(ids: Vec<String>, app_handle: AppHandle) -> Result<(), St
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn list_audio_input_devices() -> Vec<AudioDevice> {
-    crate::audio_input::AudioInput::list_devices()
+pub async fn list_audio_input_devices() -> Vec<AudioDevice> {
+    tauri::async_runtime::spawn_blocking(|| {
+        crate::audio_input::AudioInput::list_devices()
+    }).await.unwrap_or_default()
 }
 
 #[tauri::command]
-pub fn start_evaluation(
+pub async fn start_evaluation(
     device_name: Option<String>,
-    audio_input: State<SharedAudioInput>,
-    onset_detector: State<SharedOnsetDetector>,
-    timing_analyzer: State<SharedTimingAnalyzer>,
-    session_acc: State<SharedSessionAccumulator>,
-    engine_state: State<EngineState>,
-    midi: State<SharedMidi>,
+    audio_input: State<'_, SharedAudioInput>,
+    onset_detector: State<'_, SharedOnsetDetector>,
+    timing_analyzer: State<'_, SharedTimingAnalyzer>,
+    session_acc: State<'_, SharedSessionAccumulator>,
+    engine_state: State<'_, EngineState>,
+    midi: State<'_, SharedMidi>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     // Stop any existing evaluation first (idempotent — prevents deadlock if called twice)
@@ -680,22 +682,23 @@ pub fn start_evaluation(
 }
 
 #[tauri::command]
-pub fn stop_evaluation(
-    audio_input: State<SharedAudioInput>,
-    onset_detector: State<SharedOnsetDetector>,
-    timing_analyzer: State<SharedTimingAnalyzer>,
-    midi: State<SharedMidi>,
-) {
+pub async fn stop_evaluation(
+    audio_input: State<'_, SharedAudioInput>,
+    onset_detector: State<'_, SharedOnsetDetector>,
+    timing_analyzer: State<'_, SharedTimingAnalyzer>,
+    midi: State<'_, SharedMidi>,
+) -> Result<(), String> {
     // Clear MIDI onset callback first (no lock ordering issue)
     {
-        let listener = midi.lock().unwrap();
+        let listener = midi.lock().map_err(|e| format!("Lock failed: {e}"))?;
         listener.clear_onset_callback();
     }
     // Stop in reverse-start order: onset_detector → timing_analyzer → audio_input
     // This matches start_evaluation's lock acquisition order to prevent deadlocks
-    onset_detector.lock().unwrap().stop();
-    timing_analyzer.lock().unwrap().stop();
-    audio_input.lock().unwrap().stop();
+    onset_detector.lock().map_err(|e| format!("Lock failed: {e}"))?.stop();
+    timing_analyzer.lock().map_err(|e| format!("Lock failed: {e}"))?.stop();
+    audio_input.lock().map_err(|e| format!("Lock failed: {e}"))?.stop();
+    Ok(())
 }
 
 #[tauri::command]
@@ -705,18 +708,19 @@ pub fn get_evaluation_state(audio_input: State<SharedAudioInput>) -> bool {
 }
 
 #[tauri::command]
-pub fn get_session_report(session_acc: State<SharedSessionAccumulator>) -> Option<SessionReport> {
-    let acc = session_acc.lock().unwrap();
+pub async fn get_session_report(session_acc: State<'_, SharedSessionAccumulator>) -> Result<Option<SessionReport>, String> {
+    let acc = session_acc.lock().map_err(|e| format!("Lock failed: {e}"))?;
     if acc.is_empty() {
-        None
+        Ok(None)
     } else {
-        Some(acc.report())
+        Ok(Some(acc.report()))
     }
 }
 
 #[tauri::command]
-pub fn clear_session(session_acc: State<SharedSessionAccumulator>) {
-    session_acc.lock().unwrap().clear();
+pub async fn clear_session(session_acc: State<'_, SharedSessionAccumulator>) -> Result<(), String> {
+    session_acc.lock().map_err(|e| format!("Lock failed: {e}"))?.clear();
+    Ok(())
 }
 
 #[tauri::command]
@@ -942,7 +946,7 @@ pub async fn load_coach_model(
 }
 
 #[tauri::command]
-pub fn coach_generate(
+pub async fn coach_generate(
     engine: State<'_, SharedCoachEngine>,
     context: String,
 ) -> Result<String, String> {
@@ -960,9 +964,9 @@ pub fn is_coach_loaded(engine: State<'_, SharedCoachEngine>) -> bool {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn tts_speak(
+pub async fn tts_speak(
     tts: State<'_, SharedTts>,
-    state: State<SharedState>,
+    state: State<'_, SharedState>,
     text: String,
 ) -> Result<(), String> {
     // Dim metronome volume during speech (temporary, not persisted)

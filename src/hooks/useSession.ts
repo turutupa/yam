@@ -219,6 +219,7 @@ export function useSession({ evaluation, isPlaying, bpm, timeSignature, presetId
     segmentReportsRef.current = [];
     bestStreakRef.current = 0;
     lastCoachCommentRef.current = 0;
+    wasPlayingRef.current = false; // prevent stale mini-report from previous session
     const now = Date.now();
     setActive(true);
     setStartedAt(now);

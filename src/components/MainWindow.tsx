@@ -2321,6 +2321,31 @@ export function MainWindow() {
                   {drillAutoCollapse ? "On" : "Off"}
                 </button>
               </div>
+            </section>
+
+            <section className="settings-section">
+              <h2>Appearance</h2>
+              <div className="theme-grid">
+                {THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    className={`theme-card ${state.theme === t.id ? "active" : ""}`}
+                    onClick={() => setTheme(t.id)}
+                    title={t.name}
+                  >
+                    <div className="theme-card-preview">
+                      {t.preview.map((color, i) => (
+                        <div
+                          key={i}
+                          className="theme-card-swatch"
+                          style={{ background: color }}
+                        />
+                      ))}
+                    </div>
+                    <span className="theme-card-name">{t.name}</span>
+                  </button>
+                ))}
+              </div>
               <div className="setting-row">
                 <div className="setting-label">
                   <label>View animations</label>
@@ -2612,31 +2637,6 @@ export function MainWindow() {
                 >
                   {state.widgetAlwaysOnTop ? "On" : "Off"}
                 </button>
-              </div>
-            </section>
-
-            <section className="settings-section">
-              <h2>Theme</h2>
-              <div className="theme-grid">
-                {THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`theme-card ${state.theme === t.id ? "active" : ""}`}
-                    onClick={() => setTheme(t.id)}
-                    title={t.name}
-                  >
-                    <div className="theme-card-preview">
-                      {t.preview.map((color, i) => (
-                        <div
-                          key={i}
-                          className="theme-card-swatch"
-                          style={{ background: color }}
-                        />
-                      ))}
-                    </div>
-                    <span className="theme-card-name">{t.name}</span>
-                  </button>
-                ))}
               </div>
             </section>
 
@@ -2990,10 +2990,10 @@ export function MainWindow() {
           <SettingsTimeline
             sections={[
               { id: "general", label: "General" },
+              { id: "appearance", label: "Appearance" },
               { id: "devices", label: "Devices" },
               { id: "smart-coach", label: "Practice Coach" },
               { id: "widget", label: "Widget" },
-              { id: "theme", label: "Theme" },
               { id: "hotkeys", label: "Hotkeys" },
               { id: "support", label: "Support" },
               { id: "about", label: "About" },

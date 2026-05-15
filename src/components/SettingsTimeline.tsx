@@ -114,12 +114,16 @@ export default function SettingsTimeline({ sections, containerRef }: SettingsTim
       rafId = requestAnimationFrame(update);
     };
 
-    update();
+    // Run initial update after view transition settles
+    const initId = requestAnimationFrame(() => requestAnimationFrame(update));
+    const initTimer = setTimeout(update, 350);
 
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       container.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(rafId);
+      cancelAnimationFrame(initId);
+      clearTimeout(initTimer);
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     };
   }, [getScrollContainer]);
